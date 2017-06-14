@@ -1,0 +1,12 @@
+{
+  "name": "@openwhisk-deploy/utils",
+  "version": "1.1.1",
+  "description": "",
+  "main": "utils.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "pubpatch": "npm version patch && npm publish --access public"
+  },
+  "author": "",
+  "license": "Apache-2.0"
+}

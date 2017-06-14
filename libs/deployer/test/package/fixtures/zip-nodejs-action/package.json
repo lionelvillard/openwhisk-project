@@ -1,0 +1,6 @@
+{
+  "main": "cat.js",
+  "dependencies": {
+    "openwhisk": "^3.6.0"
+  }
+}
