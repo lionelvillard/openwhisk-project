@@ -18,11 +18,12 @@ const fse = require('fs-extra')
 const names = require('@openwhisk-libs/names')
 const utils = require('@openwhisk-deploy/utils')
 const yaml = require('yamljs')
-const nodegit = require('nodegit')
 const fakeow = require('./libs/fakeow')
 const path = require('path')
 const archiver = require('archiver')
+const simpleGit = require('simple-git')
 const {exec} = require('child_process')
+
 
 /**
  * Deploy OpenWhisk entities (actions, sequence, rules, etc...)
@@ -158,9 +159,11 @@ const deployIncludes = (ow, args) => () => {
     return Promise.resolve({})
 }
 
-const cloneRepo = (owner, repo, targetDir) => {
-    return nodegit.Clone(`https://github.com/${owner}/${repo}`, targetDir, {checkoutBranch: 'master'})
-}
+const cloneRepo = (owner, repo, targetDir) => new Promise( resolve => {
+    return simpleGit().clone(`https://github.com/${owner}/${repo}`, targetDir, () => {
+        resolve()
+    })
+})
 
 // Deploy packages (excluding bindings, and package content)
 const deployPackages = (ow, args) => report => {
