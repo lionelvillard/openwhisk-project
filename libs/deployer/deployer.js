@@ -22,17 +22,21 @@ const fakeow = require('./libs/fakeow')
 const path = require('path')
 const archiver = require('archiver')
 const simpleGit = require('simple-git')
+const logger = require('log4js').getLogger()
+const reporter = require('./libs/reporter')
 const {exec} = require('child_process')
 
 
 /**
  * Deploy OpenWhisk entities (actions, sequence, rules, etc...)
  *
- * @param {Object} [ow]                       - OpenWhisk client. Perform a dry-run if not provided.
- * @param {Object} args
+ * @param {Object}        [ow]                - OpenWhisk client. Perform a dry-run if not provided.
+ * @param {Object}        args
  * @param {Object|string} [args.manifest]     - manifest used for deployment
- * @param {string} [args.location]            - manifest location. Ignored if manifest is provided
- * @param {string} [args.cache]               - cache location
+ * @param {string}        [args.location]     - manifest location. Ignored if manifest is provided
+ * @param {string}        [args.cache]        - cache location
+ * @param {boolean}       [args.force]        - perform update operation when true. Default is 'false'
+ * @param {string}        [args.logger_level] - logger level ('ALL', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE', 'OFF')
  *
  * @param {Object} args.assets.conf           - assets loader configuration
  * @param {string} args.assets.conf.kind      - kind of loader (0=local, 1=github)
@@ -46,10 +50,17 @@ const {exec} = require('child_process')
  * @return {Object} a deployment report.
  */
 const deploy = (ow, args) => {
-    configLoader(args)
+    logger.setLevel('OFF')
+    if (args.logger_level)
+        logger.setLevel(args.logger_level)
 
     if (!ow || args.dryrun)
         ow = fakeow
+
+    configLoader(args)
+    configOW(ow, args)
+
+    logger.debug('setup promises')
 
     try {
         return resolveManifest(ow, args)
@@ -62,13 +73,15 @@ const deploy = (ow, args) => {
             .then(deployTriggers(ow, args))
             .then(deployRules(ow, args))
             .catch(e => {
-                console.log(e)
+                logger.error(e)
                 return e
             })
 
     } catch (e) {
         return Promise.reject({error: e})
     }
+
+    logger.debug('setup done')
 }
 exports.deploy = deploy
 
@@ -80,17 +93,43 @@ const configLoader = args => {
     args.load = loaders[kind].make(args)
 }
 
+const configOW = (ow, args) => {
+    if (args.force === false) {
+        ow.packages.change = ow.packages.create
+        ow.triggers.change = ow.triggers.create
+        ow.routes.change = ow.routes.create
+        ow.actions.change = ow.actions.create
+        ow.feeds.change = ow.feeds.create
+        ow.rules.change = ow.rules.create
+    } else {
+        ow.packages.change = ow.packages.update
+        ow.triggers.change = ow.triggers.update
+        ow.routes.change = ow.routes.update
+        ow.actions.change = ow.actions.update
+        ow.feeds.change = ow.feeds.update
+        ow.rules.change = ow.rules.update
+    }
+}
+
 const loadManifest = args => {
     return args.load(args.location)
         .then(content => {
             // TODO: bad side-effect
             args.manifest = yaml.parse(content)
         })
+        .catch(err => {
+            if (err.errno == -2) {
+                // manifest does not exist. fine.
+                args.manifest = {}
+                return Promise.resolve()
+            }
+
+            return Promise.reject(err) // propagate error
+        })
 }
 
 const resolveManifest = (ow, args) => {
     if (args.manifest || args.manifest === '') {
-
         if (typeof args.manifest === 'string') {
             args.manifest = yaml.parse(args.manifest) || {}
         }
@@ -136,33 +175,46 @@ const deployIncludes = (ow, args) => () => {
             }
             const owner = github[1]
             const repo = github[2]
-            const path = github.length == 5 ? github[4] : ''
+            const path = github[4] || ''
             const targetDir = `${args.basePath}/deps/${repo}`
 
             let subdeploy = {
                 basePath: `${targetDir}/${path}`,
                 cache: args.cache,
-                location: 'manifest.yaml'
+                location: 'manifest.yaml',
+                logger_level: args.logger_level,
+                force: args.force
             }
 
-            const promise = cloneRepo(owner, repo, targetDir)
-                .then(() => deploy(ow, subdeploy))
+            const promise = checkNoClone(targetDir)
+                .then(cloneRepo(owner, repo, targetDir))
+                .then(() => {
+                    logger.debug(`sub-deploy ${location}`)
+                    return deploy(ow, subdeploy)
+                })
 
             promises.push(promise)
         }
-        return Promise.all(promises)
-            .then(report => ({
-                includes: report
-            }))
+        return Promise.all(promises).then(reporter.entity({}, 'includes'))
     }
 
     return Promise.resolve({})
 }
 
-const cloneRepo = (owner, repo, targetDir) => new Promise( resolve => {
-    return simpleGit().clone(`https://github.com/${owner}/${repo}`, targetDir, () => {
+const checkNoClone = targetDir => new Promise(resolve => {
+    fs.exists(targetDir, result => resolve(result))
+})
+
+const cloneRepo = (owner, repo, targetDir) => exists => new Promise(resolve => {
+    if (exists)
         resolve()
-    })
+    else {
+        logger.debug(`Clone github repository ${owner}/${repo} in ${targetDir}`)
+        simpleGit().clone(`https://github.com/${owner}/${repo}`, targetDir, () => {
+            resolve()
+        })
+    }
+
 })
 
 // Deploy packages (excluding bindings, and package content)
@@ -176,17 +228,15 @@ const deployPackages = (ow, args) => report => {
 
             // Skip package bindings
             if (!pkg.hasOwnProperty('bind')) {
-                const cmd = ow.packages.create({name})
-                    .then(() => ({
-                        name
-                    }))
+                const cmd = ow.packages.change({name})
+                    .then(reporter.package(name))
+                    .catch(reporter.package(name))
 
                 promises.push(cmd)
             }
         }
-
-        return Promise.all(promises)
-            .then(result => Object.assign(report, {packages: result}))
+        if (promises.length != 0)
+            return Promise.all(promises).then(reporter.entity(report, 'packages'))
     }
     return Promise.resolve(report)
 }
@@ -203,7 +253,7 @@ const deployBindings = (ow, args) => report => {
                 const qname = names.parseQName(pkg.bind)
                 const parameters = getParams(pkg.inputs, args)
 
-                const cmd = ow.packages.create({
+                const cmd = ow.packages.change({
                     name,
                     package: {
                         binding: {
@@ -213,15 +263,15 @@ const deployBindings = (ow, args) => report => {
                         parameters
                     }
                 })
+                    .then(reporter.binding(name))
+                    .catch(reporter.binding(name))
 
                 promises.push(cmd)
             }
         }
-        if (promises.length == 0)
-            return Promise.resolve(report)
+        if (promises.length != 0)
+            return Promise.all(promises).then(reporter.entity(report, 'bindings'))
 
-        return Promise.all(promises)
-            .then(result => Object.assign(report, {bindings: result}))
     }
     return Promise.resolve(report)
 }
@@ -254,23 +304,21 @@ const deployActions = (ow, args) => report => {
                     let cmd = buildAction(args, location, kind, action.zip)
                         .then(args.load)
                         .then(deployAction(ow, qname, params, kind, binary))
-                        .then(() => ({
-                            name: qname
-                        }))
+                        .then(reporter.action(qname, location, kind, params))
+                        .catch(reporter.action(qname, location, kind, params))
 
                     promises.push(cmd)
                 }
             }
         }
-        return Promise.all(promises)
-            .then(result => Object.assign(report, {actions: result}))
+        return Promise.all(promises).then(reporter.entity(report, 'actions'))
     }
     return Promise.resolve(report)
 }
 
 const deployAction = (ow, actionName, parameters, kind, binary) => content => {
     let action = binary ? new Buffer(content).toString('base64') : content
-    return ow.actions.create({
+    return ow.actions.change({
         actionName,
         action,
         kind,
@@ -302,66 +350,70 @@ const deploySequences = (ow, args) => report => {
                         let component = names.resolveQName(actions[i], manifest.namespace, name)
                         components.push(component)
                     }
-                    let cmd = ow.actions.update({
-                        actionName,
-                        action: {
-                            exec: {
-                                kind: 'sequence',
-                                components: components
-                            }
-                        }
-                    }).then(() => ({
-                        name: actionName
-                    }))
+                    const params = getParams(sequence.inputs, args)
+
+                    let cmd = deploySequence(actionName, components)
+                        .then(reporter.action(actionName, '', 'sequence', params))
+                        .catch(reporter.action(actionName, '', 'sequence', params))
 
                     promises.push(cmd)
                 }
             }
         }
-        if (promises.length == 0)
-            return Promise.resolve(report)
-
-        return Promise.all(promises)
-            .then(result => Object.assign(report, {sequences: result}))
+        if (promises.length != 0)
+            return Promise.all(promises).then(reporter.entity(report, 'sequences'))
     }
     return Promise.resolve(report)
+}
+
+const deploySequence = (actionName, components) => {
+    return ow.actions.change({
+        actionName,
+        action: {
+            exec: {
+                kind: 'sequence',
+                components
+            }
+        }
+    })
 }
 
 const deployTriggers = (ow, args) => report => {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('triggers')) {
-
         const triggers = manifest.triggers
 
-        let promises = []
-        for (let triggerName in triggers) {
-            let trigger = triggers[triggerName]
-            let cmd = deployTrigger(ow, args, triggerName, trigger)
+        const promises = []
+        for (const triggerName in triggers) {
+            const trigger = triggers[triggerName]
+            let cmd = deployTrigger(ow, args, triggerName)
+                .then(reporter.trigger(triggerName))
+                .catch(reporter.trigger(triggerName))
+
             if (trigger.source) {
-                cmd = deployFeedAction(cmd, ow, args, triggerName, trigger)
+                cmd = cmd
+                    .then(deployFeedAction(ow, args, triggerName, trigger))
             }
+
             promises.push(cmd)
         }
 
-        return Promise.all(promises)
-            .then(result => Object.assign(report, {triggers: result}))
+        if (promises.length != 0)
+            return Promise.all(promises).then(reporter.entity(report, 'triggers'))
     }
     return Promise.resolve(report)
 }
 
-const deployTrigger = (ow, args, triggerName, trigger) => {
-    return ow.triggers.update({
+const deployTrigger = (ow, args, triggerName) => {
+    return ow.triggers.change({
         triggerName
-    }).then(result => {
-        console.log(`trigger ${triggerName} deployed.`)
-        return result
     })
 }
 
-const deployFeedAction = (cmd, ow, args, triggerName, trigger) => {
+const deployFeedAction = (ow, args, triggerName, trigger) => report => {
     // Invoke action creating feed action sending events to the specified trigger name
-    let parameters = getParams(trigger.inputs, args)
-    let params = {}
+    const parameters = getParams(trigger.inputs, args)
+    const params = {}
     for (let i in parameters) {
         let p = parameters[i]
         params[p.key] = p.value
@@ -371,15 +423,17 @@ const deployFeedAction = (cmd, ow, args, triggerName, trigger) => {
     params.triggerName = `${args.manifest.package.name}/${triggerName}`
     params.authKey = args.auth
 
-    return cmd
-        .then(() => ow.actions.invoke({
-            actionName: trigger.source,
-            blocking: true,
-            params
-        })).then(result => {
-            console.log(`feed ${trigger.source} created for trigger ${triggerName}.`)
-            return result
-        })
+    return invokeAction(ow, trigger.source, params)
+        .then(reporter.feed(report, trigger))
+        .catch(reporter.feed(report, trigger))
+}
+
+const invokeAction = (ow, actionName, params) => {
+    return ow.actions.invoke({
+        actionName,
+        blocking: true,
+        params
+    })
 }
 
 const deployRules = (ow, args) => report => {
@@ -390,16 +444,17 @@ const deployRules = (ow, args) => report => {
         for (let ruleName in rules) {
             let rule = rules[ruleName]
 
-            let cmd = ow.rules.update({
+            let cmd = ow.rules.change({
                 ruleName,
                 action: rule.action,
                 trigger: rule.trigger
-            })
+            }).then(reporter.rule(ruleName))
+                .catch(reporter.rule(ruleName))
 
             promises.push(cmd)
         }
-        return Promise.all(promises)
-            .then(result => Object.assign(report, {rules: result}))
+        if (promises.length != 0)
+            return Promise.all(promises).then(reporter.entity(report, 'rules'))
     }
     return Promise.resolve(report)
 }
@@ -459,7 +514,7 @@ function resolveValue(value, args) {
     return value
 }
 
-
+6
 // --- Asset builders
 
 const buildAction = (context, location, kind, zip) => {
@@ -515,16 +570,15 @@ const buildNodejsAction = (context, location, zip) => {
 }
 
 
-const npmInstall = (src) => () => new Promise((resolve, reject) => {
+const npmInstall = src => () => new Promise((resolve, reject) => {
     // use external npm which must exist
     const nodepath = process.execPath
-    const npmpath = path.normalize(`${path.dirname(nodepath)}/../libexec/npm/bin/npm`)
 
     const execOptions = {
         cwd: src
     }
 
-    exec(`${npmpath} install`, execOptions, (error, stdout, stderr) => {
+    exec(`npm install`, execOptions, error => {
             if (error)
                 return reject(error)
             resolve()
@@ -567,10 +621,12 @@ const localLoader = {
 
     load: location => {
         return new Promise((resolve, reject) => {
+            logger.debug(`read local file ${location}`)
             fs.readFile(location, (err, content) => {
                 if (err)
                     reject(err)
-                resolve(Buffer.from(content).toString())
+                else
+                    resolve(Buffer.from(content).toString())
             })
         })
 

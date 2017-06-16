@@ -1,0 +1,25 @@
+{
+  "name": "@openwhisk-deploy/cli",
+  "version": "1.0.6",
+  "description": "Apache OpenWhisk Deploy CLI",
+  "bin": {
+    "wskd": "cli.js"
+  },
+  "main": "commands.js",
+  "scripts": {
+    "pubpatch": "npm version patch && npm publish --access public",
+    "pubminor": "npm version minor && npm publish --access public",
+    "pubmajor": "npm version major && npm publish --access public"
+  },
+  "author": "Lionel Villard",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@openwhisk-deploy/deployer": "^1.0.10",
+    "@openwhisk-libs/bluemix": "^1.1.2",
+    "co": "^4.6.0",
+    "co-prompt": "^1.0.0",
+    "commander": "^2.9.0",
+    "expand-home-dir": "0.0.3",
+    "openwhisk": "^3.6.0"
+  }
+}

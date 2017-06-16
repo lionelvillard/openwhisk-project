@@ -18,6 +18,32 @@ const test = require('ava')
 
 require('../helpers/setup')(test, 'test-check-clone')
 
+
+const checkCloneGold = {
+    includes: [
+        {
+            actions: [
+                {
+                    deployResult: true,
+                    kind: 'nodejs:default',
+                    // location: '/Users/villardl/Projects/whisk/openwhisk-deploy/libs/deployer/test-results/testbsGxdW/deps/incubator-openwhisk-catalog/packages/utils/cat.js',
+                    params: [],
+                    qname: 'utils/cat'
+                }
+
+            ],
+            packages: [
+                {
+
+                    deployResult: true,
+                    qname: 'utils',
+                }
+            ]
+        }
+
+    ]
+}
+
 test('check-clone', async t => {
     const result = await deployer.deploy(null, {
         basePath: t.context.tmpdir,
@@ -27,5 +53,11 @@ test('check-clone', async t => {
                 version: master`
     })
     t.true(typeof result === 'object')
-    t.deepEqual(JSON.parse('{"includes":[{"packages":[{"name":"utils"}],"actions":[{"name":"utils/cat"}]}]}'), result)
+    t.true(result.hasOwnProperty('includes'))
+    t.true(result.includes[0].hasOwnProperty('actions'))
+    t.true(result.includes[0].actions[0].hasOwnProperty('location'))
+    delete result.includes[0].actions[0].location
+
+
+    t.deepEqual(checkCloneGold, result)
 })

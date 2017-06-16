@@ -18,6 +18,25 @@ const deployer = require('../../deployer')
 
 require('../helpers/setup')(test, 'test-nodejs-action')
 
+const nodejsActionGold = {
+    actions: [
+        {
+            deployResult: true,
+            kind: 'nodejs:default',
+            // location: "/Users/villardl/Projects/whisk/openwhisk-deploy/libs/deployer/test/package/fixtures/nodejs-action/cat.js",
+            params: [],
+            qname: 'utils/cat'
+
+        }
+    ],
+    packages: [
+        {
+            deployResult: true,
+            qname: 'utils'
+        }
+    ]
+}
+
 test('deploy-nodejs-action', async t => {
     const result = await deployer.deploy(t.context.ow, {
         basePath: 'test/package/fixtures/nodejs-action',
@@ -25,5 +44,8 @@ test('deploy-nodejs-action', async t => {
         location: 'manifest.yaml'
     })
     t.true(typeof result === 'object')
-    t.deepEqual(result, JSON.parse('{"packages":[{"name":"utils"}],"actions":[{"name":"utils/cat"}]}'))
+    t.true(result.hasOwnProperty('actions'))
+    t.true(result.actions.length == 1)
+    delete result.actions[0].location
+    t.deepEqual(nodejsActionGold, result)
 })

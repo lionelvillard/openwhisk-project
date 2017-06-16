@@ -77,6 +77,11 @@ const authKeys = () => {
     return Promise.reject('Log in to Bluemix to get authentication keys')
 }
 
+
+const delay = ms => new Promise(resolve => {
+    setTimeout(resolve, ms)
+})
+
 const waitForAuthKey = namespace => () => {
     return authKeys()
         .then(keys => {
@@ -92,9 +97,7 @@ const waitForAuthKey = namespace => () => {
             if (foundns) {
                 return Promise.resolve(foundns)
             } else {
-                return new Promise(() => {
-                    setTimeout(waitForAuthKey(namespace), 500)
-                })
+                return delay(500).then(waitForAuthKey(namespace))
             }
         })
 }
@@ -122,7 +125,11 @@ const afterTest = async t => {
 }
 
 const beforeEachTest = async t => {
-    t.context.tmpdir = await fs.mkdtemp('test')
+    try {
+        await fs.mkdir('test-results')
+    } catch (e) {
+    }
+    t.context.tmpdir = await fs.mkdtemp('test-results/test')
 }
 const afterEachTest = async t => {
     if (t.context.tmpdir) {

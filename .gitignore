@@ -3,3 +3,4 @@ deploy*.sh
 build
 admin
 node_modules
+test-results
