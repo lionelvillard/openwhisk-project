@@ -16,22 +16,25 @@
 
 const deepDiff = require('deep-diff')
 
-const fail = (t, expected, actual) => {
+const fail = (t, actual, expected) => {
     return t.deepEqual(expected, actual)
 }
 
-const diffModulo = (t, expected, actual) => {
+const diffModulo = (t, actual, expected) => {
     const diff = deepDiff.diff(expected, actual)
     if (diff) {
         for (const edit of diff) {
 
             // not a value change: fail
             if (edit.kind !== 'E')
-                return fail(t, expected, actual)
+                return fail(t, actual, expected)
+
+            if (!edit.path)
+                return fail(t, actual, expected)
 
             const l = edit.path[edit.path.length - 1]
             if (l !== 'version' && l !== 'namespace' && l !== 'location')
-                return fail(t, expected, actual)
+                return fail(t, actual, expected)
 
         }
 

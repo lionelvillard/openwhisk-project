@@ -63,7 +63,7 @@ test('deploy-nodejs-action', async t => {
         cache: t.context.tmpdir,
         location: 'manifest.yaml'
     })
-    diff.deepEqualModulo(t, nodejsActionGold, result)
+    diff.deepEqualModulo(t, result, nodejsActionGold)
 })
 
 const nodejsparamActionGold =
@@ -109,7 +109,7 @@ test('deploy-nodejs-action-params', async t => {
         location: 'manifest-params.yaml'
     })
     //console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, nodejsparamActionGold, result)
+    diff.deepEqualModulo(t, result, nodejsparamActionGold)
 })
 
 
@@ -157,6 +157,6 @@ test('deploy-nodejs-action-annotation', async t => {
         location: 'manifest-annotations.yaml'
     })
     //console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, nodejsannoActionGold, result)
+    diff.deepEqualModulo(t, result, nodejsannoActionGold)
 
 })

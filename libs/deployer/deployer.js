@@ -283,7 +283,6 @@ const deployActions = (ow, args) => report => {
                         throw `Missing property 'location' in packages/actions/${actionName}`
                     }
 
-
                     action.location = resolvePath(args, action.location)
                     const kind = getKind(action)
 
@@ -331,8 +330,8 @@ const deploySequences = (ow, args) => report => {
     if (manifest.hasOwnProperty('packages')) {
         const packages = manifest.packages
         const promises = []
-        for (const name in packages) {
-            const pkg = packages[name] || {}
+        for (const pkgName in packages) {
+            const pkg = packages[pkgName] || {}
 
             if (pkg.hasOwnProperty('sequences')) {
                 const sequences = pkg.sequences
@@ -347,14 +346,29 @@ const deploySequences = (ow, args) => report => {
 
                     let actions = sequence.actions.split(',')
                     for (let i in actions) {
-                        let component = names.resolveQName(actions[i], manifest.namespace, name)
+                        const component = names.resolveQName(actions[i], manifest.namespace, pkgName)
+
+                        // TODO: check component exists?
+
                         components.push(component)
                     }
-                    const params = getKeyValues(sequence.inputs, args)
+                    const parameters = getKeyValues(sequence.inputs, args)
+                    const annotations = getKeyValues(sequence.annotations, args)
+                    const limits = sequence.limits || {}
 
-                    let cmd = deploySequence(actionName, components)
-                        .then(reporter.action(actionName, '', 'sequence', params))
-                        .catch(reporter.action(actionName, '', 'sequence', params))
+                    const action = {
+                        exec: {
+                            kind: 'sequence',
+                            components
+                        },
+                        parameters,
+                        annotations,
+                        limits
+                    }
+
+                    let cmd = deployRawAction(ow, actionName, action)
+                        .then(reporter.action(actionName, '', 'sequence', parameters))
+                        .catch(reporter.action(actionName, '', 'sequence', parameters))
 
                     promises.push(cmd)
                 }
@@ -366,15 +380,10 @@ const deploySequences = (ow, args) => report => {
     return Promise.resolve(report)
 }
 
-const deploySequence = (actionName, components) => {
+const deployRawAction = (ow, actionName, action) => {
     return ow.actions.change({
         actionName,
-        action: {
-            exec: {
-                kind: 'sequence',
-                components
-            }
-        }
+        action
     })
 }
 
