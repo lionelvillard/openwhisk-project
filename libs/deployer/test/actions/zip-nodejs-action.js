@@ -22,9 +22,9 @@ require('../helpers/setup')(test)
 const zipGold =
     {
         packages: [{
-            qname: 'utils',
+            qname: 'utils-zip',
             deployResult: {
-                name: 'utils',
+                name: 'utils-zip',
                 binding: {},
                 publish: false,
                 annotations: [],
@@ -34,7 +34,7 @@ const zipGold =
             }
         }],
         actions: [{
-            qname: 'utils/cat',
+            qname: 'utils-zip/cat',
             location: 'openwhisk-deploy/libs/deployer/test/actions/fixtures/zip-nodejs-action/manifest.yaml',
             kind: 'nodejs:default',
             params: [],
@@ -54,7 +54,7 @@ const zipGold =
 
 test('deploy-zip-nodejs-action', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
-        basePath: 'test/package/fixtures/zip-nodejs-action',
+        basePath: 'test/actions/fixtures/zip-nodejs-action',
         cache: t.context.tmpdir,
         location: 'manifest.yaml'
     })

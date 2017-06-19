@@ -27,7 +27,6 @@ const builder = require('@openwhisk-build/builder')
 const fakeow = require('./libs/fakeow')
 const reporter = require('./libs/reporter')
 
-
 /**
  * Deploy OpenWhisk entities (actions, sequence, rules, etc...)
  *
@@ -67,8 +66,8 @@ const deploy = (ow, args) => {
         return resolveManifest(ow, args)
             .then(configCache(args))
             .then(deployIncludes(ow, args))
-            .then(deployPackages(ow, args))
-            .then(deployBindings(ow, args))
+            .then(deployPackages(ow, args, false))
+            .then(deployPackages(ow, args, true))
             .then(deployActions(ow, args))
             .then(deploySequences(ow, args))
             .then(deployTriggers(ow, args))
@@ -215,7 +214,7 @@ const cloneRepo = (owner, repo, targetDir) => exists => new Promise(resolve => {
 })
 
 // Deploy packages (excluding bindings, and package content)
-const deployPackages = (ow, args) => report => {
+const deployPackages = (ow, args, bindings) => report => {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('packages')) {
         const packages = manifest.packages
@@ -223,13 +222,24 @@ const deployPackages = (ow, args) => report => {
         for (const name in packages) {
             const pkg = packages[name] || {}
 
-            // Skip package bindings
-            if (!pkg.hasOwnProperty('bind')) {
+            // Skip package bindings when bindings is false
+            const hasBind = pkg.hasOwnProperty('bind')
+
+            if ( (hasBind && bindings) || (!hasBind && !bindings) ) {
+                let binding = {}
+                if (bindings) {
+                    const qname = names.parseQName(pkg.bind)
+
+                    binding = {
+                        namespace: qname.namespace,
+                        name: qname.name
+                    }
+                }
                 const parameters = getKeyValues(pkg.inputs)
                 const annotations = getKeyValues(pkg.annotations)
                 const publish = pkg.hasOwnProperty('publish') ? pkg.publish : false
 
-                const cmd = deployPackage(ow, name, parameters, annotations, {}, publish)
+                const cmd = deployPackage(ow, name, parameters, annotations, binding, publish)
                     .then(reporter.package(name))
                     .catch(reporter.package(name))
 
@@ -242,43 +252,6 @@ const deployPackages = (ow, args) => report => {
     return Promise.resolve(report)
 }
 
-
-const deployBindings = (ow, args) => report => {
-    const manifest = args.manifest
-    if (manifest.hasOwnProperty('packages')) {
-        const packages = manifest.packages
-        const promises = []
-        for (const name in packages) {
-            const pkg = packages[name] || {}
-
-            if (pkg.hasOwnProperty('bind')) {
-                const qname = names.parseQName(pkg.bind)
-                const parameters = getKeyValues(pkg.inputs, args)
-
-                const cmd = ow.packages.change({
-                    name,
-                    package: {
-                        binding: {
-                            namespace: qname.namespace,
-                            name: qname.name
-                        },
-                        parameters
-                    }
-                })
-                    .then(reporter.binding(name))
-                    .catch(reporter.binding(name))
-
-                promises.push(cmd)
-            }
-        }
-        if (promises.length != 0)
-            return Promise.all(promises).then(reporter.entity(report, 'bindings'))
-
-    }
-    return Promise.resolve(report)
-}
-
-
 const deployPackage = (ow, name, parameters, annotations, binding, publish) => {
     return ow.packages.change({
         name,
@@ -290,7 +263,6 @@ const deployPackage = (ow, name, parameters, annotations, binding, publish) => {
         }
     })
 }
-
 
 const deployActions = (ow, args) => report => {
     const manifest = args.manifest

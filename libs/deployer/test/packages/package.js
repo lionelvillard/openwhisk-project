@@ -21,17 +21,21 @@ const diff = require('../helpers/diff')
 require('../helpers/setup')(test)
 
 const packageGold =
-    { packages:
-        [ { qname: 'packages-utils',
-            deployResult:
-                { name: 'packages-utils',
-                    binding: {},
-                    publish: false,
-                    annotations: [],
-                    version: '0.0.2',
-                    parameters: [],
-                    namespace: 'org_openwhisk-deployer-test-space' } } ],
-        actions: [] }
+    {
+        packages: [{
+            qname: 'packages-utils',
+            deployResult: {
+                name: 'packages-utils',
+                binding: {},
+                publish: false,
+                annotations: [],
+                version: '0.0.2',
+                parameters: [],
+                namespace: 'org_openwhisk-deployer-test-space'
+            }
+        }],
+        actions: []
+    }
 
 
 test('deploy-package', async t => {
@@ -45,17 +49,21 @@ test('deploy-package', async t => {
 })
 
 const packageParamGold =
-    { packages:
-        [ { qname: 'packages-utils-params',
-            deployResult:
-                { name: 'packages-utils-params',
-                    binding: {},
-                    publish: false,
-                    annotations: [],
-                    version: '0.0.2',
-                    parameters: [ { key: 'mykey', value: 'myvalue' } ],
-                    namespace: 'org_openwhisk-deployer-test-space' } } ],
-        actions: [] }
+    {
+        packages: [{
+            qname: 'packages-utils-params',
+            deployResult: {
+                name: 'packages-utils-params',
+                binding: {},
+                publish: false,
+                annotations: [],
+                version: '0.0.2',
+                parameters: [{key: 'mykey', value: 'myvalue'}],
+                namespace: 'org_openwhisk-deployer-test-space'
+            }
+        }],
+        actions: []
+    }
 
 test('deploy-package-params', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
@@ -68,17 +76,21 @@ test('deploy-package-params', async t => {
 })
 
 const packageAnnoGold =
-    { packages:
-        [ { qname: 'packages-utils-annos',
-            deployResult:
-                { name: 'packages-utils-annos',
-                    binding: {},
-                    publish: false,
-                    annotations: [ { key: 'myannokey', value: 'myannovalue' } ],
-                    version: '0.0.3',
-                    parameters: [],
-                    namespace: 'org_openwhisk-deployer-test-space' } } ],
-        actions: [] }
+    {
+        packages: [{
+            qname: 'packages-utils-annos',
+            deployResult: {
+                name: 'packages-utils-annos',
+                binding: {},
+                publish: false,
+                annotations: [{key: 'myannokey', value: 'myannovalue'}],
+                version: '0.0.3',
+                parameters: [],
+                namespace: 'org_openwhisk-deployer-test-space'
+            }
+        }],
+        actions: []
+    }
 
 test('deploy-package-annotation', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
@@ -90,4 +102,70 @@ test('deploy-package-annotation', async t => {
 //    console.log(util.inspect(result, {depth: null}))
     diff.deepEqualModulo(t, packageAnnoGold, result)
 
+})
+
+const packageBindingGold =
+    {
+        packages: [{
+            qname: 'packages-utils-binding',
+            deployResult: {
+                name: 'packages-utils-binding',
+                binding: {
+                    name: 'utils',
+                    namespace: 'whisk.system'
+                },
+                publish: false,
+                annotations: [{
+                    key: 'binding',
+                    value: {
+                        name: 'utils',
+                        namespace: 'whisk.system'
+                    }
+                }],
+                version: '0.0.3',
+                parameters: [],
+                namespace: 'org_openwhisk-deployer-test-space'
+            }
+        }],
+        actions: []
+    }
+
+test('deploy-package-binding', async t => {
+    const result = await deployer.deploy(t.context.bx.ow, {
+        basePath: 'test/packages/fixtures',
+        cache: t.context.tmpdir,
+        location: 'manifest-binding.yaml'
+    })
+
+//    console.log(util.inspect(result, {depth: null}))
+    diff.deepEqualModulo(t, packageBindingGold, result)
+
+})
+
+const packagePublishGold =
+    {
+        packages: [{
+            qname: 'packages-utils-publish',
+            deployResult: {
+                name: 'packages-utils-publish',
+                binding: {},
+                publish: true,
+                annotations: [],
+                version: '0.0.3',
+                parameters: [],
+                namespace: 'org_openwhisk-deployer-test-space'
+            }
+        }],
+        actions: []
+    }
+
+test('deploy-package-publish', async t => {
+    const result = await deployer.deploy(t.context.bx.ow, {
+        basePath: 'test/packages/fixtures',
+        cache: t.context.tmpdir,
+        location: 'manifest-publish.yaml'
+    })
+
+//    console.log(util.inspect(result, {depth: null}))
+    diff.deepEqualModulo(t, packagePublishGold, result)
 })

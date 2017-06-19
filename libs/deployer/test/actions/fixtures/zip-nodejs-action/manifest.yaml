@@ -1,5 +1,5 @@
 packages:
-  utils:
+  utils-zip:
     actions:
       cat:
         location: cat.js

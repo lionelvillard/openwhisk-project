@@ -1,0 +1,3 @@
+packages:
+  packages-utils-binding:
+    bind: /whisk.system/utils
