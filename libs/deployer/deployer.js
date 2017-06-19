@@ -225,7 +225,7 @@ const deployPackages = (ow, args, bindings) => report => {
             // Skip package bindings when bindings is false
             const hasBind = pkg.hasOwnProperty('bind')
 
-            if ( (hasBind && bindings) || (!hasBind && !bindings) ) {
+            if ((hasBind && bindings) || (!hasBind && !bindings)) {
                 let binding = {}
                 if (bindings) {
                     const qname = names.parseQName(pkg.bind)
@@ -394,14 +394,28 @@ const deployTriggers = (ow, args) => report => {
 
         const promises = []
         for (const triggerName in triggers) {
-            const trigger = triggers[triggerName]
-            let cmd = deployTrigger(ow, args, triggerName)
+            const trigger = triggers[triggerName] || {}
+            const isFeed = trigger.hasOwnProperty('feed')
+
+            const parameters = getKeyValues(trigger.inputs, args)
+            const annotations = getKeyValues(trigger.annotations, args)
+            const publish = trigger.hasOwnProperty('publish') ? trigger.publish : false
+
+            const triggerBody = {
+                annotations,
+                publish
+            }
+            if (!isFeed) {
+                triggerBody.parameters = parameters
+            }
+
+            let cmd = deployTrigger(ow, args, triggerName, triggerBody)
                 .then(reporter.trigger(triggerName))
                 .catch(reporter.trigger(triggerName))
 
-            if (trigger.source) {
+            if (isFeed) {
                 cmd = cmd
-                    .then(deployFeedAction(ow, args, triggerName, trigger))
+                    .then(deployFeedAction(ow, args, trigger.feed, triggerName, parameters))
             }
 
             promises.push(cmd)
@@ -413,28 +427,32 @@ const deployTriggers = (ow, args) => report => {
     return Promise.resolve(report)
 }
 
-const deployTrigger = (ow, args, triggerName) => {
+const deployTrigger = (ow, args, triggerName, trigger) => {
     return ow.triggers.change({
-        triggerName
+        triggerName,
+        trigger
     })
 }
 
-const deployFeedAction = (ow, args, triggerName, trigger) => report => {
+const deployFeedAction = (ow, args, feed, triggerName, parameters) => report => {
     // Invoke action creating feed action sending events to the specified trigger name
-    const parameters = getKeyValues(trigger.inputs, args)
+
+    // transform parameters
     const params = {}
     for (let i in parameters) {
         let p = parameters[i]
         params[p.key] = p.value
     }
 
-    params.lifecycleEvent = 'CREATE'
-    params.triggerName = `${args.manifest.package.name}/${triggerName}`
-    params.authKey = args.auth
+    // TODO: check for name conflicts
 
-    return invokeAction(ow, trigger.source, params)
-        .then(reporter.feed(report, trigger))
-        .catch(reporter.feed(report, trigger))
+    params.lifecycleEvent = 'CREATE'
+    params.triggerName = triggerName
+    params.authKey = ow.namespaces.client.options.api_key
+
+    return invokeAction(ow, feed, params)
+        .then(reporter.feed(report, feed, params))
+        .catch(reporter.feed(report, feed, params))
 }
 
 const invokeAction = (ow, actionName, params) => {

@@ -39,9 +39,13 @@ exports.action = reportAction
 const reportTrigger = triggerName => deployResult => ({triggerName, deployResult})
 exports.trigger = reportTrigger
 
-const reportFeed = (report, trigger) => deployResult => {
-    report.trigger = trigger
-    report.feedDeployResult = deployResult
+const reportFeed = (report, feed, params) => deployResult => {
+    report.feed = feed
+    report.feedParams = params
+
+    // TODO: decide what to do when recreating a feed
+    //report.feedDeployResult = deployResult
+
     return report
 }
 exports.feed = reportFeed
