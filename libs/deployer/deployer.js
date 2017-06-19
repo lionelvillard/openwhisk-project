@@ -187,7 +187,7 @@ const deployIncludes = (ow, args) => () => {
                 force: args.force
             }
 
-            const promise = checkNoClone(targetDir)
+            const promise = checkFileExists(targetDir)
                 .then(cloneRepo(owner, repo, targetDir))
                 .then(() => {
                     logger.debug(`sub-deploy ${location}`)
@@ -201,10 +201,6 @@ const deployIncludes = (ow, args) => () => {
 
     return Promise.resolve({})
 }
-
-const checkNoClone = targetDir => new Promise(resolve => {
-    fs.exists(targetDir, result => resolve(result))
-})
 
 const cloneRepo = (owner, repo, targetDir) => exists => new Promise(resolve => {
     if (exists)
@@ -225,11 +221,15 @@ const deployPackages = (ow, args) => report => {
         const packages = manifest.packages
         const promises = []
         for (const name in packages) {
-            const pkg = packages[name]
+            const pkg = packages[name] || {}
 
             // Skip package bindings
             if (!pkg.hasOwnProperty('bind')) {
-                const cmd = ow.packages.change({name})
+                const parameters = getKeyValues(pkg.inputs)
+                const annotations = getKeyValues(pkg.annotations)
+                const publish = pkg.hasOwnProperty('publish') ? pkg.publish : false
+
+                const cmd = deployPackage(ow, name, parameters, annotations, {}, publish)
                     .then(reporter.package(name))
                     .catch(reporter.package(name))
 
@@ -242,13 +242,14 @@ const deployPackages = (ow, args) => report => {
     return Promise.resolve(report)
 }
 
+
 const deployBindings = (ow, args) => report => {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('packages')) {
         const packages = manifest.packages
         const promises = []
         for (const name in packages) {
-            const pkg = packages[name]
+            const pkg = packages[name] || {}
 
             if (pkg.hasOwnProperty('bind')) {
                 const qname = names.parseQName(pkg.bind)
@@ -277,13 +278,27 @@ const deployBindings = (ow, args) => report => {
     return Promise.resolve(report)
 }
 
+
+const deployPackage = (ow, name, parameters, annotations, binding, publish) => {
+    return ow.packages.change({
+        name,
+        package: {
+            publish,
+            parameters,
+            annotations,
+            binding
+        }
+    })
+}
+
+
 const deployActions = (ow, args) => report => {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('packages')) {
         const packages = manifest.packages
         const promises = []
         for (const pkgName in packages) {
-            const pkg = packages[pkgName]
+            const pkg = packages[pkgName] || {}
 
             if (pkg.hasOwnProperty('actions')) {
                 let actions = pkg.actions
@@ -345,7 +360,7 @@ const deploySequences = (ow, args) => report => {
         const packages = manifest.packages
         const promises = []
         for (const name in packages) {
-            const pkg = packages[name]
+            const pkg = packages[name] || {}
 
             if (pkg.hasOwnProperty('sequences')) {
                 const sequences = pkg.sequences
@@ -638,3 +653,8 @@ const fetchAsset = (owner, repo, release, assetName) => {
 
     return Promise.reject(`Missing ${assetName} asset.`)
 }
+
+
+const checkFileExists = file => new Promise(resolve => {
+    fs.exists(file, result => resolve(result))
+})

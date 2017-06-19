@@ -17,7 +17,7 @@ const test = require('ava')
 const deployer = require('../../deployer')
 const diff = require('../helpers/diff')
 const util = require('util')
-require('../helpers/setup')(test, 'test-zip-nodejs-action')
+require('../helpers/setup')(test)
 
 const zipGold =
     {
@@ -35,7 +35,7 @@ const zipGold =
         }],
         actions: [{
             qname: 'utils/cat',
-            location: 'openwhisk-deploy/libs/deployer/test/package/fixtures/zip-nodejs-action/manifest.yaml',
+            location: 'openwhisk-deploy/libs/deployer/test/actions/fixtures/zip-nodejs-action/manifest.yaml',
             kind: 'nodejs:default',
             params: [],
             deployResult: {

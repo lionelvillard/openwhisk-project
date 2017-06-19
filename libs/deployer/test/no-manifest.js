@@ -16,7 +16,7 @@
 const test = require('ava')
 const deployer = require('../deployer')
 
-require('./helpers/setup')(test, 'test-nodejs-action')
+require('./helpers/setup')(test)
 
 test('deploy empty manifest', async t => {
     await deployer.deploy(null, {cache: t.context.tmpdir, location: 'donotexist.yaml'})

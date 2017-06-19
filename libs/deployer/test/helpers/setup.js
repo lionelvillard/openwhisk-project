@@ -4,7 +4,7 @@ const openwhisk = require('openwhisk')
 
 let bxdata
 
-const beforeTest = async (name, t) => {
+const beforeTest = async (t) => {
     const loggedin = await bx.login(process.env.BLUEMIX_API_KEY)
 
     if (loggedin) {
@@ -41,8 +41,8 @@ const afterEachTest = async t => {
     }
 }
 
-module.exports = (test, name) => {
-    test.before(async t => beforeTest(name, t))
+module.exports = test => {
+    test.before(beforeTest)
 
     test.beforeEach(beforeEachTest)
     test.afterEach(afterEachTest)

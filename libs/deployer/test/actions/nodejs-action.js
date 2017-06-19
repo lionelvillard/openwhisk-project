@@ -18,7 +18,7 @@ const deployer = require('../../deployer')
 const util = require('util')
 const diff = require('../helpers/diff')
 
-require('../helpers/setup')(test, 'test-nodejs-action')
+require('../helpers/setup')(test)
 
 const nodejsActionGold =
     {
@@ -59,7 +59,7 @@ const nodejsActionGold =
 
 test('deploy-nodejs-action', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
-        basePath: 'test/package/fixtures/nodejs-action',
+        basePath: 'test/actions/fixtures/nodejs-action',
         cache: t.context.tmpdir,
         location: 'manifest.yaml'
     })
@@ -82,7 +82,7 @@ const nodejsparamActionGold =
         }],
         actions: [{
             qname: 'utils-with-param/cat-with-param',
-            location: 'openwhisk-deploy/libs/deployer/test/package/fixtures/nodejs-action/manifest-params.yaml',
+            location: 'openwhisk-deploy/libs/deployer/test/actions/fixtures/nodejs-action/manifest-params.yaml',
             kind: 'nodejs:default',
             params: [{key: 'mykey', value: 'myvalue'}],
             deployResult: {
@@ -104,7 +104,7 @@ const nodejsparamActionGold =
 
 test('deploy-nodejs-action-params', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
-        basePath: 'test/package/fixtures/nodejs-action',
+        basePath: 'test/actions/fixtures/nodejs-action',
         cache: t.context.tmpdir,
         location: 'manifest-params.yaml'
     })
@@ -129,7 +129,7 @@ const nodejsannoActionGold =
         }],
         actions: [{
             qname: 'utils-with-annotation/cat-with-annotation',
-            location: 'openwhisk-deploy/libs/deployer/test/package/fixtures/nodejs-action/manifest-annotation.yaml',
+            location: 'openwhisk-deploy/libs/deployer/test/actions/fixtures/nodejs-action/manifest-annotation.yaml',
             kind: 'nodejs:default',
             params: [],
             deployResult: {
@@ -152,9 +152,9 @@ const nodejsannoActionGold =
 
 test('deploy-nodejs-action-annotation', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
-        basePath: 'test/package/fixtures/nodejs-action',
+        basePath: 'test/actions/fixtures/nodejs-action',
         cache: t.context.tmpdir,
-        location: 'manifest-annotation.yaml'
+        location: 'manifest-annotations.yaml'
     })
     //console.log(util.inspect(result, {depth: null}))
     diff.deepEqualModulo(t, nodejsannoActionGold, result)
