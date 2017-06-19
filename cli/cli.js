@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const program = require('commander')
 const commands = require('./commands')
+const prettyjson = require('prettyjson')
 
 program
     .option('-p, --provider <provider>', 'The Apache OpenWhisk provider (bluemix|local)')
@@ -12,5 +13,9 @@ program
     .parse(process.argv)
 
 commands.run(program)
-    .then(() => process.exit(0))
-    .catch(code => process.exit(code))
+    .then(report => {
+        console.log(prettyjson.render(report, {}))
+    })
+    .catch(code => {
+        process.exit(code)
+    })

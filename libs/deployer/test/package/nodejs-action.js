@@ -15,37 +15,148 @@
  */
 const test = require('ava')
 const deployer = require('../../deployer')
+const util = require('util')
+const diff = require('../helpers/diff')
 
 require('../helpers/setup')(test, 'test-nodejs-action')
 
-const nodejsActionGold = {
-    actions: [
-        {
-            deployResult: true,
+const nodejsActionGold =
+    {
+        packages: [{
+            qname: 'utils',
+            deployResult: {
+                name: 'utils',
+                binding: {},
+                publish: false,
+                annotations: [],
+                version: '0.0.0',
+                parameters: [],
+                namespace: 'dummy_openwhisk-deployer-test-space'
+            }
+        }],
+        actions: [{
+            qname: 'utils/cat',
             kind: 'nodejs:default',
-            // location: "/Users/villardl/Projects/whisk/openwhisk-deploy/libs/deployer/test/package/fixtures/nodejs-action/cat.js",
+            location: 'fixtures/nodejs-action/manifest.yaml',
             params: [],
-            qname: 'utils/cat'
+            deployResult: {
+                name: 'cat',
+                publish: false,
+                annotations: [{key: 'exec', value: 'nodejs:6'}],
+                version: '0.0.0',
+                exec: {
+                    kind: 'nodejs:6',
+                    code: '/**\n * Equivalent to unix cat command.\n * Return all the lines in an array. All other fields in the input message are stripped.\n * @param lines An array of strings.\n */\nfunction main(msg) {\n    var lines = msg.lines || [];\n    var retn = {lines: lines, payload: lines.join("\\n")};\n    console.log(\'cat: returning \' + JSON.stringify(retn));\n    return retn;\n}\n',
+                    binary: false
+                },
+                parameters: [],
+                limits: {timeout: 60000, memory: 256, logs: 10},
+                namespace: 'dummy_openwhisk-deployer-test-space/utils'
+            }
+        }]
+    }
 
-        }
-    ],
-    packages: [
-        {
-            deployResult: true,
-            qname: 'utils'
-        }
-    ]
-}
 
 test('deploy-nodejs-action', async t => {
-    const result = await deployer.deploy(t.context.ow, {
+    const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/package/fixtures/nodejs-action',
         cache: t.context.tmpdir,
         location: 'manifest.yaml'
     })
-    t.true(typeof result === 'object')
-    t.true(result.hasOwnProperty('actions'))
-    t.true(result.actions.length == 1)
-    delete result.actions[0].location
-    t.deepEqual(nodejsActionGold, result)
+    diff.deepEqualModulo(t, nodejsActionGold, result)
+})
+
+const nodejsparamActionGold =
+    {
+        packages: [{
+            qname: 'utils-with-param',
+            deployResult: {
+                name: 'utils-with-param',
+                binding: {},
+                publish: false,
+                annotations: [],
+                version: '0.0.4',
+                parameters: [],
+                namespace: 'org_openwhisk-deployer-test-space'
+            }
+        }],
+        actions: [{
+            qname: 'utils-with-param/cat-with-param',
+            location: 'openwhisk-deploy/libs/deployer/test/package/fixtures/nodejs-action/manifest-params.yaml',
+            kind: 'nodejs:default',
+            params: [{key: 'mykey', value: 'myvalue'}],
+            deployResult: {
+                name: 'cat-with-param',
+                publish: false,
+                annotations: [{key: 'exec', value: 'nodejs:6'}],
+                version: '0.0.4',
+                exec: {
+                    kind: 'nodejs:6',
+                    code: '/**\n * Equivalent to unix cat command.\n * Return all the lines in an array. All other fields in the input message are stripped.\n * @param lines An array of strings.\n */\nfunction main(msg) {\n    var lines = msg.lines || [];\n    var retn = {lines: lines, payload: lines.join("\\n")};\n    console.log(\'cat: returning \' + JSON.stringify(retn));\n    return retn;\n}\n',
+                    binary: false
+                },
+                parameters: [{key: 'mykey', value: 'myvalue'}],
+                limits: {timeout: 60000, memory: 256, logs: 10},
+                namespace: 'org_openwhisk-deployer-test-space/utils-with-param'
+            }
+        }]
+    }
+
+test('deploy-nodejs-action-params', async t => {
+    const result = await deployer.deploy(t.context.bx.ow, {
+        basePath: 'test/package/fixtures/nodejs-action',
+        cache: t.context.tmpdir,
+        location: 'manifest-params.yaml'
+    })
+    //console.log(util.inspect(result, {depth: null}))
+    diff.deepEqualModulo(t, nodejsparamActionGold, result)
+})
+
+
+const nodejsannoActionGold =
+    {
+        packages: [{
+            qname: 'utils-with-annotation',
+            deployResult: {
+                name: 'utils-with-annotation',
+                binding: {},
+                publish: false,
+                annotations: [],
+                version: '0.0.4',
+                parameters: [],
+                namespace: 'org_openwhisk-deployer-test-space'
+            }
+        }],
+        actions: [{
+            qname: 'utils-with-annotation/cat-with-annotation',
+            location: 'openwhisk-deploy/libs/deployer/test/package/fixtures/nodejs-action/manifest-annotation.yaml',
+            kind: 'nodejs:default',
+            params: [],
+            deployResult: {
+                name: 'cat-with-annotation',
+                publish: false,
+                annotations: [{key: 'myannokey', value: 'myannovalue'}, {key: 'exec', value: 'nodejs:6'}],
+                version: '0.0.4',
+                exec: {
+                    kind: 'nodejs:6',
+                    code: '/**\n * Equivalent to unix cat command.\n * Return all the lines in an array. All other fields in the input message are stripped.\n * @param lines An array of strings.\n */\nfunction main(msg) {\n    var lines = msg.lines || [];\n    var retn = {lines: lines, payload: lines.join("\\n")};\n    console.log(\'cat: returning \' + JSON.stringify(retn));\n    return retn;\n}\n',
+                    binary: false
+                },
+                parameters: [],
+                limits: {timeout: 60000, memory: 256, logs: 10},
+                namespace: 'org_openwhisk-deployer-test-space/utils-with-annotation'
+            }
+        }]
+    }
+
+
+test('deploy-nodejs-action-annotation', async t => {
+    const result = await deployer.deploy(t.context.bx.ow, {
+        basePath: 'test/package/fixtures/nodejs-action',
+        cache: t.context.tmpdir,
+        location: 'manifest-annotation.yaml'
+    })
+    //console.log(util.inspect(result, {depth: null}))
+    diff.deepEqualModulo(t, nodejsannoActionGold, result)
+
 })

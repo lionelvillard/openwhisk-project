@@ -15,16 +15,17 @@
  */
 const fs = require('fs')
 const fse = require('fs-extra')
-const names = require('@openwhisk-libs/names')
-const utils = require('@openwhisk-deploy/utils')
 const yaml = require('yamljs')
-const fakeow = require('./libs/fakeow')
 const path = require('path')
-const archiver = require('archiver')
 const simpleGit = require('simple-git')
 const logger = require('log4js').getLogger()
-const reporter = require('./libs/reporter')
 const {exec} = require('child_process')
+
+const names = require('@openwhisk-libs/names')
+const utils = require('@openwhisk-deploy/utils')
+const builder = require('@openwhisk-build/builder')
+const fakeow = require('./libs/fakeow')
+const reporter = require('./libs/reporter')
 
 
 /**
@@ -251,7 +252,7 @@ const deployBindings = (ow, args) => report => {
 
             if (pkg.hasOwnProperty('bind')) {
                 const qname = names.parseQName(pkg.bind)
-                const parameters = getParams(pkg.inputs, args)
+                const parameters = getKeyValues(pkg.inputs, args)
 
                 const cmd = ow.packages.change({
                     name,
@@ -289,23 +290,28 @@ const deployActions = (ow, args) => report => {
                 for (const actionName in actions) {
                     let action = actions[actionName]
 
+                    // Resolve location
+
                     if (!action.hasOwnProperty('location')) {
                         throw `Missing property 'location' in packages/actions/${actionName}`
                     }
-                    if (!action.hasOwnProperty('zip'))
-                        action.zip = false
 
-                    const location = resolvePath(args, action.location)
-                    const params = getParams(action.inputs, args)
+
+                    action.location = resolvePath(args, action.location)
                     const kind = getKind(action)
+
+                    const params = getKeyValues(action.inputs, args)
+                    const annotations = getKeyValues(action.annotations, args)
+                    const limits = action.limits || {}
+
                     const binary = getBinary(action, kind)
                     const qname = `${pkgName}/${actionName}`
 
-                    let cmd = buildAction(args, location, kind, action.zip)
+                    let cmd = buildAction(args, kind, action)
                         .then(args.load)
-                        .then(deployAction(ow, qname, params, kind, binary))
-                        .then(reporter.action(qname, location, kind, params))
-                        .catch(reporter.action(qname, location, kind, params))
+                        .then(deployAction(ow, qname, params, annotations, limits, kind, binary))
+                        .then(reporter.action(qname, args.location, kind, params))
+                        .catch(reporter.action(qname, args.location, kind, params))
 
                     promises.push(cmd)
                 }
@@ -316,13 +322,20 @@ const deployActions = (ow, args) => report => {
     return Promise.resolve(report)
 }
 
-const deployAction = (ow, actionName, parameters, kind, binary) => content => {
-    let action = binary ? new Buffer(content).toString('base64') : content
+const deployAction = (ow, actionName, parameters, annotations, limits, kind, binary) => content => {
+    const action = {
+        exec: {
+            kind,
+            code: binary ? new Buffer(content).toString('base64') : content
+        },
+        parameters,
+        annotations,
+        limits
+    }
+
     return ow.actions.change({
         actionName,
-        action,
-        kind,
-        parameters
+        action
     })
 }
 
@@ -350,7 +363,7 @@ const deploySequences = (ow, args) => report => {
                         let component = names.resolveQName(actions[i], manifest.namespace, name)
                         components.push(component)
                     }
-                    const params = getParams(sequence.inputs, args)
+                    const params = getKeyValues(sequence.inputs, args)
 
                     let cmd = deploySequence(actionName, components)
                         .then(reporter.action(actionName, '', 'sequence', params))
@@ -412,7 +425,7 @@ const deployTrigger = (ow, args, triggerName) => {
 
 const deployFeedAction = (ow, args, triggerName, trigger) => report => {
     // Invoke action creating feed action sending events to the specified trigger name
-    const parameters = getParams(trigger.inputs, args)
+    const parameters = getKeyValues(trigger.inputs, args)
     const params = {}
     for (let i in parameters) {
         let p = parameters[i]
@@ -492,20 +505,16 @@ function haveRepo(args) {
     return args.hasOwnProperty('owner') && args.hasOwnProperty('repo') && args.hasOwnProperty('sha')
 }
 
-function getParams(inputs, args) {
-    let params = []
-    for (let key in inputs) {
-        params.push({
-            key,
-            value: resolveValue(inputs[key], args)
-        })
+function getKeyValues(inputs, args) {
+    if (inputs) {
+        return Object.keys(inputs).map(key => ({key, value: resolveValue(inputs[key], args)}))
     }
-    return params
+    return []
 }
 
 function resolveValue(value, args) {
     if (value.startsWith('$')) {
-        let key = value.substr(1)
+        const key = value.substr(1)
         if (args.env && args.env[key])
             return args.env[key]
 
@@ -514,102 +523,28 @@ function resolveValue(value, args) {
     return value
 }
 
-6
 // --- Asset builders
 
-const buildAction = (context, location, kind, zip) => {
+// const checkFileExists = location => {
+//
+// }
+
+const buildAction = (context, kind, action) => {
+    const baseLocInCache = path.dirname(path.join(context.cache, path.relative('test', action.location)))
+    const builderArgs = {
+        target: baseLocInCache,
+        action
+    }
+
     const basekind = kind.split(':')[0]
     switch (basekind) {
         case 'nodejs':
-            return buildNodejsAction(context, location, zip)
+            return builder.nodejs.build(builderArgs)
         default:
             throw `Unsupported action kind: ${kind}`
     }
-
-    return location
 }
 
-const buildNodejsAction = (context, location, zip) => {
-    if (!zip)
-        return Promise.resolve(location)
-
-    // Directory structure
-    // .cache
-    //   - path/to/action
-    //      - src
-    //      file.zip
-
-    const baseCache = path.dirname(context.cache)
-    const cacheDir = path.basename(context.cache)
-    const baseLoc = path.dirname(location)
-
-    const baseLocInCache = path.dirname(path.resolve(context.cache, path.relative(baseCache, location)))
-    const srcLocInCache = path.join(baseLocInCache, '/src')
-    const ziplocInCache = path.join(baseLocInCache, 'action.zip')
-
-    const copyOptions = {
-        preserveTimestamps: true,
-        filter: src => {
-            const basename = path.basename(src)
-            //console.log(src)
-
-            // TODO: read .npmignore
-
-            if (basename === cacheDir)
-                return false
-
-            return true
-        }
-    }
-
-    return fse.mkdirs(`${baseLocInCache}/src`)
-        .then(() => fse.copy(baseLoc, srcLocInCache, copyOptions))
-        .then(npmInstall(srcLocInCache))
-        .then(makeZip(ziplocInCache, srcLocInCache))
-        .then(() => Promise.resolve(ziplocInCache))
-}
-
-
-const npmInstall = src => () => new Promise((resolve, reject) => {
-    // use external npm which must exist
-    const nodepath = process.execPath
-
-    const execOptions = {
-        cwd: src
-    }
-
-    exec(`npm install`, execOptions, error => {
-            if (error)
-                return reject(error)
-            resolve()
-        }
-    )
-})
-
-const makeZip = (targetZip, src) => () => new Promise((resolve, reject) => {
-    const output = fs.createWriteStream(targetZip)
-    const archive = archiver('zip', {
-        zlib: {level: 9}
-    })
-
-    output.on('close', () => {
-        resolve()
-    })
-
-    archive.on('error', err => {
-        reject(err)
-    })
-
-    // pipe archive data to the file
-    archive.pipe(output)
-
-    // append files from src directory
-    archive.directory(src, '.')
-
-    // finalize the archive (ie we are done appending files but streams have to finish yet)
-    archive.finalize()
-
-})
 
 // --- Asset loaders
 

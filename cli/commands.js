@@ -53,12 +53,6 @@ const deployBluemix = (space, options) => {
             return auth
         })
         .then(auth => deploy('https://openwhisk.ng.bluemix.net', auth, false, options))
-        .then(report => {
-            console.log(report)
-        })
-        .catch(e => {
-            console.log(e)
-        })
 }
 
 
