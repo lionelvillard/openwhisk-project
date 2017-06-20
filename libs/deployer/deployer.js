@@ -471,11 +471,8 @@ const deployRules = (ow, args) => report => {
         for (let ruleName in rules) {
             let rule = rules[ruleName]
 
-            let cmd = ow.rules.change({
-                ruleName,
-                action: rule.action,
-                trigger: rule.trigger
-            }).then(reporter.rule(ruleName))
+            let cmd = deployRule(ow, ruleName, rule.trigger, rule.action)
+                .then(reporter.rule(ruleName))
                 .catch(reporter.rule(ruleName))
 
             promises.push(cmd)
@@ -484,6 +481,14 @@ const deployRules = (ow, args) => report => {
             return Promise.all(promises).then(reporter.entity(report, 'rules'))
     }
     return Promise.resolve(report)
+}
+
+const deployRule = (ow, ruleName, trigger, action) => {
+    return ow.rules.change({
+        ruleName,
+        action,
+        trigger
+    })
 }
 
 // -- Utils

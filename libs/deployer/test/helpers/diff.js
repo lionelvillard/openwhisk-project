@@ -33,7 +33,10 @@ const diffModulo = (t, actual, expected) => {
                 return fail(t, actual, expected)
 
             const l = edit.path[edit.path.length - 1]
-            if (l !== 'version' && l !== 'namespace' && l !== 'location' && l !== 'authKey')
+            const l1 = edit.path[edit.path.length - 2]
+
+            if (!(l === 'path' && l1 === 'trigger')) // ignore trigger/path
+              if (l !== 'version' && l !== 'namespace' && l !== 'location' && l !== 'authKey')
                 return fail(t, actual, expected)
 
         }

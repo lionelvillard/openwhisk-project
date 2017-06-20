@@ -51,4 +51,4 @@ const reportFeed = (report, feed, params) => deployResult => {
 exports.feed = reportFeed
 
 const reportRule = ruleName => deployResult => ({ruleName, deployResult})
-exports.feed = reportFeed
+exports.rule = reportRule
