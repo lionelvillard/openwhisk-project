@@ -15,6 +15,7 @@ $ npm install @openwhisk-deploy/deployer --save
 $ npm install @openwhisk-deploy/cli -g
 $ wskd 
 ```
+
 ## OpenWhisk action
 
 (Work in progress.)
@@ -293,8 +294,20 @@ An *object* representing a list of annotations
 
 - `{key}` (string, optional)
 
+
+## `limits`
+
+An *object* representing action limits
+
+### Properties
+
+- `memory` (integer, optional, default: 256): the maximum memory limit in MB for the action
+- `logsize` (integer, optional, default:10): the maximum log size limit in MB for the action
+- `timeout` (integer, optional, default:60000): the timeout limit in milliseconds after which the action is terminated 
+
 ## Entity name resolution
 
 Non-fully qualified entity names are resolved as follows:
   - partially qualified names (ie. `pkgName/name`) are resolved using the enclosing namespace
   - unqualified names (ie. `name`) are resolved using the enclosing package name (if any) and namespace. 
+
