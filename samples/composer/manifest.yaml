@@ -1,0 +1,13 @@
+packages:
+  composer:
+    actions
+      loop:
+        kind: retry
+        inputs:
+          task: RandomError,
+          count: 1
+      fsm:
+        kind: try
+        inputs:
+          task: loop
+          handler: js`args => ({ message: args.error + ' is caught' }`

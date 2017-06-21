@@ -23,6 +23,8 @@
   "devDependencies": {
     "@openwhisk-libs/bluemix": "^1.2.0",
     "ava": "^0.19.1",
-    "deep-diff": "^0.3.8"
+    "deep-diff": "^0.3.8",
+    "json-schema-to-markdown": "^1.0.3",
+    "wetzel": "0.0.5"
   }
 }
