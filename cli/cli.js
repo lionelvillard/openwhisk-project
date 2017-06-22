@@ -2,15 +2,35 @@
 const program = require('commander')
 const commands = require('./commands')
 const prettyjson = require('prettyjson')
+const chalk = require('chalk')
 
 program
-    .option('-p, --provider <provider>', 'The Apache OpenWhisk provider (bluemix|local)')
-    .option('-s, --bx-space <space>', 'The Bluemix space to use (when provider is bluemix)')
-    .option('-u, --auth <auth>', 'The API key to use (when provider is local)')
-    .option('--apihost <host>', 'The API host to use (when provider is local)')
-    .option('-v, --verbose <level>', 'verbosity level (DEBUG|OFF)')
-    .option('--force', 'overwrite existing deployed entities')
-    .parse(process.argv)
+    .version('0.1.0')
+    .usage('[options] [manifest.yaml]')
+    .description('Apache OpenWhisk deployment tool')
+    .option('-m, --mode [mode]', 'deployment mode (create|update) [create], /^(create|update)$/i')
+    .option('-u, --auth [auth]', 'authorization key')
+    .option('--apihost [host]', 'API host',)
+    .option('-s, --bx-space [space]', 'bluemix space')
+    .option('-i, --insecure', 'bypass certificate checking')
+    .option('-v, --logging [level]', 'logging level (debug|off) [off]', /^(debug|off)$/i)
+
+program.on('--help', () => {
+    console.log('  The authorization key is determined in this order:')
+    console.log('')
+    console.log(`    1. ${chalk.bold('-u auth')}`)
+    console.log(`    2. ${chalk.bold('-s space')}`)
+    console.log('    3. ~/.wskprops')
+    console.log('')
+    console.log('  Deployment modes:')
+    console.log('')
+    console.log(`    - ${chalk.bold('create')}: create new entities, leaving existing ones untouched`)
+    console.log(`    - ${chalk.bold('update')}: create and update entities`)
+    console.log('')
+})
+
+program.parse(process.argv)
+
 
 commands.run(program)
     .then(report => {

@@ -3,84 +3,145 @@ const program = require('commander')
 const fs = require('fs')
 const expandHomeDir = require('expand-home-dir')
 const deployer = require('@openwhisk-deploy/deployer')
+const chalk = require('chalk')
+const ansiEscapes = require('ansi-escapes')
 
-const resolveProvider = provider => {
-    if (provider)
-        return provider
+const error = chalk.bold.red
+const info = chalk.bold.green
+const warn = chalk.yellow
 
-    if (fs.existsSync(expandHomeDir('~/.cf/config.json')) || fs.existsSync(expandHomeDir('~/.bluemix/.cf/config.json'))) {
-        return 'bluemix'
+const MISSING_API_KEY_CODE = 1
+const MISSING_MANIFEST_CODE = 2
+const MISSING_BLUEMIX_TOKENS_CODE = 3
+const MISSING_SPACE_CODE = 4
+
+const BLUEMIX_HOST = 'https://openwhisk.ng.bluemix.net'
+
+const readWskProps = () => {
+    const propertiesParser = require('properties-parser')
+    try {
+        return propertiesParser.read(process.env['WSK_CONFIG_FILE'] || expandHomeDir('~/.wskprops'))
+    } catch (e) {
+        return null
     }
-    return null
 }
-const deploy = (apihost, auth, ignore_certs, options) => {
+
+const printLine = msg => new Promise(resolve => {
+    console.log(`   ${info(msg)}`)
+
+    resolve()
+})
+
+const userMode = {
+    create: 'Creating',
+    update: 'Updating',
+}
+
+const deploy = (apihost, auth, ignore_certs, logging, mode, friendlyauth) => {
     const ow = require('openwhisk')({
         apihost: apihost,
         api_key: auth,
         ignore_certs: ignore_certs
     })
-    return deployer.deploy(ow, {
-        basePath: '.',
-        cache: '.wskd',
-        location: 'manifest.yaml',
-        logger_level: options.verbose,
-        force: options.force
-    })
+
+    return printLine(`${userMode[mode]} entities on ${friendlyauth}`)
+        .then(() => deployer.deploy(ow, {
+            basePath: '.',
+            cache: '.wskd',
+            location: 'manifest.yaml',
+            logger_level: logging,
+            force: mode === 'update'
+        }))
 }
 
-const deployBluemix = (space, options) => {
+const deployBluemix = (space, ignore_certs, logging, mode) => {
     const bx = require('@openwhisk-libs/bluemix')
 
     const tokens = bx.getTokens()
     if (!tokens) {
-        console.error(`Missing Bluemix tokens. Please run 'cf login' or 'bx login' and try again`)
-        return Promise.reject(5)
-    }
 
-    return bx.waitForAuthKeys(tokens.accessToken, tokens.refreshToken, [space])
+        console.log(error(`Missing Bluemix tokens. Please run 'cf login' or 'bx login' and try again`))
+        return Promise.reject(MISSING_BLUEMIX_TOKENS_CODE)
+    }
+    console.log('')
+
+    return printLine(`Get API key for ${space}`)
+        .then(() => bx.waitForAuthKeys(tokens.accessToken, tokens.refreshToken, [space]))
         .catch(err => {
-            console.error(`Could not get the OpenWhisk API key for ${space}. Check the space exists`)
-            return Promise.reject(6)
+            console.log(error(`Could not get the API key for ${space}. Check the space exists`))
+            return Promise.reject(MISSING_SPACE_CODE)
         })
         .then(keys => {
+
             if (!keys || keys.length == 0) {
-                console.error(`Could not get the OpenWhisk API key for ${space}. Log in to Bluemix and try again`)
-                return Promise.reject(4)
+                console.log(error(`Could not get the API key for ${space}. Log in to Bluemix and try again`))
+                return Promise.reject(MISSING_SPACE_CODE)
             }
 
             const auth = `${keys[0].uuid}:${keys[0].key}`
-
             return auth
         })
-        .then(auth => deploy('https://openwhisk.ng.bluemix.net', auth, false, options))
+        .then(auth => deploy('https://openwhisk.ng.bluemix.net', auth, ignore_certs, logging, mode, space))
 }
 
-
 const runCommand = options => {
-    if (!fs.existsSync('./manifest.yaml')) {
-        console.error(`Missing 'manifest.yaml'. Nothing to deploy. Abort`)
-        return Promise.reject(3)
+    //console.log(options)
+    const args = options.args || []
+    if (args.length > 1) {
+        console.log(error('Error: invalid number of arguments'))
+        options.help()
     }
 
-    const provider = resolveProvider(options.provider)
-    options.verbose = options.verbose || 'OFF'
-    options.force = options.force || false
+    const manifest = args[0] || 'manifest.yaml'
 
-    switch (provider) {
-        case 'bluemix':
-            const space = options.bxSpace
-            if (!space) {
-                console.error('Missing Bluemix space. Abort.')
-                return Promise.reject(1)
-            }
-            return deployBluemix(space, options)
-
-        case 'local':
-            return deploy(options.apihost, options.auth, true, options)
-
-        case null:
-            console.error('Missing provider. Abort.')
-            return Promise.reject(2)
+    if (!fs.existsSync(manifest)) {
+        console.log(error(`Error: ${manifest} does not exists`))
+        return Promise.reject(MISSING_MANIFEST_CODE)
     }
+
+    // Resolve auth.
+    let auth = options.auth
+    let apihost = options.apihost
+    let insecure = options.insecure
+    const wskprops = readWskProps()
+
+    if (auth) {
+        if (options.bxSpace) {
+            console.log(warn(`Warning: ${chalk.bold(`-s ${options.bxSpace}`)} ignored`))
+            options.bxSpace = null
+        }
+
+        if (!apihost && wskprops) {
+            apihost = wskprops.APIHOST
+        }
+
+        if (!apihost) {
+            console.log(warn(`Warning: API host not defined. Set it to ${BLUEMIX_HOST}`))
+            apihost = BLUEMIX_HOST
+        }
+
+    } else if (options.bxSpace) {
+        // deploy to bluemix (see below)
+        apihost = apihost || 'https://openwhisk.ng.bluemix.net'
+
+    } else {
+        if (wskprops) {
+            auth = wskprops.AUTH
+            apihost = wskprops.APIHOST
+            insecure = insecure || wskprops.INSECURE_SSL
+        } else {
+            console.log(error(`Error: API key not defined.`))
+            return Promise.resolve(MISSING_API_KEY_CODE)
+        }
+    }
+    let logging = options.logging || 'off'
+    logging = logging.toUpperCase()
+    const mode = options.mode || 'create'
+
+    if (options.bxSpace) {
+        return deployBluemix(options.bxSpace, insecure, logging, mode)
+    }
+
+    return deploy(apihost, auth, insecure, logging, mode, auth)
 }
 exports.run = runCommand

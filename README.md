@@ -15,7 +15,7 @@ $ npm install @openwhisk-deploy/deployer --save
 
 ```bash
 $ npm install @openwhisk-deploy/cli -g
-$ wskd 
+$ wskd -h 
 ```
 
 ## OpenWhisk action
