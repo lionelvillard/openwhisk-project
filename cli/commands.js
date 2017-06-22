@@ -131,7 +131,7 @@ const runCommand = options => {
             insecure = insecure || wskprops.INSECURE_SSL
         } else {
             console.log(error(`Error: API key not defined.`))
-            return Promise.resolve(MISSING_API_KEY_CODE)
+            return Promise.reject(MISSING_API_KEY_CODE)
         }
     }
     let logging = options.logging || 'off'
