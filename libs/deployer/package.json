@@ -21,7 +21,7 @@
     "yamljs": "^0.2.8"
   },
   "devDependencies": {
-    "@openwhisk-libs/bluemix": "^1.2.0",
+    "@openwhisk-libs/bluemix": "^1.2.3",
     "ava": "^0.19.1",
     "deep-diff": "^0.3.8",
     "json-schema-to-markdown": "^1.0.3",

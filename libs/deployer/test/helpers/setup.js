@@ -5,23 +5,34 @@ const openwhisk = require('openwhisk')
 let bxdata
 
 const beforeTest = async (t) => {
-    const loggedin = await bx.login(process.env.BLUEMIX_API_KEY)
-
-    if (loggedin) {
-        const space = 'openwhisk-deployer-test-space'
-        const ns = (await bx.createSpace(space))[0]
+    if (process.env.AUTH_DEPLOYER_CI)
+    {
         bxdata = {
-            space,
-            ns,
             ow: openwhisk({
                 apihost: 'openwhisk.ng.bluemix.net',
-                api_key: `${ns.uuid}:${ns.key}`
+                api_key: process.env.AUTH_DEPLOYER_CI
             })
         }
     }
     else {
-        bxdata = {
-            ow : null
+        const loggedin = await bx.login(process.env.BLUEMIX_API_KEY)
+
+        if (loggedin) {
+            const space = 'openwhisk-deployer-test-space'
+            const ns = (await bx.createSpace(space))[0]
+            bxdata = {
+                space,
+                ns,
+                ow: openwhisk({
+                    apihost: 'openwhisk.ng.bluemix.net',
+                    api_key: `${ns.uuid}:${ns.key}`
+                })
+            }
+        }
+        else {
+            bxdata = {
+                ow: null
+            }
         }
     }
 }

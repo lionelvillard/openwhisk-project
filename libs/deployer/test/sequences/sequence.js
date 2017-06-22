@@ -63,7 +63,8 @@ test('deploy-sequence1', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/sequences/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest.yaml'
+        location: 'manifest.yaml',
+        force:true
     })
     diff.deepEqualModulo(t, result, sequenceGold)
 })

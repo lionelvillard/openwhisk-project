@@ -42,7 +42,8 @@ test('deploy-package', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/packages/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest.yaml'
+        location: 'manifest.yaml',
+        force:true
     })
 //    console.log(util.inspect(result, {depth: null}))
     diff.deepEqualModulo(t, packageGold, result)
@@ -69,7 +70,8 @@ test('deploy-package-params', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/packages/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest-params.yaml'
+        location: 'manifest-params.yaml',
+        force:true
     })
     //console.log(util.inspect(result, {depth: null}))
     diff.deepEqualModulo(t, packageParamGold, result)
@@ -96,7 +98,8 @@ test('deploy-package-annotation', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/packages/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest-annotations.yaml'
+        location: 'manifest-annotations.yaml',
+        force: true
     })
 
 //    console.log(util.inspect(result, {depth: null}))
@@ -134,7 +137,8 @@ test('deploy-package-binding', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/packages/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest-binding.yaml'
+        location: 'manifest-binding.yaml',
+        force:true
     })
 
 //    console.log(util.inspect(result, {depth: null}))
@@ -163,7 +167,8 @@ test('deploy-package-publish', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/packages/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest-publish.yaml'
+        location: 'manifest-publish.yaml',
+        force:true
     })
 
 //    console.log(util.inspect(result, {depth: null}))

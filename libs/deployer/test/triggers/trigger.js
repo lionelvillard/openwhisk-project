@@ -40,7 +40,8 @@ test('deploy-trigger1', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/triggers/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest.yaml'
+        location: 'manifest.yaml',
+        force:true
     })
     //console.log(util.inspect(result, {depth: null}))
     diff.deepEqualModulo(t, result, simpleTriggerGold)
@@ -74,7 +75,8 @@ test('deploy-alarm-trigger', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/triggers/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest-feed.yaml'
+        location: 'manifest-feed.yaml',
+        force:true
     })
     //console.log(util.inspect(result, {depth: null}))
     diff.deepEqualModulo(t, result, alarmTriggerGold)

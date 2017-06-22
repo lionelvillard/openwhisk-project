@@ -56,7 +56,8 @@ test('deploy-rule1', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/rules/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest.yaml'
+        location: 'manifest.yaml',
+        force:true
     })
     //console.log(util.inspect(result, {depth: null}))
     diff.deepEqualModulo(t, result, ruleGold)

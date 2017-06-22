@@ -61,7 +61,8 @@ test('deploy-nodejs-action', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/actions/fixtures/nodejs-action',
         cache: t.context.tmpdir,
-        location: 'manifest.yaml'
+        location: 'manifest.yaml',
+        force:true
     })
     diff.deepEqualModulo(t, result, nodejsActionGold)
 })
@@ -106,7 +107,8 @@ test('deploy-nodejs-action-params', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/actions/fixtures/nodejs-action',
         cache: t.context.tmpdir,
-        location: 'manifest-params.yaml'
+        location: 'manifest-params.yaml',
+        force:true
     })
     //console.log(util.inspect(result, {depth: null}))
     diff.deepEqualModulo(t, result, nodejsparamActionGold)
@@ -154,7 +156,8 @@ test('deploy-nodejs-action-annotation', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/actions/fixtures/nodejs-action',
         cache: t.context.tmpdir,
-        location: 'manifest-annotations.yaml'
+        location: 'manifest-annotations.yaml',
+        force:true
     })
     //console.log(util.inspect(result, {depth: null}))
     diff.deepEqualModulo(t, result, nodejsannoActionGold)

@@ -56,7 +56,8 @@ test('deploy-zip-nodejs-action', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/actions/fixtures/zip-nodejs-action',
         cache: t.context.tmpdir,
-        location: 'manifest.yaml'
+        location: 'manifest.yaml',
+        force:true
     })
     diff.deleteCode(result)
     diff.deepEqualModulo(t, zipGold, result)

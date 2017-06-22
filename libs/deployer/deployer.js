@@ -94,7 +94,7 @@ const configLoader = args => {
 }
 
 const configOW = (ow, args) => {
-    if (args.force === false) {
+    if (!args.force || args.force === false) {
         ow.packages.change = ow.packages.create
         ow.triggers.change = ow.triggers.create
         ow.routes.change = ow.routes.create
