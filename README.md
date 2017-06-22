@@ -5,12 +5,6 @@ specified in the format described below.
  
 # Getting started
 
-## Node.js library
-
-```bash
-$ npm install @openwhisk-deploy/deployer --save
-```
-
 ## CLI
 
 ```bash
@@ -18,9 +12,16 @@ $ npm install @openwhisk-deploy/cli -g
 $ wskd -h 
 ```
 
+## Node.js library
+
+```bash
+$ npm install @openwhisk-deploy/deployer --save
+```
+
+
 ## OpenWhisk action
 
-(Work in progress.)
+(Coming soon)
 
 In your manifest, add:
 ```yaml
@@ -87,7 +88,7 @@ An *object* representing a list of packages. Package name must be unique among t
  
 ### Properties
 
-- `{package-name}` (`binding` | `packageContent`, optional)
+- `{package-name}` ([`binding`](#binding) | [`packageContent`](#packageContent), optional)
 
 ## `binding`
 
@@ -96,8 +97,8 @@ An *object* representing a package binding
 ### Properties
 
 - `bind` (string, required): the name of the package to bind
-- `inputs` (`parameters`, optional): binding parameters
-- `annotations` (`annotations`, optional)
+- `inputs` ([`parameters`](#parameters), optional): binding parameters
+- `annotations` ([`annotations`](#annotations), optional)
 - `publish` (boolean, optional, default: false): indicate whether the package is public or private
 
 ### Example
@@ -115,8 +116,8 @@ An *object* representing the content of a package.
 
 - `actions` (object, optional): a list of actions
 - `sequences` (object, optional): a list of sequence actions
-- `inputs` (`parameters`, optional): package parameters
-- `annotations` (`annotations`, optional)
+- `inputs` ([`parameters`](#parameters), optional): package parameters
+- `annotations` ([`annotations`](#annotations), optional)
 - `publish` (boolean, optional, default: false): indicate whether the package is public or private
 
 ## `actions`
@@ -125,7 +126,7 @@ An *object* representing a list of `action`s.
 
 ## Properties
 
-- `{action-name}` (`action`, optional)
+- `{action-name}` ([`action`](#action), optional)
 
   `action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
   and must be unique among the list of action names and sequence action names. 
@@ -141,15 +142,20 @@ An *object* representing an action.
 - `location` (string, required): the action code location
    
    Must be a path relative to the directory containing the deployment file.
-- `kind` (`enum`, optional): the action kind. If not provided, it is determined based on the location file extension
+- `kind` (enum, optional): the action kind. If not provided, it is determined based on the location file extension
    - `nodejs`: node js action. Selected when file extension is `.js` 
    - `nodejs:6`
 - `zip` (boolean, optional, default: false): whether to zip the action. 
    
    - For `nodejs` action, `npm install --production` is run before `zip` 
-- `limits` (`limits`, optional): the action limits
-- `inputs` (`parameters`, optional): action parameters
-- `annotations` (`annotations`, optional)
+- `limits` ([`limits`](#limits), optional): the action limits
+- `inputs` ([`parameters`](#parameters), optional): action parameters
+- `annotations` ([`annotations`](#annotations), optional)
+  
+  Builtin annotations:
+  - [`web-export`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md) (true|false): enable/disable web action
+  - [`raw-http`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md#raw-http-handling) (true|false): enable/disable raw HTTP handling
+  
 
 ## Example
 
@@ -168,7 +174,7 @@ An *object* representing a list of `sequence` actions.
 
 ## Properties
 
-- `{sequence-action-name}` (`sequence`, optional)
+- `{sequence-action-name}` ([`sequence`](#sequence), optional)
 
   `sequence-action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
   and must be unique among the list of action names and sequence action names. 
@@ -183,10 +189,14 @@ An *object* representing a sequence action.
      
    Non-fully qualified action names are resolved as described [here](#entity-name-resolution)  
      
-- `limits` (`limits`, optional): the action limits
-- `inputs` (`parameters`, optional): action parameters
-- `annotations` (`annotations`, optional)
+- `limits` ([`limits`](#limits), optional): the action limits
+- `inputs` ([`parameters`](#parameters), optional): action parameters
+- `annotations` ([`annotations`](@annotations), optional)
 
+   Builtin annotations:
+  - [`web-export`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md) (true|false): enable/disable web action
+  - [`raw-http`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md#raw-http-handling) (true|false): enable/disable raw HTTP handling
+ 
 ### Example
 
 ```yaml
@@ -203,7 +213,7 @@ An `object` representing a list of `trigger`s.
 
 ### Properties
 
-- `{trigger-name}` (`trigger`|`feed`, optional)
+- `{trigger-name}` ([`trigger`](#trigger)|[`feed`](#feed), optional)
 
 ## `trigger`
 
@@ -211,8 +221,8 @@ An *object* representing a trigger.
 
 ## Properties
 
-- `inputs` (`parameters`, optional): trigger parameters
-- `annotations` (`annotations`, optional)
+- `inputs` ([`parameters`](#parameters), optional): trigger parameters
+- `annotations` ([`annotations`](#annotations), optional)
 - `publish` (boolean, optional, default: false): indicate whether the package is public or private
 
 ## `feed`
@@ -222,8 +232,8 @@ An *object* representing a feed.
 ## Properties
 
 - `feed` (string, required): a feed name
-- `inputs` (`parameters`, optional): feed parameters
-- `annotations` (`annotations`, optional)
+- `inputs` ([`parameters`](#parameters), optional): feed parameters
+- `annotations` ([`annotations`](#annotations), optional)
 - `publish` (boolean, optional, default: false): indicate whether the package is public or private
 
 ### Example
@@ -244,7 +254,7 @@ An `object` representing a list of `rules`s.
 
 ### Properties
 
-- `{rule-name}` (`rule`, optional)
+- `{rule-name}` ([`rule`](#rule), optional)
 
 ## `rule`
 
