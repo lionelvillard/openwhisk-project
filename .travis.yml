@@ -10,5 +10,6 @@ before_install:
 
 script:
   - cd $TRAVIS_BUILD_DIR/libs/builder && npm test
+  - cd $TRAVIS_BUILD_DIR/libs/ && ./link.sh
   - cd $TRAVIS_BUILD_DIR/libs/deployer && npm test
 
