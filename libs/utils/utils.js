@@ -13,11 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const request = require('request-promise');
-
-exports.haveRepo = haveRepo;
-exports.fetchContent = fetchContent;
-exports.assignManifest = assignManifest;
+const request = require('request-promise')
+const archiver = require('archiver')
+const fs = require('fs')
 
 
 // Check manifest is present, otherwise fetch it.
@@ -36,6 +34,7 @@ function assignManifest(args) {
             return args;
         });
 }
+exports.assignManifest = assignManifest;
 
 // Fetch file content in GitHubRepository
 function fetchContent(args, location) {
@@ -49,6 +48,7 @@ function fetchContent(args, location) {
         return result;
     });
 }
+exports.fetchContent = fetchContent;
 
 //
 function haveRepo(args) {
@@ -56,3 +56,29 @@ function haveRepo(args) {
         args.assets.conf.hasOwnProperty('owner') && args.assets.conf.hasOwnProperty('repo') &&
         args.assets.conf.hasOwnProperty('sha');
 }
+exports.haveRepo = haveRepo;
+
+const makeZip = (targetZip, src) => new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(targetZip)
+    const archive = archiver('zip', {
+        zlib: {level: 9}
+    })
+
+    output.on('close', () => {
+        resolve()
+    })
+
+    archive.on('error', err => {
+        reject(err)
+    })
+
+    // pipe archive data to the file
+    archive.pipe(output)
+
+    // append files from src directory
+    archive.directory(src, '.')
+
+    // finalize the archive (ie we are done appending files but streams have to finish yet)
+    archive.finalize()
+})
+exports.zip = makeZip

@@ -23,7 +23,7 @@ const {exec} = require('child_process')
 
 const names = require('@openwhisk-libs/names')
 const utils = require('@openwhisk-deploy/utils')
-const builder = require('@openwhisk-build/builder')
+const builder = require('@openwhisk-deploy/builder')
 const fakeow = require('./libs/fakeow')
 const reporter = require('./libs/reporter')
 
