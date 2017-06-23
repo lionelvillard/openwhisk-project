@@ -71,11 +71,12 @@ const buildNodeJS = args => {
 exports.build = buildNodeJS
 
 const npmInstall = src => () => new Promise((resolve, reject) => {
+
     const execOptions = {
         cwd: src
     }
 
-    exec(`npm install`, execOptions, error => {
+    exec(`npm  install --production --prefix .`, execOptions, error => {
             if (error)
                 return reject(error)
             resolve()
