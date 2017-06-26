@@ -264,6 +264,73 @@ const deployPackage = (ow, name, parameters, annotations, binding, publish) => {
     })
 }
 
+
+const handleSequence = (ow, args, pkgName, actionName, action) => {
+    const manifest = args.manifest
+    let components = []
+
+    let actions = action.sequence.split(',')
+    for (let i in actions) {
+        const component = names.resolveQName(actions[i], manifest.namespace, pkgName)
+
+        // TODO: check component exists?
+
+        components.push(component)
+    }
+    const parameters = getKeyValues(action.inputs, args)
+    const annotations = getKeyValues(action.annotations, args)
+    const limits = action.limits || {}
+
+    const sequence = {
+        exec: {
+            kind: 'sequence',
+            components
+        },
+        parameters,
+        annotations,
+        limits
+    }
+
+    return deployRawAction(ow, actionName, sequence)
+        .then(reporter.action(actionName, '', 'sequence', parameters))
+        .catch(reporter.action(actionName, '', 'sequence', parameters))
+
+}
+
+const lookupActionHandler = action => {
+    for (const name in actionsHandlers) {
+        if (action.hasOwnProperty(name))
+            return actionsHandlers[name]
+    }
+    return handleDefaultAction
+}
+
+const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
+   if (!action.hasOwnProperty('location')) {
+        throw `Missing property 'location' in packages/actions/${actionName}`
+    }
+
+    action.location = resolvePath(args, action.location)
+    const kind = getKind(action)
+
+    const params = getKeyValues(action.inputs, args)
+    const annotations = getKeyValues(action.annotations, args)
+    const limits = action.limits || {}
+
+    const binary = getBinary(action, kind)
+    const qname = `${pkgName}/${actionName}`
+
+    return buildAction(args, kind, action)
+        .then(args.load)
+        .then(deployAction(ow, qname, params, annotations, limits, kind, binary))
+        .then(reporter.action(qname, args.location, kind, params))
+        .catch(reporter.action(qname, args.location, kind, params))
+}
+
+const actionsHandlers = {
+    sequence: handleSequence
+}
+
 const deployActions = (ow, args) => report => {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('packages')) {
@@ -271,37 +338,15 @@ const deployActions = (ow, args) => report => {
         const promises = []
         for (const pkgName in packages) {
             const pkg = packages[pkgName] || {}
+            const actions = pkg.actions || {}
 
-            if (pkg.hasOwnProperty('actions')) {
-                let actions = pkg.actions
-                for (const actionName in actions) {
-                    let action = actions[actionName]
+            for (const actionName in actions) {
+                const action = actions[actionName]
+                const promise = lookupActionHandler(action)(ow, args, pkgName, actionName, action)
 
-                    // Resolve location
-
-                    if (!action.hasOwnProperty('location')) {
-                        throw `Missing property 'location' in packages/actions/${actionName}`
-                    }
-
-                    action.location = resolvePath(args, action.location)
-                    const kind = getKind(action)
-
-                    const params = getKeyValues(action.inputs, args)
-                    const annotations = getKeyValues(action.annotations, args)
-                    const limits = action.limits || {}
-
-                    const binary = getBinary(action, kind)
-                    const qname = `${pkgName}/${actionName}`
-
-                    let cmd = buildAction(args, kind, action)
-                        .then(args.load)
-                        .then(deployAction(ow, qname, params, annotations, limits, kind, binary))
-                        .then(reporter.action(qname, args.location, kind, params))
-                        .catch(reporter.action(qname, args.location, kind, params))
-
-                    promises.push(cmd)
-                }
+                promises.push(promise)
             }
+
         }
         return Promise.all(promises).then(reporter.entity(report, 'actions'))
     }
@@ -341,10 +386,10 @@ const deploySequences = (ow, args) => report => {
 
                     let components = []
 
-                    if (!sequence.hasOwnProperty('actions'))
-                        throw `Missing property 'actions' on sequence ${actionName}.`
+                    if (!sequence.hasOwnProperty('sequence'))
+                        throw `Missing property 'sequence' on sequence ${actionName}.`
 
-                    let actions = sequence.actions.split(',')
+                    let actions = sequence.sequence.split(',')
                     for (let i in actions) {
                         const component = names.resolveQName(actions[i], manifest.namespace, pkgName)
 

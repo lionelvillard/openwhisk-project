@@ -126,7 +126,7 @@ An *object* representing a list of `action`s.
 
 ## Properties
 
-- `{action-name}` ([`action`](#action), optional)
+- `{action-name}` ([`action`](#action) | [`sequence`](#sequence), optional)
 
   `action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
   and must be unique among the list of action names and sequence action names. 
@@ -155,7 +155,6 @@ An *object* representing an action.
   Builtin annotations:
   - [`web-export`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md) (true|false): enable/disable web action
   - [`raw-http`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md#raw-http-handling) (true|false): enable/disable raw HTTP handling
-  
 
 ## Example
 
@@ -166,6 +165,8 @@ packages:
       cat:
         location: cat.js
         kind: nodejs
+      mysequence:
+        sequence: /whisk.system/utils/echo, /whisk.system/utils/cat
 ```
 
 ## `sequences`
@@ -185,7 +186,7 @@ An *object* representing a sequence action.
 
 ### Properties
 
-- `actions` (string, required): a comma-separated list of action names. White space characters are ignored.
+- `sequence` (string, required): a comma-separated list of action names. White space characters are ignored.
      
    Non-fully qualified action names are resolved as described [here](#entity-name-resolution)  
      
@@ -204,7 +205,7 @@ packages:
   utils:
     sequences:
       mysequence:
-        actions: /whisk.system/utils/echo, /whisk.system/utils/cat
+        sequence: /whisk.system/utils/echo, /whisk.system/utils/cat
 ```
 
 ## `triggers`
