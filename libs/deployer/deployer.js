@@ -23,9 +23,10 @@ const {exec} = require('child_process')
 
 const names = require('@openwhisk-libs/names')
 const utils = require('@openwhisk-deploy/utils')
-const builder = require('@openwhisk-deploy/builder')
 const fakeow = require('./libs/fakeow')
 const reporter = require('./libs/reporter')
+const handlers = require('./libs/handlers')
+const helpers = require('./libs/helpers')
 
 /**
  * Deploy OpenWhisk entities (actions, sequence, rules, etc...)
@@ -234,8 +235,8 @@ const deployPackages = (ow, args, bindings) => report => {
                         name: qname.name
                     }
                 }
-                const parameters = getKeyValues(pkg.inputs)
-                const annotations = getKeyValues(pkg.annotations)
+                const parameters = helpers.getKeyValues(pkg.inputs)
+                const annotations = helpers.getKeyValues(pkg.annotations)
                 const publish = pkg.hasOwnProperty('publish') ? pkg.publish : false
 
                 const cmd = deployPackage(ow, name, parameters, annotations, binding, publish)
@@ -263,97 +264,6 @@ const deployPackage = (ow, name, parameters, annotations, binding, publish) => {
     })
 }
 
-const handleSequence = (ow, args, pkgName, actionName, action) => {
-    const manifest = args.manifest
-    let components = []
-
-    let actions = action.sequence.split(',')
-    for (let i in actions) {
-        const component = names.resolveQName(actions[i], manifest.namespace, pkgName)
-
-        // TODO: check component exists?
-
-        components.push(component)
-    }
-    const parameters = getKeyValues(action.inputs, args)
-    const annotations = getKeyValues(action.annotations, args)
-    const limits = action.limits || {}
-
-    const sequence = {
-        exec: {
-            kind: 'sequence',
-            components
-        },
-        parameters,
-        annotations,
-        limits
-    }
-
-    return deployRawAction(ow, actionName, sequence)
-        .then(reporter.action(actionName, '', 'sequence', parameters))
-        .catch(reporter.action(actionName, '', 'sequence', parameters))
-
-}
-
-const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
-    if (!action.hasOwnProperty('location')) {
-        throw `Missing property 'location' in packages/actions/${actionName}`
-    }
-
-    action.location = resolvePath(args, action.location)
-    const kind = getKind(action)
-
-    const params = getKeyValues(action.inputs, args)
-    const annotations = getKeyValues(action.annotations, args)
-    const limits = action.limits || {}
-
-    const binary = getBinary(action, kind)
-    const qname = `${pkgName}/${actionName}`
-
-    return buildAction(args, kind, action)
-        .then(args.load)
-        .then(deployAction(ow, qname, params, annotations, limits, kind, binary))
-        .then(reporter.action(qname, args.location, kind, params))
-        .catch(reporter.action(qname, args.location, kind, params))
-}
-
-const handleCopy = (ow, args, pkgName, actionName, action) => {
-    const manifest = args.manifest
-    const sourceActionName = names.resolveQName(action.copy, manifest.namespace, pkgName)
-    const parts = names.parseQName(sourceActionName)
-
-    const sourceAction = findAction(manifest, sourceActionName)
-
-    const params = getKeyValues(action.inputs, args)
-    const annotations = getKeyValues(action.annotations, args)
-    const limits = action.limits || {}
-    const qname = `${pkgName}/${actionName}`
-
-    if (parts.namespace === manifest.namespace && actions[parts.name]) {
-        // local
-        console.log('local')
-    } else {
-        // remote
-        return getAction(ow, sourceActionName)
-            .then(deployCopyAction(ow, qname, params, annotations, limits))
-            .then(reporter.action(qname, sourceActionName, '<copied>', params))
-            .catch(reporter.action(qname, sourceActionName, '<copied>', params))
-    }
-}
-
-const actionsHandlers = {
-    sequence: handleSequence,
-    copy: handleCopy
-}
-
-const lookupActionHandler = action => {
-    for (const name in actionsHandlers) {
-        if (action.hasOwnProperty(name))
-            return actionsHandlers[name]
-    }
-    return handleDefaultAction
-}
-
 const deployActions = (ow, args) => report => {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('packages')) {
@@ -365,7 +275,7 @@ const deployActions = (ow, args) => report => {
 
             for (const actionName in actions) {
                 const action = actions[actionName]
-                const promise = lookupActionHandler(action)(ow, args, pkgName, actionName, action)
+                const promise = handlers.lookupActionHandler(action)(ow, args, pkgName, actionName, action)
 
                 promises.push(promise)
             }
@@ -376,79 +286,6 @@ const deployActions = (ow, args) => report => {
     return Promise.resolve(report)
 }
 
-const deployAction = (ow, actionName, parameters, annotations, limits, kind, binary) => content => {
-    const action = {
-        exec: {
-            kind,
-            code: binary ? new Buffer(content).toString('base64') : content
-        },
-        parameters,
-        annotations,
-        limits
-    }
-
-    return ow.actions.change({
-        actionName,
-        action
-    })
-}
-
-const getAction = (ow, actionName) => {
-    return ow.actions.get({actionName})
-}
-
-
-const deployCopyAction = (ow, actionName, params, annos, newlimits) => sourceAction => {
-    const actionParams = indexKeyValues(sourceAction.parameters)
-    const actionAnnos = indexKeyValues(sourceAction.annotations)
-
-    params.forEach(kv => actionParams[kv.key] = kv.value)
-    annos.forEach(kv => actionAnnos[kv.key] = kv.value)
-
-    const limits = sourceAction.limits
-    if (newlimits.timeout)
-        limits.timeout = newlimits.timeout
-    if (newlimits.memory)
-        limits.memory = newlimits.memory
-    if (newlimits.logs)
-        limits.logs = newlimits.logs
-
-    const parameters = getKeyValues(actionParams)
-    const annotations = getKeyValues(actionParams)
-
-    const action = {
-
-        exec: sourceAction.exec,
-        parameters,
-        annotations,
-        limits
-    }
-    return ow.actions.change({
-        actionName,
-        action
-    })
-}
-
-// Look for the action of the given full-qualified name in the manifest. Skip includes declarations (for now)
-const findAction = (manifest, actionName) => {
-    const packages = manifest.packages
-    for (const pkgName in packages) {
-        if (actionName.pkg === pkgName) {
-            const pkg = packages[pkgName] || {}
-            const actions = pkg.actions || {}
-            const action = actions[actionName.name]
-            if (action) {
-                return action
-            }
-
-            const sequences = pkg.sequences || {}
-            const sequence = sequences[actionName.name]
-            if (sequence) {
-                return sequence
-            }
-        }
-    }
-}
 
 const deploySequences = (ow, args) => report => {
     const manifest = args.manifest
@@ -477,8 +314,8 @@ const deploySequences = (ow, args) => report => {
 
                         components.push(component)
                     }
-                    const parameters = getKeyValues(sequence.inputs, args)
-                    const annotations = getKeyValues(sequence.annotations, args)
+                    const parameters = helpers.getKeyValues(sequence.inputs, args)
+                    const annotations = helpers.getKeyValues(sequence.annotations, args)
                     const limits = sequence.limits || {}
 
                     const action = {
@@ -491,7 +328,7 @@ const deploySequences = (ow, args) => report => {
                         limits
                     }
 
-                    let cmd = deployRawAction(ow, actionName, action)
+                    let cmd = helpers.deployRawAction(ow, actionName, action)
                         .then(reporter.action(actionName, '', 'sequence', parameters))
                         .catch(reporter.action(actionName, '', 'sequence', parameters))
 
@@ -505,13 +342,6 @@ const deploySequences = (ow, args) => report => {
     return Promise.resolve(report)
 }
 
-const deployRawAction = (ow, actionName, action) => {
-    return ow.actions.change({
-        actionName,
-        action
-    })
-}
-
 const deployTriggers = (ow, args) => report => {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('triggers')) {
@@ -522,8 +352,8 @@ const deployTriggers = (ow, args) => report => {
             const trigger = triggers[triggerName] || {}
             const isFeed = trigger.hasOwnProperty('feed')
 
-            const parameters = getKeyValues(trigger.inputs, args)
-            const annotations = getKeyValues(trigger.annotations, args)
+            const parameters = helpers.getKeyValues(trigger.inputs, args)
+            const annotations = helpers.getKeyValues(trigger.annotations, args)
             const publish = trigger.hasOwnProperty('publish') ? trigger.publish : false
 
             const triggerBody = {
@@ -618,85 +448,11 @@ const deployRule = (ow, ruleName, trigger, action) => {
 
 // -- Utils
 
-const kindsForExt = {
-    '.js': 'nodejs:default',
-    '.py': 'python:default',
-    '.swift': 'swift:default',
-    '.jar': 'java:default'
-}
-
-function getKind(action) {
-    if (action.hasOwnProperty('kind'))
-        return action.kind
-
-    // Try to infer the kind
-    const p = path.parse(action.location)
-    const kind = kindsForExt[p.ext]
-    if (kind)
-        return kind
-
-    return 'blackbox'
-}
-
-function getBinary(action, kind) {
-    if (kind.startsWith('java') || action.zip)
-        return true
-
-    return false
-}
-
 function haveRepo(args) {
     return args.hasOwnProperty('owner') && args.hasOwnProperty('repo') && args.hasOwnProperty('sha')
 }
 
-function getKeyValues(inputs, args) {
-    if (inputs) {
-        return Object.keys(inputs).map(key => ({key, value: resolveValue(inputs[key], args)}))
-    }
-    return []
-}
 
-function resolveValue(value, args) {
-    if (value.startsWith('$')) {
-        const key = value.substr(1)
-        if (args.env && args.env[key])
-            return args.env[key]
-
-        return process.env[key]
-    }
-    return value
-}
-
-const indexKeyValues = kvs => {
-    const index = {}
-    if (kvs) {
-        kvs.forEach(kv => index[kv.key] = kv.value)
-    }
-    return index
-}
-
-
-// --- Asset builders
-
-// const checkFileExists = location => {
-//
-// }
-
-const buildAction = (context, kind, action) => {
-    const baseLocInCache = path.dirname(path.join(context.cache, path.relative('test', action.location)))
-    const builderArgs = {
-        target: baseLocInCache,
-        action
-    }
-
-    const basekind = kind.split(':')[0]
-    switch (basekind) {
-        case 'nodejs':
-            return builder.nodejs.build(builderArgs)
-        default:
-            throw `Unsupported action kind: ${kind}`
-    }
-}
 
 
 // --- Asset loaders
@@ -745,10 +501,6 @@ const githubLoader = {
 const loaders = [
     localLoader, githubLoader
 ]
-
-const resolvePath = (args, location) => {
-    return path.resolve(args.basePath, location)
-}
 
 
 // Search for asset id corresponding to asset name
