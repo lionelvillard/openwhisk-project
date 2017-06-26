@@ -167,18 +167,27 @@ packages:
         sequence: /whisk.system/utils/echo, /whisk.system/utils/cat
 ```
 
-## `copyAction`
+## `copyAction` (*experimental*)
 
 An *object* representing an action to copy
 
 ### Properties
 
-- `copy` (string, optional): the action name to copy. Subject to [naming resolution](#entity-name-resolution)
+- `copy` (string, optional): the name of the action to copy. Subject to [naming resolution](#entity-name-resolution)
 
+    Copy `parameters`, `annotations`,`limits` and the action executable content 
+
+    - For fully qualified name: get the action from OpenWhisk (`wsk action get`)  
+    - For partially qualified name: get the action from the file system     
+   
+- `inputs` ([`parameters`](#parameters), optional): action parameters, potentially
+overriding the source action default parameters 
+
+- `annotations` ([`annotations`](#annotations), optional): action annotations, 
+potentially overriding the source action annotations
 
 - `limits` ([`limits`](#limits), optional): the action limits
-- `inputs` ([`parameters`](#parameters), optional): action parameters
-- `annotations` ([`annotations`](#annotations), optional)
+potentially overriding the source action limits
 
 ## Example
 
