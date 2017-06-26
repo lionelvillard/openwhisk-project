@@ -177,9 +177,9 @@ An *object* representing an action to copy
 
     Copy `parameters`, `annotations`,`limits` and the action executable content 
 
-    - For fully qualified name: get the action from OpenWhisk (`wsk action get`)  
-    - For partially qualified name: get the action from the file system     
-   
+    The action to copy can either be locally defined (in the same manifest) 
+    or already deployed.
+
 - `inputs` ([`parameters`](#parameters), optional): action parameters, potentially
 overriding the source action default parameters 
 
@@ -195,10 +195,13 @@ potentially overriding the source action limits
 packages:
   utils:
     actions:
-      cat: 
+      mycat:  # Copy deployed 'cat' action 
         copy: /whisk.system/utils/cat
         inputs:
           lines: Hello Gentle World
+      
+      mycat2: # Copy locally defined 'mycat' action 
+        copy: mycat
 ```
 
 ## `sequences`

@@ -1,7 +1,7 @@
 packages:
-  utils:
+  copy-action2:
     actions:
-      cat1:
+      cat2:
         location: cat.js
-      cat1-copy:
-        copy: cat1
+      cat-copy2:
+        copy: cat2
