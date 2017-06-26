@@ -66,8 +66,8 @@ const deploy = (ow, args) => {
         return resolveManifest(ow, args)
             .then(configCache(args))
             .then(deployIncludes(ow, args))
-            .then(deployPackages(ow, args, false))
-            .then(deployPackages(ow, args, true))
+            .then(deployPackages(ow, args, false)) // bindings
+            .then(deployPackages(ow, args, true))  // new packages
             .then(deployActions(ow, args))
             .then(deploySequences(ow, args))
             .then(deployTriggers(ow, args))
@@ -76,7 +76,6 @@ const deploy = (ow, args) => {
                 logger.error(e)
                 return e
             })
-
     } catch (e) {
         return Promise.reject({error: e})
     }
@@ -264,7 +263,6 @@ const deployPackage = (ow, name, parameters, annotations, binding, publish) => {
     })
 }
 
-
 const handleSequence = (ow, args, pkgName, actionName, action) => {
     const manifest = args.manifest
     let components = []
@@ -297,16 +295,8 @@ const handleSequence = (ow, args, pkgName, actionName, action) => {
 
 }
 
-const lookupActionHandler = action => {
-    for (const name in actionsHandlers) {
-        if (action.hasOwnProperty(name))
-            return actionsHandlers[name]
-    }
-    return handleDefaultAction
-}
-
 const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
-   if (!action.hasOwnProperty('location')) {
+    if (!action.hasOwnProperty('location')) {
         throw `Missing property 'location' in packages/actions/${actionName}`
     }
 
@@ -327,8 +317,41 @@ const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
         .catch(reporter.action(qname, args.location, kind, params))
 }
 
+const handleCopy = (ow, args, pkgName, actionName, action) => {
+    const manifest = args.manifest
+    const sourceActionName = names.resolveQName(action.copy, manifest.namespace, pkgName)
+    const parts = names.parseQName(sourceActionName)
+
+    const sourceAction = findAction(manifest, sourceActionName)
+
+    const params = getKeyValues(action.inputs, args)
+    const annotations = getKeyValues(action.annotations, args)
+    const limits = action.limits || {}
+    const qname = `${pkgName}/${actionName}`
+
+    if (parts.namespace === manifest.namespace && actions[parts.name]) {
+        // local
+        console.log('local')
+    } else {
+        // remote
+        return getAction(ow, sourceActionName)
+            .then(deployCopyAction(ow, qname, params, annotations, limits))
+            .then(reporter.action(qname, sourceActionName, '<copied>', params))
+            .catch(reporter.action(qname, sourceActionName, '<copied>', params))
+    }
+}
+
 const actionsHandlers = {
-    sequence: handleSequence
+    sequence: handleSequence,
+    copy: handleCopy
+}
+
+const lookupActionHandler = action => {
+    for (const name in actionsHandlers) {
+        if (action.hasOwnProperty(name))
+            return actionsHandlers[name]
+    }
+    return handleDefaultAction
 }
 
 const deployActions = (ow, args) => report => {
@@ -368,6 +391,63 @@ const deployAction = (ow, actionName, parameters, annotations, limits, kind, bin
         actionName,
         action
     })
+}
+
+const getAction = (ow, actionName) => {
+    return ow.actions.get({actionName})
+}
+
+
+const deployCopyAction = (ow, actionName, params, annos, newlimits) => sourceAction => {
+    const actionParams = indexKeyValues(sourceAction.parameters)
+    const actionAnnos = indexKeyValues(sourceAction.annotations)
+
+    params.forEach(kv => actionParams[kv.key] = kv.value)
+    annos.forEach(kv => actionAnnos[kv.key] = kv.value)
+
+    const limits = sourceAction.limits
+    if (newlimits.timeout)
+        limits.timeout = newlimits.timeout
+    if (newlimits.memory)
+        limits.memory = newlimits.memory
+    if (newlimits.logs)
+        limits.logs = newlimits.logs
+
+    const parameters = getKeyValues(actionParams)
+    const annotations = getKeyValues(actionParams)
+
+    const action = {
+
+        exec: sourceAction.exec,
+        parameters,
+        annotations,
+        limits
+    }
+    return ow.actions.change({
+        actionName,
+        action
+    })
+}
+
+// Look for the action of the given full-qualified name in the manifest. Skip includes declarations (for now)
+const findAction = (manifest, actionName) => {
+    const packages = manifest.packages
+    for (const pkgName in packages) {
+        if (actionName.pkg === pkgName) {
+            const pkg = packages[pkgName] || {}
+            const actions = pkg.actions || {}
+            const action = actions[actionName.name]
+            if (action) {
+                return action
+            }
+
+            const sequences = pkg.sequences || {}
+            const sequence = sequences[actionName.name]
+            if (sequence) {
+                return sequence
+            }
+        }
+    }
 }
 
 const deploySequences = (ow, args) => report => {
@@ -586,6 +666,15 @@ function resolveValue(value, args) {
     }
     return value
 }
+
+const indexKeyValues = kvs => {
+    const index = {}
+    if (kvs) {
+        kvs.forEach(kv => index[kv.key] = kv.value)
+    }
+    return index
+}
+
 
 // --- Asset builders
 
