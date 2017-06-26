@@ -126,7 +126,7 @@ An *object* representing a list of `action`s.
 
 ## Properties
 
-- `{action-name}` ([`action`](#action) | [`sequence`](#sequence), optional)
+- `{action-name}` ([`action`](#action) | [`sequence`](#sequence) | [`copyAction`](#copyAction), optional)
 
   `action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
   and must be unique among the list of action names and sequence action names. 
@@ -137,8 +137,6 @@ An *object* representing an action.
 
 ### Properties
 
-- `name` (string, required): the action ([unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)) name.
-  Must be unique among the list of action names and sequence action names. 
 - `location` (string, required): the action code location
    
    Must be a path relative to the directory containing the deployment file.
@@ -167,6 +165,43 @@ packages:
         kind: nodejs
       mysequence:
         sequence: /whisk.system/utils/echo, /whisk.system/utils/cat
+```
+
+## `copyAction` (*experimental*)
+
+An *object* representing an action to copy
+
+### Properties
+
+- `copy` (string, optional): the name of the action to copy. Subject to [naming resolution](#entity-name-resolution)
+
+    Copy `parameters`, `annotations`,`limits` and the action executable content 
+
+    The action to copy can either be locally defined (in the same manifest) 
+    or already deployed.
+
+- `inputs` ([`parameters`](#parameters), optional): action parameters, potentially
+overriding the source action default parameters 
+
+- `annotations` ([`annotations`](#annotations), optional): action annotations, 
+potentially overriding the source action annotations
+
+- `limits` ([`limits`](#limits), optional): the action limits
+potentially overriding the source action limits
+
+## Example
+
+```yaml
+packages:
+  utils:
+    actions:
+      mycat:  # Copy deployed 'cat' action 
+        copy: /whisk.system/utils/cat
+        inputs:
+          lines: Hello Gentle World
+      
+      mycat2: # Copy locally defined 'mycat' action 
+        copy: mycat
 ```
 
 ## `sequences`
