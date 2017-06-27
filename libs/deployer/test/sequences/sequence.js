@@ -82,7 +82,7 @@ const sequenceNoSugarGold = {
         }
     }],
     actions: [{
-        qname: 'mysequence1',
+        qname: 'sequence-test2/mysequence1',
         location: '',
         kind: 'sequence',
         params: [],
@@ -183,7 +183,7 @@ const sequenceUnorderedGold = {
             }
         },
         {
-            qname: 'mysequence',
+            qname: 'sequence-test3/mysequence',
             location: '',
             kind: 'sequence',
             params: [],
