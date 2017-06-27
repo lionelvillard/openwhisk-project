@@ -114,10 +114,10 @@ const handleSequence = (ow, args, pkgName, actionName, action) => {
         annotations,
         limits
     }
-
-    return helpers.deployRawAction(ow, actionName, sequence)
-        .then(reporter.action(actionName, '', 'sequence', parameters))
-        .catch(reporter.action(actionName, '', 'sequence', parameters))
+    const qname = `${pkgName}/${actionName}`
+    return helpers.deployRawAction(ow, qname, sequence)
+        .then(reporter.action(qname, '', 'sequence', parameters))
+        .catch(reporter.action(qname, '', 'sequence', parameters))
 
 }
 
@@ -138,12 +138,54 @@ const dependsOnSequence = (namespace, pkgName, action) => {
     return getComponents(namespace, pkgName, action.sequence)
 }
 
+// --- Code
+
+const handleCode = (ow, args, pkgName, actionName, action) => {
+    if (!action.hasOwnProperty('kind'))
+        throw new Error(`Missing property 'kind' in packages/actions/${actionName}`)
+
+    let kind = action.kind
+    let code = action.code
+
+    switch (kind) {
+        case 'nodejs':
+            kind = 'nodejs:default'
+            // fallthrough
+        case 'nodejs:default':
+        case 'nodejs:6':
+            code = `function main(params) { ${code} }`
+            break
+        default:
+            throw new Error(`Unsupported action kind ${kind}`)
+    }
+
+    const parameters = helpers.getKeyValues(action.inputs, args)
+    const annotations = helpers.getKeyValues(action.annotations, args)
+    const limits = action.limits || {}
+    const wskaction = {
+        exec: {kind, code},
+        parameters,
+        annotations,
+        limits
+    }
+    const qname = `${pkgName}/${actionName}`
+
+    return helpers.deployRawAction(ow, qname, wskaction)
+        .then(reporter.action(qname, '', kind, parameters))
+        .catch(reporter.action(qname, '', kind, parameters))
+
+}
+
+const dependsOnCode = (namespace, pkgName, action) => {
+    return []
+}
+
 
 // --- Fallback
 
 const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
     if (!action.hasOwnProperty('location')) {
-        throw `Missing property 'location' in packages/actions/${actionName}`
+        throw new Error(`Missing property 'location' in packages/actions/${actionName}`)
     }
 
     action.location = path.resolve(args.basePath, action.location)
@@ -165,6 +207,7 @@ const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
 
 // --- Handlers manager
 
+
 const actionsHandlers = {
     sequence: {
         deploy: handleSequence,
@@ -173,6 +216,11 @@ const actionsHandlers = {
     copy: {
         deploy: handleCopy,
         dependsOn: dependsOnCopy
+    }
+    ,
+    code: {
+        deploy: handleCode,
+        dependsOn: dependsOnCode
     }
 }
 

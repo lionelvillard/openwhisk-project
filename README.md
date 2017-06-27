@@ -126,14 +126,15 @@ An *object* representing a list of `action`s.
 
 ## Properties
 
-- `{action-name}` ([`action`](#action) | [`sequence`](#sequence) | [`copyAction`](#copyAction), optional)
+- `{action-name}` ([`action`](#action) | [`sequence`](#sequence) | [`copy`](#copy)| [`inline`](#inline), optional)
 
   `action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
   and must be unique among the list of action names and sequence action names. 
 
 ## `action`
 
-An *object* representing an action.
+An *object* representing an action. Extends [`baseAction`](#baseAction)
+
 
 ### Properties
 
@@ -146,13 +147,6 @@ An *object* representing an action.
 - `zip` (boolean, optional, default: false): whether to zip the action. 
    
    - For `nodejs` action, `npm install --production` is run before `zip` 
-- `limits` ([`limits`](#limits), optional): the action limits
-- `inputs` ([`parameters`](#parameters), optional): action parameters
-- `annotations` ([`annotations`](#annotations), optional)
-  
-  Builtin annotations:
-  - [`web-export`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md) (true|false): enable/disable web action
-  - [`raw-http`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md#raw-http-handling) (true|false): enable/disable raw HTTP handling
 
 ## Example
 
@@ -167,28 +161,23 @@ packages:
         sequence: /whisk.system/utils/echo, /whisk.system/utils/cat
 ```
 
-## `copyAction` (*experimental*)
+## `copy`  
 
-An *object* representing an action to copy
+An *object* representing an action to copy. 
+
+Extends [`baseAction`](#baseAction)
 
 ### Properties
 
 - `copy` (string, optional): the name of the action to copy. Subject to [naming resolution](#entity-name-resolution)
 
-    Copy `parameters`, `annotations`,`limits` and the action executable content 
+    Copy `parameters`, `annotations`,`limits` and the action executable content.
+    Can be overridden or extended with [`inputs`](#parameters), [`annotations`](#annotations), [`limits`](#limits)
 
     The action to copy can either be locally defined (in the same manifest) 
     or already deployed.
 
-- `inputs` ([`parameters`](#parameters), optional): action parameters, potentially
-overriding the source action default parameters 
-
-- `annotations` ([`annotations`](#annotations), optional): action annotations, 
-potentially overriding the source action annotations
-
-- `limits` ([`limits`](#limits), optional): the action limits
-potentially overriding the source action limits
-
+  
 ## Example
 
 ```yaml
@@ -204,6 +193,30 @@ packages:
         copy: mycat
 ```
 
+## `inline` 
+
+An *object* representing an action with inlined code. 
+
+Extends [`baseAction`](#baseAction)
+
+### Properties
+
+- `code` (string, required): the action main function content.   
+- `extra` (string, optional): additional code   
+- `kind` ([`baseAction`](#baseAction) enum, required): the required action kind
+   
+## Example
+
+```yaml
+packages:
+  utils:
+    actions:
+      myecho:   
+        code: 
+          console.log(params)
+          return params || {}
+```
+
 ## `sequences`
 
 An *object* representing a list of `sequence` actions.
@@ -217,7 +230,7 @@ An *object* representing a list of `sequence` actions.
 
 ## `sequence`
 
-An *object* representing a sequence action.
+An *object* representing a sequence action. Extends [`baseAction`](#baseAction)
 
 ### Properties
 
@@ -225,13 +238,6 @@ An *object* representing a sequence action.
      
    Non-fully qualified action names are resolved as described [here](#entity-name-resolution)  
      
-- `limits` ([`limits`](#limits), optional): the action limits
-- `inputs` ([`parameters`](#parameters), optional): action parameters
-- `annotations` ([`annotations`](@annotations), optional)
-
-   Builtin annotations:
-  - [`web-export`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md) (true|false): enable/disable web action
-  - [`raw-http`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md#raw-http-handling) (true|false): enable/disable raw HTTP handling
  
 ### Example
 
@@ -242,6 +248,21 @@ packages:
       mysequence:
         sequence: /whisk.system/utils/echo, /whisk.system/utils/cat
 ```
+
+## `baseAction`
+
+A common set of action properties.
+
+### properties
+
+- `limits` ([`limits`](#limits), optional): the action limits
+- `inputs` ([`parameters`](#parameters), optional): action parameters
+- `annotations` ([`annotations`](#annotations), optional)
+  
+  Builtin annotations:
+  - [`web-export`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md) (true|false): enable/disable web action
+  - [`raw-http`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md#raw-http-handling) (true|false): enable/disable raw HTTP handling
+
 
 ## `triggers`
 

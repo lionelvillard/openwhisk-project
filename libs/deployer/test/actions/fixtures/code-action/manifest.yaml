@@ -1,0 +1,8 @@
+packages:
+  code-action1:
+    actions:
+      echo1:
+        kind: nodejs
+        code: |
+          console.log(params)
+          return params || {}
