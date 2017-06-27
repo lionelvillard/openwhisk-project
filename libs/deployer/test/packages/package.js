@@ -33,8 +33,7 @@ const packageGold =
                 parameters: [],
                 namespace: 'org_openwhisk-deployer-test-space'
             }
-        }],
-        actions: []
+        }]
     }
 
 
@@ -45,8 +44,8 @@ test('deploy-package', async t => {
         location: 'manifest.yaml',
         force:true
     })
-//    console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, packageGold, result)
+    //console.log(util.inspect(result, {depth: null}))
+    diff.deepEqualModulo(t, result, packageGold)
 })
 
 const packageParamGold =
@@ -62,8 +61,7 @@ const packageParamGold =
                 parameters: [{key: 'mykey', value: 'myvalue'}],
                 namespace: 'org_openwhisk-deployer-test-space'
             }
-        }],
-        actions: []
+        }]
     }
 
 test('deploy-package-params', async t => {
@@ -74,7 +72,7 @@ test('deploy-package-params', async t => {
         force:true
     })
     //console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, packageParamGold, result)
+    diff.deepEqualModulo(t, result, packageParamGold)
 })
 
 const packageAnnoGold =
@@ -90,8 +88,7 @@ const packageAnnoGold =
                 parameters: [],
                 namespace: 'org_openwhisk-deployer-test-space'
             }
-        }],
-        actions: []
+        }]
     }
 
 test('deploy-package-annotation', async t => {
@@ -103,7 +100,7 @@ test('deploy-package-annotation', async t => {
     })
 
 //    console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, packageAnnoGold, result)
+    diff.deepEqualModulo(t, result, packageAnnoGold)
 
 })
 
@@ -129,8 +126,7 @@ const packageBindingGold =
                 parameters: [],
                 namespace: 'org_openwhisk-deployer-test-space'
             }
-        }],
-        actions: []
+        }]
     }
 
 test('deploy-package-binding', async t => {
@@ -142,7 +138,7 @@ test('deploy-package-binding', async t => {
     })
 
 //    console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, packageBindingGold, result)
+    diff.deepEqualModulo(t, result, packageBindingGold)
 
 })
 
@@ -159,8 +155,7 @@ const packagePublishGold =
                 parameters: [],
                 namespace: 'org_openwhisk-deployer-test-space'
             }
-        }],
-        actions: []
+        }]
     }
 
 test('deploy-package-publish', async t => {
@@ -172,5 +167,5 @@ test('deploy-package-publish', async t => {
     })
 
 //    console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, packagePublishGold, result)
+    diff.deepEqualModulo(t, result, packagePublishGold)
 })

@@ -75,7 +75,7 @@ const deploy = (ow, args) => {
             .then(deployRules(ow, args))
             .catch(e => {
                 logger.error(e)
-                return e
+                return Promise.reject(e)
             })
     } catch (e) {
         return Promise.reject({error: e})
@@ -158,6 +158,7 @@ const configCache = args => () => {
 
 const deployIncludes = (ow, args) => () => {
     const manifest = args.manifest
+    args.manifest.namespace = '_'
     if (manifest.hasOwnProperty('includes')) {
         const includes = manifest.includes
 
@@ -266,22 +267,38 @@ const deployPackage = (ow, name, parameters, annotations, binding, publish) => {
 
 const deployActions = (ow, args) => report => {
     const manifest = args.manifest
-    if (manifest.hasOwnProperty('packages')) {
-        const packages = manifest.packages
-        const promises = []
-        for (const pkgName in packages) {
-            const pkg = packages[pkgName] || {}
-            const actions = pkg.actions || {}
+    const graph = helpers.dependenciesGraph(manifest)
+    let promises
 
-            for (const actionName in actions) {
-                const action = actions[actionName]
-                const promise = handlers.lookupActionHandler(action)(ow, args, pkgName, actionName, action)
+    while (true) {
+        const actions = helpers.pendingActions(graph)
 
-                promises.push(promise)
-            }
-
+        if (!actions)
+            break
+        const subpromises = []
+        for (const qname in actions) {
+            const entry = actions[qname]
+            const promise = handlers.lookupActionHandler(entry.action).deploy(ow, args, entry.pkgName, entry.actionName, entry.action)
+            subpromises.push(promise)
         }
-        return Promise.all(promises).then(reporter.entity(report, 'actions'))
+
+        helpers.commitActions(actions)
+        if (promises) {
+            promises = promises
+                .then(reportActions1 => Promise.all(subpromises).then(reportActions2 => [...reportActions1, ...reportActions2]))
+        } else {
+            promises = Promise.all(subpromises)
+        }
+    }
+
+    const remaining = helpers.remainingActions(graph)
+    if (remaining) {
+        const keys = Object.keys(remaining).join(', ')
+        return Promise.reject(`Error: cyclic dependencies detected (${keys})`)
+    }
+
+    if (promises) {
+        return promises.then(reporter.entity(report, 'actions'))
     }
     return Promise.resolve(report)
 }
@@ -451,8 +468,6 @@ const deployRule = (ow, ruleName, trigger, action) => {
 function haveRepo(args) {
     return args.hasOwnProperty('owner') && args.hasOwnProperty('repo') && args.hasOwnProperty('sha')
 }
-
-
 
 
 // --- Asset loaders
