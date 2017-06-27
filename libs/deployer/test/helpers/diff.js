@@ -15,6 +15,7 @@
  */
 
 const deepDiff = require('deep-diff')
+const names = require('@openwhisk-libs/names')
 
 const fail = (t, actual, expected) => {
     return t.deepEqual(expected, actual)
@@ -34,10 +35,19 @@ const diffModulo = (t, actual, expected) => {
 
             const l = edit.path[edit.path.length - 1]
             const l1 = edit.path[edit.path.length - 2]
+            const l2 = edit.path[edit.path.length - 3]
 
-            if (!(l === 'path' && l1 === 'trigger')) // ignore trigger/path
-              if (l !== 'version' && l !== 'namespace' && l !== 'location' && l !== 'authKey')
-                return fail(t, actual, expected)
+            if (l1 === 'components' && l2 === 'exec') {
+                const lhs = names.parseQName(edit.lhs)
+                const rhs = names.parseQName(edit.rhs)
+
+                if (lhs.pkg !== rhs.pkg || lhs.name !== rhs.name)
+                    return fail(t, actual, expected)
+
+            } else if (!(l === 'path' && l1 === 'trigger')) { // ignore trigger/path
+                if (l !== 'version' && l !== 'namespace' && l !== 'location' && l !== 'authKey')
+                    return fail(t, actual, expected)
+            }
 
         }
 

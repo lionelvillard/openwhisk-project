@@ -29,7 +29,7 @@ const handleCopy = (ow, args, pkgName, actionName, action) => {
 
     const sourceAction = findAction(manifest, sourceActionName)
     if (sourceAction) {
-        return lookupActionHandler(sourceAction)(ow, args, pkgName, actionName, sourceAction)
+        return lookupActionHandler(sourceAction).deploy(ow, args, pkgName, actionName, sourceAction)
     }
 
     const params = helpers.getKeyValues(action.inputs, args)
@@ -41,6 +41,10 @@ const handleCopy = (ow, args, pkgName, actionName, action) => {
         .then(deployCopyAction(ow, qname, params, annotations, limits))
         .then(reporter.action(qname, sourceActionName, '<copied>', params))
         .catch(reporter.action(qname, sourceActionName, '<copied>', params))
+}
+
+const dependsOnCopy = (namespace, pkgName, action) => {
+    return [names.resolveQName(action.copy, namespace, pkgName)]
 }
 
 const getAction = (ow, actionName) => {
@@ -66,7 +70,6 @@ const deployCopyAction = (ow, actionName, params, annos, newlimits) => sourceAct
     const annotations = helpers.getKeyValues(actionParams)
 
     const action = {
-
         exec: sourceAction.exec,
         parameters,
         annotations,
@@ -98,20 +101,10 @@ const findAction = (manifest, actionName) => {
 
 const handleSequence = (ow, args, pkgName, actionName, action) => {
     const manifest = args.manifest
-    let components = []
-
-    let actions = action.sequence.split(',')
-    for (let i in actions) {
-        const component = names.resolveQName(actions[i], manifest.namespace, pkgName)
-
-        // TODO: check component exists?
-
-        components.push(component)
-    }
+    const components = getComponents(manifest.namespace, pkgName, action.sequence)
     const parameters = helpers.getKeyValues(action.inputs, args)
     const annotations = helpers.getKeyValues(action.annotations, args)
     const limits = action.limits || {}
-
     const sequence = {
         exec: {
             kind: 'sequence',
@@ -127,6 +120,24 @@ const handleSequence = (ow, args, pkgName, actionName, action) => {
         .catch(reporter.action(actionName, '', 'sequence', parameters))
 
 }
+
+const getComponents = (namespace, pkgName, sequence) => {
+    const actions = sequence.split(',')
+    let components = []
+    for (const i in actions) {
+        const component = names.resolveQName(actions[i], namespace, pkgName)
+
+        // TODO: check component exists?
+
+        components.push(component)
+    }
+    return components
+}
+
+const dependsOnSequence = (namespace, pkgName, action) => {
+    return getComponents(namespace, pkgName, action.sequence)
+}
+
 
 // --- Fallback
 
@@ -155,8 +166,14 @@ const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
 // --- Handlers manager
 
 const actionsHandlers = {
-    sequence: handleSequence,
-    copy: handleCopy
+    sequence: {
+        deploy: handleSequence,
+        dependsOn: dependsOnSequence
+    },
+    copy: {
+        deploy: handleCopy,
+        dependsOn: dependsOnCopy
+    }
 }
 
 const lookupActionHandler = action => {
@@ -164,7 +181,10 @@ const lookupActionHandler = action => {
         if (action.hasOwnProperty(name))
             return actionsHandlers[name]
     }
-    return handleDefaultAction
+    return {
+        deploy: handleDefaultAction,
+        dependsOn: () => []
+    }
 }
 exports.lookupActionHandler = lookupActionHandler
 
