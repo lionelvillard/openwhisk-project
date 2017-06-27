@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 const path = require('path')
+const handlers = require('./handlers')
+const names = require('@openwhisk-libs/names')
 
 const deployRawAction = (ow, actionName, action) => {
     return ow.actions.change({
@@ -97,3 +99,81 @@ const getBinary = (action, kind) => {
     return false
 }
 exports.getBinary = getBinary
+
+const dependenciesGraph = manifest => {
+    const packages = manifest.packages || {}
+    const graph = {}
+
+    for (const pkgName in packages) {
+        const pkg = packages[pkgName] || {}
+
+        const actions = pkg.actions || {}
+        for (const actionName in actions) {
+            const action = actions[actionName]
+
+            const dependencies = handlers.lookupActionHandler(action).dependsOn(manifest.namespace, pkgName, action)
+            const qname = `${pkgName}/${actionName}`
+            if (graph[qname])
+                throw new Error(`Duplicate action ${qname}`)
+
+            graph[`${pkgName}/${actionName}`] = {
+                pkgName,
+                actionName,
+                action,
+                deployed: false,
+                dependencies
+            }
+        }
+    }
+    return graph
+}
+exports.dependenciesGraph = dependenciesGraph
+
+const nodependencies = (graph, entry) => {
+    for (const qname of entry.dependencies) {
+        const parts = names.parseQName(qname)
+        const dependency = graph[`${parts.pkg}/${parts.name}`]
+        if (dependency && !dependency.deployed)
+            return false
+    }
+    return true
+}
+
+// Get the list of actions that can be deployed
+const pendingActions = graph => {
+    const actions = {}
+    let hasActions = false
+    for (const qname in graph) {
+        const entry = graph[qname]
+        if (!entry.deployed && nodependencies(graph, entry)) {
+            actions[qname] = entry
+            hasActions = true
+        }
+    }
+    return hasActions ? actions : null
+}
+exports.pendingActions = pendingActions
+
+// Mark actions as deployed
+const commitActions = actions => {
+    for (const qname in actions) {
+        const entry = actions[qname]
+        entry.deployed = true
+    }
+}
+exports.commitActions = commitActions
+
+// Gets the remaining action to deploy, independently of their dependencies
+const remainingActions = graph => {
+    const actions = {}
+    let hasActions = false
+    for (const qname in graph) {
+        const entry = graph[qname]
+        if (!entry.deployed) {
+            actions[qname] = entry
+            hasActions = true
+        }
+    }
+    return hasActions ? actions : null
+}
+exports.remainingActions = remainingActions
