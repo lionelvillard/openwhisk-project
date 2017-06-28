@@ -20,7 +20,7 @@ const util = require('util')
 require('../../../../test/helpers/setup')(test)
 
 
-test('try-catch', async t => {
+test('all', async t => {
     const ow = t.context.bx.ow
     const result = await deployer.deploy(ow, {
         basePath: 'plugins/actions/combinator/test/fixtures',
