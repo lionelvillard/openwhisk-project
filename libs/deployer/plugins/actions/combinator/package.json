@@ -1,8 +1,8 @@
 {
-  "name": "openwhisk-deploy-dsl",
+  "name": "@openwhisk-deploy/combinator",
   "version": "0.0.1",
-  "description": "",
-  "main": "index.js",
+  "description": "Combinator extersion for OpenWhisk deploy",
+  "main": "parser.js",
   "scripts": {
     "test": "ava"
   },

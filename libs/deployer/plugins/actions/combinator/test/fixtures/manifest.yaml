@@ -1,0 +1,17 @@
+# try-catch combinator example
+packages:
+  plugin-combinator-1:
+    actions:
+      safeToDelete:
+        kind: nodejs
+        code: >
+          throw new Error('Oh Crap')
+
+      handleError:
+        kind: nodejs
+        code: >
+          console.log('error action', JSON.stringify(args))
+          return {status:"Um a very bad thing just happened - sorry?"}
+
+      eca:
+        combinator: try safeToDelete catch handleError

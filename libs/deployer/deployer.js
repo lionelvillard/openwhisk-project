@@ -19,7 +19,6 @@ const yaml = require('yamljs')
 const path = require('path')
 const simpleGit = require('simple-git')
 const logger = require('log4js').getLogger()
-const {exec} = require('child_process')
 
 const names = require('@openwhisk-libs/names')
 const utils = require('@openwhisk-deploy/utils')
@@ -27,6 +26,7 @@ const fakeow = require('./libs/fakeow')
 const reporter = require('./libs/reporter')
 const handlers = require('./libs/handlers')
 const helpers = require('./libs/helpers')
+const plugins = require('./libs/pluginmgr')
 
 /**
  * Deploy OpenWhisk entities (actions, sequence, rules, etc...)
@@ -66,6 +66,7 @@ const deploy = (ow, args) => {
     try {
         return resolveManifest(ow, args)
             .then(configCache(args))
+            .then(plugins.init)
             .then(deployIncludes(ow, args))
             .then(deployPackages(ow, args, false)) // bindings
             .then(deployPackages(ow, args, true))  // new packages
@@ -80,8 +81,6 @@ const deploy = (ow, args) => {
     } catch (e) {
         return Promise.reject({error: e})
     }
-
-    logger.debug('setup done')
 }
 exports.deploy = deploy
 
@@ -118,11 +117,11 @@ const loadManifest = args => {
             args.manifest = yaml.parse(content)
         })
         .catch(err => {
-            if (err.errno == -2) {
-                // manifest does not exist. fine.
-                args.manifest = {}
-                return Promise.resolve()
-            }
+            // if (err.errno == -2) {
+            //     args.manifest = {}
+            //     return Promise.resolve()
+            // }
+            console.log(err)
 
             return Promise.reject(err) // propagate error
         })
