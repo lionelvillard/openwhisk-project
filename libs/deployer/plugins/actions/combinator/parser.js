@@ -121,10 +121,12 @@ function DeployParser(input) {
         const $actionName = $.CONSUME2(ActionLiteral).image
 
         return {
-            copy: '/whisk.system/combinators/eca',
-            inputs: {
-                $conditionName,
-                $actionName
+            action: {
+                copy: '/whisk.system/combinators/eca',
+                inputs: {
+                    $conditionName,
+                    $actionName
+                }
             }
         }
     })
@@ -136,10 +138,12 @@ function DeployParser(input) {
         const $catchName = $.CONSUME2(ActionLiteral).image
 
         return {
-            copy: '/whisk.system/combinators/trycatch',
-            inputs: {
-                $tryName,
-                $catchName
+            action: {
+                copy: '/whisk.system/combinators/trycatch',
+                inputs: {
+                    $tryName,
+                    $catchName
+                }
             }
         }
     })
@@ -152,18 +156,24 @@ DeployParser.prototype.constructor = DeployParser
 
 const parser = new DeployParser([])
 
-module.exports = text => {
-    // 1. Tokenize the input.
-    const lexResult = DeployLexer.tokenize(text)
+// --- Plugin export
 
-    // 2. Parse the Tokens vector.
-    parser.input = lexResult.tokens
-    const value = parser.combinators()
+module.exports = {
 
-    return {
-        value: value,
-        lexResult: lexResult,
-        parseErrors: parser.errors
+    getEntities: context => {
+        // 1. Tokenize the input.
+        const lexResult = DeployLexer.tokenize(context.action.combinator)
+
+        // 2. Parse the Tokens vector.
+        parser.input = lexResult.tokens
+        const value = parser.combinators()
+
+        value.actionName = context.actionName
+        return [value]
+        // return {
+        //     value: value,
+        //     lexResult: lexResult,
+        //     parseErrors: parser.errors
+        // }
     }
 }
-
