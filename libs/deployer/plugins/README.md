@@ -1,35 +1,35 @@
-Warning: work in progress. Comments are welcomed.
+*Warning: work in progress.*
 
 This directory contains plugins extending the deployment format.
 
-# Adding a new action
+# Adding a new kind of action
 
 Action plugins must be stored in the `actions` subdirectory 
 and must follow this minimal structure:
 
 ```
 actions
-|- <extension-name>
+|- <plugin-name>
    |- package.json
 ```
 
-The extension can then be used inside the `actions` section:
+The plugin `plugin-name` is activated when `plugin-name` occurs 
+within an `action`:
 
 ```yaml
 ...
 actions:
   <action-name>:
-    <extension-name>: ...   
+    <plugin-name>: ...   
 ```
+
 
 # Plugin interface
 
 ```javascript
 const Plugin = {
-    // Whether this plugin accepts the given context
-    acceptContext: context => {}
     
-    // Get the list of entities to deploy
+    /* Get the list of entities to deploy */
     getEntities: context => {}
 }
 ```

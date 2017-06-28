@@ -207,13 +207,18 @@ const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
 
 // --- Plugin
 
-const handlePluginAction = (plugin) => (ow, args, pkgName, actionName, action) => {
+const handlePluginAction = plugin => (ow, args, pkgName, actionName, action) => {
     const context = {pkgName, actionName, action}
-    const entities = plugin.getEntities(context)
+    let entities = plugin.getEntities(context)
+    if (!Array.isArray(entities))
+        entities = [entities]
 
     const promises = []
     for (const entity of entities) {
         // handle only actions for now
+        if (!entity.hasOwnProperty('action'))
+            throw new Error(`Plugin ${plugin.__pluginName} returned an invalid entity ${JSON.stringify(entity)}`)
+
         const promise = lookupActionHandler(entity.action).deploy(ow, args, pkgName, entity.actionName, entity.action)
         promises.push(promise)
     }

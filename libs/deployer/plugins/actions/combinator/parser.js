@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 const chevrotain = require('chevrotain')
+const utils = require('@openwhisk-deploy/utils')
+const names = require('@openwhisk-libs/names')
 
 // ----------------- lexer -----------------
 
@@ -34,7 +36,7 @@ const TimesToken = createToken({name: 'TimesToken', pattern: /times/})
 const LSquare = createToken({name: 'LSquare', pattern: /\[/})
 const RSquare = createToken({name: 'RSquare', pattern: /]/})
 const Comma = createToken({name: 'Comma', pattern: /,/})
-const IntegerLiteral = createToken({name: "IntegerLiteral", pattern: /\d+/})
+const IntegerLiteral = createToken({name: 'IntegerLiteral', pattern: /\d+/})
 
 const QuotedActionLiteral = createToken({
     name: 'QuotedActionLiteral',
@@ -80,7 +82,7 @@ const TrimQuotes = str => {
     return str.substr(1, str.length - 2)
 }
 
-function DeployParser(input) {
+function DeployParser(input, pkgName, action) {
     Parser.call(this, input, allTokens)
 
     const $ = this
@@ -112,74 +114,68 @@ function DeployParser(input) {
 
     $.RULE('eca', () => {
         $.CONSUME(IfToken)
-        const $conditionName = $.CONSUME1(ActionLiteral).image
+        const $conditionName = names.resolveQName($.CONSUME1(ActionLiteral).image, '_', pkgName)
         $.CONSUME(ThenToken)
-        const $actionName = $.CONSUME2(ActionLiteral).image
+        const $actionName = names.resolveQName($.CONSUME2(ActionLiteral).image, '_', pkgName)
 
-        return {
-            action: {
-                copy: '/whisk.system/combinators/eca',
-                inputs: {
-                    $conditionName,
-                    $actionName
-                }
-            }
-        }
+        action.copy = '/whisk.system/combinators/eca'
+        action.inputs = utils.mergeObjects({
+            $conditionName,
+            $actionName
+        }, action.inputs)
+
+        return action
     })
 
     $.RULE('trycatch', () => {
         $.CONSUME(TryToken)
-        const $tryName = $.CONSUME1(ActionLiteral).image
+        const $tryName = names.resolveQName($.CONSUME1(ActionLiteral).image, '_', pkgName)
         $.CONSUME(CatchToken)
-        const $catchName = $.CONSUME2(ActionLiteral).image
+        const $catchName = names.resolveQName($.CONSUME2(ActionLiteral).image, '_', pkgName)
 
-        return {
-            action: {
-                copy: '/whisk.system/combinators/trycatch',
-                inputs: {
-                    $tryName,
-                    $catchName
-                }
-            }
-        }
+        action.copy = '/whisk.system/combinators/trycatch'
+        action.inputs = utils.mergeObjects({
+            $tryName,
+            $catchName
+        }, action.inputs)
+
+        return action
     })
 
     $.RULE('forwarder', () => {
         $.CONSUME(ForwardToken)
         const $forward = $.SUBRULE($.arrayofstrings)
         $.CONSUME(AfterToken)
-        const $actionName = $.CONSUME(ActionLiteral).image
+        const $actionName = names.resolveQName($.CONSUME(ActionLiteral).image, '_', pkgName)
         $.CONSUME(WithToken)
         const $actionArgs = $.SUBRULE2($.arrayofstrings)
 
-        return {
-            action: {
-                copy: '/whisk.system/combinators/forwarder',
-                inputs: {
-                    $forward,
-                    $actionName,
-                    $actionArgs
-                }
-            }
-        }
+        action.copy = '/whisk.system/combinators/forwarder'
+        action.inputs = utils.mergeObjects({
+                $forward,
+                $actionName,
+                $actionArgs
+            },
+            action.inputs)
+        return action
+
     })
 
     $.RULE('retry', () => {
         $.CONSUME(RetryToken)
-        const $actionName = $.CONSUME(ActionLiteral).image
+        const $actionName = names.resolveQName($.CONSUME(ActionLiteral).image, '_', pkgName)
         const $attempts = parseInt($.CONSUME(IntegerLiteral).image)
         $.OPTION(() => {
             $.CONSUME(TimesToken)
         })
-        return {
-            action: {
-                copy: '/whisk.system/combinators/retry',
-                inputs: {
-                    $actionName,
-                    $attempts
-                }
-            }
-        }
+
+        action.copy = '/whisk.system/combinators/retry'
+        action.inputs = utils.mergeObjects({
+                $actionName,
+                $attempts
+            },
+            action.inputs)
+        return action
     })
 
     $.RULE('arrayofstrings', () => {
@@ -203,8 +199,6 @@ function DeployParser(input) {
 DeployParser.prototype = Object.create(Parser.prototype)
 DeployParser.prototype.constructor = DeployParser
 
-const parser = new DeployParser([])
-
 // --- Plugin export
 
 module.exports = {
@@ -216,12 +210,15 @@ module.exports = {
             throw lexResult.errors
 
         // 2. Parse the Tokens vector.
-        parser.input = lexResult.tokens
-        const value = parser.combinators()
+
+        const parser = new DeployParser(lexResult.tokens, context.pkgName, utils.initFromBaseAction(context.action))
+        const action = parser.combinators()
         if (parser.errors.length > 0)
             throw parser.errors
 
-        value.actionName = context.actionName
-        return [value]
+        return {
+            actionName: context.actionName,
+            action
+        }
     }
 }

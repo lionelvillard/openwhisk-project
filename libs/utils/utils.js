@@ -21,42 +21,42 @@ const fs = require('fs')
 // Check manifest is present, otherwise fetch it.
 function assignManifest(args) {
     if (args.hasOwnProperty('manifest')) {
-        return Promise.resolve(args);
+        return Promise.resolve(args)
     }
 
     // No manifest: need a repo.
     if (!haveRepo(args))
-        return Promise.reject(`Missing repository properties ('owner', 'repo', and 'sha')`);
+        return Promise.reject(`Missing repository properties ('owner', 'repo', and 'sha')`)
 
     return fetchContent(args, 'manifest.yaml')
         .then(manifest => {
-            args.manifest = manifest;
-            return args;
-        });
+            args.manifest = manifest
+            return args
+        })
 }
-exports.assignManifest = assignManifest;
+exports.assignManifest = assignManifest
 
 // Fetch file content in GitHubRepository
 function fetchContent(args, location) {
     if (!haveRepo(args))
-        return Promise.reject(`Missing repository properties ('owner', 'repo', and 'sha') needed to get ${location}`);
+        return Promise.reject(`Missing repository properties ('owner', 'repo', and 'sha') needed to get ${location}`)
 
     return request({
         uri: `https://raw.githubusercontent.com/${args.owner}/${args.repo}/${args.sha}/${location}`
     }).then(result => {
-        console.log(`fetched ${location}`);
-        return result;
-    });
+        console.log(`fetched ${location}`)
+        return result
+    })
 }
-exports.fetchContent = fetchContent;
+exports.fetchContent = fetchContent
 
 //
 function haveRepo(args) {
     return args.hasOwnProperty('assets') && args.assets.hasOwnProperty('conf') &&
         args.assets.conf.hasOwnProperty('owner') && args.assets.conf.hasOwnProperty('repo') &&
-        args.assets.conf.hasOwnProperty('sha');
+        args.assets.conf.hasOwnProperty('sha')
 }
-exports.haveRepo = haveRepo;
+exports.haveRepo = haveRepo
 
 const makeZip = (targetZip, src) => new Promise((resolve, reject) => {
     const output = fs.createWriteStream(targetZip)
@@ -82,3 +82,30 @@ const makeZip = (targetZip, src) => new Promise((resolve, reject) => {
     archive.finalize()
 })
 exports.zip = makeZip
+
+// Assign the source properties to target. Throw an exception when a conflict occurs.
+const mergeObjects = (target, source) => {
+    if (source) {
+        for (const key of Object.keys(source)) {
+            if (target.hasOwnProperty(key))
+                throw new Error(`Duplicate key ${key}`)
+            target[key] = source[key]
+        }
+    }
+    return target
+}
+exports.mergeObjects = mergeObjects
+
+// Initialize action with the `baseAction` properties
+const initFromBaseAction = baseAction => {
+    const action = {}
+    if (baseAction.limits)
+        action.limits = baseAction.limits
+    if (baseAction.annotations)
+        action.annotations = baseAction.annotations
+    if (baseAction.inputs)
+        action.inputs = baseAction.inputs
+
+    return action
+}
+exports.initFromBaseAction = initFromBaseAction

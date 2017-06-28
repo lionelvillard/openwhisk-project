@@ -14,30 +14,27 @@
  * limitations under the License.
  */
 const test = require('ava')
-const deployer = require('../../../../deployer')
+const deployer = require(`${process.cwd()}/deployer`)
 const util = require('util')
 
-require('../../../../test/helpers/setup')(test)
-
+require(`${process.cwd()}/test/helpers/setup`)(test)
 
 test('all', async t => {
     const ow = t.context.bx.ow
     const result = await deployer.deploy(ow, {
-        basePath: 'plugins/actions/combinator/test/fixtures',
+        basePath: 'test/plugins/actions/combinator/fixtures',
         cache: t.context.tmpdir,
         location: 'manifest.yaml',
         force: true
     })
 
-    console.log(util.inspect(result, {depth: null}))
-    // diff.deepEqualModulo(t, result, code1Gold)
-    //
-    // const echo = await ow.actions.invoke({
-    //     actionName: 'code-action1/echo1',
-    //     params: {lines: ['first', 'second']},
-    //     blocking: true
-    // })
-    // t.deepEqual(echo.response.result, {lines: ['first', 'second']})
+    const echo = await ow.actions.invoke({
+        actionName: 'plugin-combinator-1/eca',
+        params: {delete: 'key1', key1: 'boo', key2: 'boo2'},
+        blocking: true
+    })
+
+    t.deepEqual(echo.response.result,  {key2: 'boo2', delete: 'key1' })
     t.pass()
 })
 
