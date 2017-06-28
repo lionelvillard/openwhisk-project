@@ -117,12 +117,6 @@ const loadManifest = args => {
             args.manifest = yaml.parse(content)
         })
         .catch(err => {
-            // if (err.errno == -2) {
-            //     args.manifest = {}
-            //     return Promise.resolve()
-            // }
-            console.log(err)
-
             return Promise.reject(err) // propagate error
         })
 }

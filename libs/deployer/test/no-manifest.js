@@ -19,7 +19,11 @@ const deployer = require('../deployer')
 require('./helpers/setup')(test)
 
 test('deploy empty manifest', async t => {
-    await deployer.deploy(null, {cache: t.context.tmpdir, location: 'donotexist.yaml'})
+    try {
+        await deployer.deploy(null, {cache: t.context.tmpdir, location: 'donotexist.yaml'})
+        t.fail()
+    } catch (e) {
+        t.pass()
+    }
 
-    t.pass()
 })
