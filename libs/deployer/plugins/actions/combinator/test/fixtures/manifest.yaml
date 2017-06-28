@@ -5,13 +5,33 @@ packages:
       safeToDelete:
         kind: nodejs
         code: >
+          if (args.delete)
+            return true
           throw new Error('Oh Crap')
+
+
+      delete:
+        kind: nodejs
+        code: >
+          delete args[args.delete]
+          return args
 
       handleError:
         kind: nodejs
         code: >
-          console.log('error action', JSON.stringify(args))
-          return {status:"Um a very bad thing just happened - sorry?"}
+          return {status: 'Um a very bad thing just happened - sorry?'}
+
+      trycatch:
+        combinator: try safeToDelete catch handleError
 
       eca:
-        combinator: try safeToDelete catch handleError
+        combinator: if safeToDelete then delete
+
+      forward:
+        combinator: forward ["authkey"] after safeToDelete with ["delete"]
+        inputs:
+          authkey: very private
+          delete: something
+
+      retry:
+        combinator: retry delete 5 times
