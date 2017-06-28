@@ -4,17 +4,16 @@ packages:
     actions:
       safeToDelete:
         kind: nodejs
-        code: >
-          if (args.delete)
-            return true
+        code: |
+          if (params.delete)
+            return {}
           throw new Error('Oh Crap')
-
 
       delete:
         kind: nodejs
-        code: >
-          delete args[args.delete]
-          return args
+        code: |
+          delete params[params.delete]
+          return params
 
       handleError:
         kind: nodejs

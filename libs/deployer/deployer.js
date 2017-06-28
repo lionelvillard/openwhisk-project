@@ -54,6 +54,7 @@ const deploy = (ow, args) => {
     logger.setLevel('OFF')
     if (args.logger_level)
         logger.setLevel(args.logger_level)
+    args.logger = logger
 
     if (!ow || args.dryrun)
         ow = fakeow
@@ -66,7 +67,7 @@ const deploy = (ow, args) => {
     try {
         return resolveManifest(ow, args)
             .then(configCache(args))
-            .then(plugins.init)
+            .then(plugins.init(args))
             .then(deployIncludes(ow, args))
             .then(deployPackages(ow, args, false)) // bindings
             .then(deployPackages(ow, args, true))  // new packages

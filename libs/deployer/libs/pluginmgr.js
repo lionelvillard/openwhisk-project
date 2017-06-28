@@ -19,23 +19,25 @@ const fs = require('fs')
 const path = require('path')
 
 const actionPlugins = {}
-const RESERVED_ACTIONS_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'zip', 'annotations', 'sequence', 'extra']
+const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'zip', 'annotations', 'sequence', 'extra']
 
 // Build plugin index.
-const init = () => {
-    return loadDescs('./plugins/actions')
+const init = context => {
+    return loadDescs(context, './plugins/actions')
 }
 exports.init = init
 
-const loadDescs = dir => new Promise((resolve, reject) => {
+const loadDescs = (context, dir) => new Promise((resolve, reject) => {
     const root = path.join(__dirname, '..', dir)
     fs.readdir(root, (err, files) => {
         if (err)
             return reject(err)
 
         for (const file of files) {
-            if (!RESERVED_ACTIONS_KEYWORDS.includes(file))
+            if (!RESERVED_ACTION_KEYWORDS.includes(file))
                 actionPlugins[file] = path.join(root, file)
+            else
+                context.logger.warn(`Skipping ${file}: it is a reserved plugin name`)
         }
 
         resolve()
@@ -44,8 +46,11 @@ const loadDescs = dir => new Promise((resolve, reject) => {
 
 const getActionPlugin = action => {
     for (const name in actionPlugins) {
-        if (action.hasOwnProperty(name))
-            return require(actionPlugins[name])
+        if (action.hasOwnProperty(name)) {
+            const plugin = require(actionPlugins[name])
+            plugin.__pluginName = name
+            return plugin
+        }
     }
     return null
 }
