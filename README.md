@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/lionelvillard/openwhisk-deploy.svg?branch=master)](https://travis-ci.org/lionelvillard/openwhisk-wskdeploy)
+[![Build Status](https://travis-ci.org/lionelvillard/openwhisk-deploy.svg?branch=master)](https://travis-ci.org/lionelvillard/openwhisk-deploy)
 
 This project provides a set of libraries and an CLI for deploying OpenWhisk entities 
 specified in the format described below.
