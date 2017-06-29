@@ -8,5 +8,8 @@
   },
   "author": "Lionel Villard",
   "license": "Apache-2.0",
-  "false": {}
+  "false": {},
+  "devDependencies": {
+    "ava": "^0.20.0"
+  }
 }
