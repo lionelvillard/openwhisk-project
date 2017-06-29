@@ -11,7 +11,7 @@ before_install:
   - wget https://public.dhe.ibm.com/cloud/bluemix/cli/bluemix-cli/Bluemix_CLI_0.5.4_amd64.tar.gz
   - tar zxvf Bluemix_CLI_0.5.4_amd64.tar.gz
   - cd Bluemix_CLI
-  - ./install_bluemix_cli
+  - sudo ./install_bluemix_cli
   - bx login -a https://api.ng.bluemix.net -s $BX_SPACE_CI
   - bx iam space-create $BX_SPACE_CI
   - bx target -s $BX_SPACE_CI
