@@ -12,7 +12,7 @@ before_install:
   - tar zxvf Bluemix_CLI_0.5.4_amd64.tar.gz
   - cd Bluemix_CLI
   - sudo ./install_bluemix_cli
-  - bx login -a https://api.ng.bluemix.net -s $BX_SPACE_CI
+  - bx login -a https://api.ng.bluemix.net -s dev
   - bx iam space-create $BX_SPACE_CI
   - bx target -s $BX_SPACE_CI
 
