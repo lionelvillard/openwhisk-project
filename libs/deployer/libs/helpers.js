@@ -61,7 +61,7 @@ const indexKeyValues = kvs => {
 exports.indexKeyValues = indexKeyValues
 
 const resolveValue = (value, args) => {
-    if (value.startsWith('$')) {
+    if (typeof value === 'string' && value.startsWith('$')) {
         const key = value.substr(1)
         if (args.env && args.env[key])
             return args.env[key]

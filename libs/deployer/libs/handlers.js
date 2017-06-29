@@ -19,7 +19,7 @@ const helpers = require('./helpers')
 const reporter = require('./reporter')
 const names = require('@openwhisk-libs/names')
 const path = require('path')
-
+const plugins = require('./pluginmgr')
 
 // --- Copy action
 
@@ -150,7 +150,7 @@ const handleCode = (ow, args, pkgName, actionName, action) => {
     switch (kind) {
         case 'nodejs':
             kind = 'nodejs:default'
-            // fallthrough
+        // fallthrough
         case 'nodejs:default':
         case 'nodejs:6':
             code = `function main(params) { ${code} }`
@@ -205,8 +205,27 @@ const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
         .catch(reporter.action(qname, args.location, kind, params))
 }
 
-// --- Handlers manager
+// --- Plugin
 
+const handlePluginAction = plugin => (ow, args, pkgName, actionName, action) => {
+    const context = {pkgName, actionName, action}
+    let entities = plugin.getEntities(context)
+    if (!Array.isArray(entities))
+        entities = [entities]
+
+    const promises = []
+    for (const entity of entities) {
+        // handle only actions for now
+        if (!entity.hasOwnProperty('action'))
+            throw new Error(`Plugin ${plugin.__pluginName} returned an invalid entity ${JSON.stringify(entity)}`)
+
+        const promise = lookupActionHandler(entity.action).deploy(ow, args, pkgName, entity.actionName, entity.action)
+        promises.push(promise)
+    }
+    return Promise.all(promises)
+}
+
+// --- Handlers manager
 
 const actionsHandlers = {
     sequence: {
@@ -216,8 +235,7 @@ const actionsHandlers = {
     copy: {
         deploy: handleCopy,
         dependsOn: dependsOnCopy
-    }
-    ,
+    },
     code: {
         deploy: handleCode,
         dependsOn: dependsOnCode
@@ -229,6 +247,16 @@ const lookupActionHandler = action => {
         if (action.hasOwnProperty(name))
             return actionsHandlers[name]
     }
+
+    const plugin = plugins.getActionPlugin(action)
+    if (plugin) {
+
+        return {
+            deploy: handlePluginAction(plugin),
+            dependsOn: () => [] // maybe not
+        }
+    }
+
     return {
         deploy: handleDefaultAction,
         dependsOn: () => []

@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/lionelvillard/openwhisk-deploy.svg?branch=master)](https://travis-ci.org/lionelvillard/openwhisk-wskdeploy)
 
-This project provides a set of tools for deploying OpenWhisk entities 
+This project provides a set of libraries and an CLI for deploying OpenWhisk entities 
 specified in the format described below.
  
 # Getting started
@@ -18,7 +18,6 @@ $ wskd -h
 $ npm install @openwhisk-deploy/deployer --save
 ```
 
-
 ## OpenWhisk action
 
 (Coming soon)
@@ -29,7 +28,7 @@ includes:
   - location: github.com/lionelvillard/openwhisk-deploy
 ```
 
-# Deployment Specification
+# Deployment Format Specification
 
 The deployment specification uses the YAML syntax and JSON schema to describe constraints
 on the syntax. These constraints are presented below.
@@ -133,7 +132,7 @@ An *object* representing a list of `action`s.
 
 ## `action`
 
-An *object* representing an action. Extends [`baseAction`](#baseAction)
+An *object* representing an action. Extends [`baseAction`](#baseaction)
 
 
 ### Properties
@@ -165,7 +164,7 @@ packages:
 
 An *object* representing an action to copy. 
 
-Extends [`baseAction`](#baseAction)
+Extends [`baseAction`](#baseaction)
 
 ### Properties
 
@@ -197,13 +196,13 @@ packages:
 
 An *object* representing an action with inlined code. 
 
-Extends [`baseAction`](#baseAction)
+Extends [`baseAction`](#baseaction)
 
 ### Properties
 
 - `code` (string, required): the action main function content.   
 - `extra` (string, optional): additional code   
-- `kind` ([`baseAction`](#baseAction) enum, required): the required action kind
+- `kind` ([`baseAction`](#baseaction) enum, required): the required action kind
    
 ## Example
 
@@ -230,7 +229,7 @@ An *object* representing a list of `sequence` actions.
 
 ## `sequence`
 
-An *object* representing a sequence action. Extends [`baseAction`](#baseAction)
+An *object* representing a sequence action. Extends [`baseAction`](#baseaction)
 
 ### Properties
 
