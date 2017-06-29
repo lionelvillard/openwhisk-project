@@ -1,9 +1,22 @@
 language: node_js
 dist: trusty
-sudo: false
+sudo: true
 node_js: node
 
+env:
+  - BX_SPACE_CI=openwhisk-deploy-ci`uuidgen`
+
 before_install:
+  - # Install the Bluemix CLI for testing on the IBM cloud
+  - wget https://public.dhe.ibm.com/cloud/bluemix/cli/bluemix-cli/Bluemix_CLI_0.5.4_amd64.tar.gz
+  - tar zxvf Bluemix_CLI_0.5.4_amd64.tar.gz
+  - cd Bluemix_CLI
+  - ./install_bluemix_cli
+  - bx login -a https://api.ng.bluemix.net -s $BX_SPACE_CI
+  - bx iam space-create $BX_SPACE_CI
+  - bx target -s $BX_SPACE_CI
+
+install:
   - cd $TRAVIS_BUILD_DIR/libs/deployer && npm install
   - cd $TRAVIS_BUILD_DIR/libs/deployer/plugins/actions/combinator && npm install
   - cd $TRAVIS_BUILD_DIR/libs/ && ./link.sh
@@ -13,3 +26,5 @@ script:
   - cd $TRAVIS_BUILD_DIR/libs/deployer && npm test
   - cd $TRAVIS_BUILD_DIR/libs/deployer/plugins/actions/combinator && npm test
 
+after_script:
+  - bx iam space-delete $BX_SPACE_CI -f
