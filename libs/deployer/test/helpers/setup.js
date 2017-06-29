@@ -8,8 +8,8 @@ const beforeTest = async (t) => {
     if (!bxdata) {
         if (process.env.BX_SPACE_CI) {
             const tokens = bx.getTokens()
-            const ns = await bx.waitForAuthKeys(tokens.accessToken, tokens.refreshToken, [process.env.BX_SPACE_CI])[0]
-
+            const keys = await bx.waitForAuthKeys(tokens.accessToken, tokens.refreshToken, [process.env.BX_SPACE_CI])
+            const ns = keys[0]
             bxdata = {
                 space: process.env.BX_SPACE_CI,
                 ns,
