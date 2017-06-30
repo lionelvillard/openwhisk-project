@@ -1,5 +1,5 @@
 packages:
-  copy-action1:
+  copy-action-1:
     actions:
-      cat-copy1:
+      cat-copy-1:
         copy: /whisk.system/utils/cat

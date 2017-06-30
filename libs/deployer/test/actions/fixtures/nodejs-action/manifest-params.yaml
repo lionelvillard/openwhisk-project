@@ -1,7 +1,7 @@
 packages:
-  utils-with-param:
+  nodejs-action-3:
     actions:
-      cat-with-param:
-        location: cat.js
+      echo-with-param:
+        location: echo.js
         inputs:
-          mykey: myvalue
+          msg: Hello

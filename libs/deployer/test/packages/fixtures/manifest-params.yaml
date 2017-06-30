@@ -1,5 +1,5 @@
 packages:
-  packages-utils-params:
+  packages-1-params:
     inputs:
       mykey: myvalue
     

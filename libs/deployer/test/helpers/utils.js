@@ -73,6 +73,73 @@ const deleteCode = json => {
     }
 }
 
+const assertPackageEmpty = async (t, ow, packageName) => {
+    try {
+        await ow.packages.get({packageName})
+        t.fail()
+    } catch (e) {
+        t.true(e.error.error === 'The requested resource does not exist.')
+    }
+}
+
+// Delete all entities in the given package
+const deletePackage = async (t, ow, packageName) => {
+    try {
+        const entities = await getPackage(ow, packageName)
+        if (!entities.binding.name) {
+            await deletePackageEntities(ow, packageName, entities)
+        }
+        await ow.packages.delete({packageName})
+        await assertPackageEmpty(t, ow, packageName)
+    } catch (e) {
+        t.true(e.error.error === 'The requested resource does not exist.')
+    }
+}
+exports.deletePackage = deletePackage
+
+const getPackage = (ow, packageName) => {
+    return ow.packages.get({packageName})
+}
+
+const deletePackageEntities = async (ow, pkgName, content) => {
+    const promises = []
+    for (const action of content.actions) {
+        promises.push(ow.actions.delete({actionName: `${pkgName}/${action.name}`}))
+    }
+    return Promise.all(promises)
+}
+
+// Delete the given rules
+const deleteRules = async (t, ow, rules) => {
+    const promises = []
+    for (const ruleName of rules) {
+        promises.push(ow.rules.delete({ruleName}).catch(e => true))
+    }
+    return Promise.all(promises)
+}
+exports.deleteRules = deleteRules
+
+// Delete the given triggers
+const deleteTriggers = async (t, ow, triggers) => {
+    const promises = []
+    for (const triggerName of triggers) {
+        promises.push(ow.triggers.delete({triggerName}).catch(e => true))
+    }
+    return Promise.all(promises)
+}
+exports.deleteTriggers = deleteTriggers
+
+
+// Delete the given feeds (pairs feedname, triggername)
+const deleteFeeds = async (t, ow, feeds) => {
+    const promises = []
+    for (const feed of feeds) {
+        promises.push(ow.feeds.delete({name:feed[0], trigger:feed[1]}).catch(e => true))
+    }
+    return Promise.all(promises)
+}
+exports.deleteFeeds = deleteFeeds
 
 exports.deepEqualModulo = diffModulo
 exports.deleteCode = deleteCode
+exports.assertPackageEmpty = assertPackageEmpty

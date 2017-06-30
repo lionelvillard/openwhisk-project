@@ -15,83 +15,53 @@
  */
 const test = require('ava')
 const deployer = require('../../deployer')
-const util = require('util')
-const diff = require('../helpers/diff')
+const extra = require('../helpers/utils')
 
 require('../helpers/setup')(test)
 
-const packageGold =
-    {
-        packages: [{
-            qname: 'packages-utils',
-            deployResult: {
-                name: 'packages-utils',
-                binding: {},
-                publish: false,
-                annotations: [],
-                version: '0.0.2',
-                parameters: [],
-                namespace: 'org_openwhisk-deployer-test-space'
-            }
-        }]
-    }
+test('package-1', async t => {
+    const packageName = 'packages-1'
+    const ow = t.context.bx.ow
+    await extra.deletePackage(t, ow, packageName)
 
-
-test('deploy-package', async t => {
-    const result = await deployer.deploy(t.context.bx.ow, {
+    const result = await deployer.deploy(ow, {
         basePath: 'test/packages/fixtures',
         cache: t.context.tmpdir,
         location: 'manifest.yaml',
         force:true
     })
-    //console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, result, packageGold)
+
+    t.truthy(result)
+    const pkg = await ow.packages.get({packageName: packageName})
+    t.true(pkg.name === packageName)
 })
 
-const packageParamGold =
-    {
-        packages: [{
-            qname: 'packages-utils-params',
-            deployResult: {
-                name: 'packages-utils-params',
-                binding: {},
-                publish: false,
-                annotations: [],
-                version: '0.0.2',
-                parameters: [{key: 'mykey', value: 'myvalue'}],
-                namespace: 'org_openwhisk-deployer-test-space'
-            }
-        }]
-    }
+test('package with params', async t => {
+    const packageName = 'packages-1-params'
 
-test('deploy-package-params', async t => {
+    const ow = t.context.bx.ow
+    await extra.deletePackage(t, ow, packageName)
+
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/packages/fixtures',
         cache: t.context.tmpdir,
         location: 'manifest-params.yaml',
         force:true
     })
-    //console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, result, packageParamGold)
+
+    t.truthy(result)
+    const pkg = await ow.packages.get({packageName})
+    t.true(pkg.name === packageName)
 })
 
-const packageAnnoGold =
-    {
-        packages: [{
-            qname: 'packages-utils-annos',
-            deployResult: {
-                name: 'packages-utils-annos',
-                binding: {},
-                publish: false,
-                annotations: [{key: 'myannokey', value: 'myannovalue'}],
-                version: '0.0.3',
-                parameters: [],
-                namespace: 'org_openwhisk-deployer-test-space'
-            }
-        }]
-    }
 
-test('deploy-package-annotation', async t => {
+test('package with annotations', async t => {
+    const packageName = 'packages-1-annos'
+
+    const ow = t.context.bx.ow
+    await extra.deletePackage(t, ow, packageName)
+
+
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/packages/fixtures',
         cache: t.context.tmpdir,
@@ -99,66 +69,34 @@ test('deploy-package-annotation', async t => {
         force: true
     })
 
-//    console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, result, packageAnnoGold)
+    t.truthy(result)
+    const pkg = await ow.packages.get({packageName})
+    t.true(pkg.name === packageName)
 
 })
 
-const packageBindingGold =
-    {
-        packages: [{
-            qname: 'packages-utils-binding',
-            deployResult: {
-                name: 'packages-utils-binding',
-                binding: {
-                    name: 'utils',
-                    namespace: 'whisk.system'
-                },
-                publish: false,
-                annotations: [{
-                    key: 'binding',
-                    value: {
-                        name: 'utils',
-                        namespace: 'whisk.system'
-                    }
-                }],
-                version: '0.0.3',
-                parameters: [],
-                namespace: 'org_openwhisk-deployer-test-space'
-            }
-        }]
-    }
+test('package with bindings', async t => {
+    const packageName = 'packages-1-binding'
 
-test('deploy-package-binding', async t => {
-    const result = await deployer.deploy(t.context.bx.ow, {
+    const ow = t.context.bx.ow
+    await extra.deletePackage(t, ow, packageName)
+
+    const result = await deployer.deploy(ow, {
         basePath: 'test/packages/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest-binding.yaml',
-        force:true
+        location: 'manifest-binding.yaml'
     })
 
-//    console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, result, packageBindingGold)
-
+    t.truthy(result)
+    const pkg = await ow.packages.get({packageName})
+    t.true(pkg.name === packageName)
 })
 
-const packagePublishGold =
-    {
-        packages: [{
-            qname: 'packages-utils-publish',
-            deployResult: {
-                name: 'packages-utils-publish',
-                binding: {},
-                publish: true,
-                annotations: [],
-                version: '0.0.3',
-                parameters: [],
-                namespace: 'org_openwhisk-deployer-test-space'
-            }
-        }]
-    }
+test('shared package', async t => {
+    const packageName = 'packages-1-publish'
+    const ow = t.context.bx.ow
+    await extra.deletePackage(t, ow, packageName)
 
-test('deploy-package-publish', async t => {
     const result = await deployer.deploy(t.context.bx.ow, {
         basePath: 'test/packages/fixtures',
         cache: t.context.tmpdir,
@@ -166,6 +104,7 @@ test('deploy-package-publish', async t => {
         force:true
     })
 
-//    console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, result, packagePublishGold)
+    t.truthy(result)
+    const pkg = await ow.packages.get({packageName})
+    t.true(pkg.name === packageName)
 })

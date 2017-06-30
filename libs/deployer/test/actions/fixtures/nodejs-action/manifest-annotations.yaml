@@ -1,5 +1,5 @@
 packages:
-  utils-with-annotation:
+  nodejs-action-2:
     actions:
       cat-with-annotation:
         location: cat.js
