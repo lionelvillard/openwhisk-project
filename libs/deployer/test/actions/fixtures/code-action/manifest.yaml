@@ -1,7 +1,7 @@
 packages:
-  code-action1:
+  code-action-1:
     actions:
-      echo1:
+      echo:
         kind: nodejs
         code: |
           console.log(params)

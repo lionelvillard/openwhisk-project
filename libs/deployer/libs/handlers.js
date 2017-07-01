@@ -114,8 +114,9 @@ const handleSequence = (ow, args, pkgName, actionName, action) => {
         annotations,
         limits
     }
+
     const qname = `${pkgName}/${actionName}`
-    return helpers.deployRawAction(ow, qname, sequence)
+    return helpers.deployRawAction(ow, args, qname, sequence)
         .then(reporter.action(qname, '', 'sequence', parameters))
         .catch(reporter.action(qname, '', 'sequence', parameters))
 
@@ -170,7 +171,7 @@ const handleCode = (ow, args, pkgName, actionName, action) => {
     }
     const qname = `${pkgName}/${actionName}`
 
-    return helpers.deployRawAction(ow, qname, wskaction)
+    return helpers.deployRawAction(ow, args, qname, wskaction)
         .then(reporter.action(qname, '', kind, parameters))
         .catch(reporter.action(qname, '', kind, parameters))
 
@@ -200,7 +201,7 @@ const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
 
     return buildAction(args, kind, action)
         .then(args.load)
-        .then(helpers.deployAction(ow, qname, params, annotations, limits, kind, binary))
+        .then(helpers.deployAction(ow, args, qname, params, annotations, limits, kind, binary))
         .then(reporter.action(qname, args.location, kind, params))
         .catch(reporter.action(qname, args.location, kind, params))
 }

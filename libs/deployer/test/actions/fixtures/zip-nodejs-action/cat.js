@@ -9,3 +9,4 @@ function main(msg) {
     console.log('cat: returning ' + JSON.stringify(retn));
     return retn;
 }
+exports.main = main

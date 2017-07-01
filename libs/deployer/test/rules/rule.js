@@ -15,50 +15,29 @@
  */
 const test = require('ava')
 const deployer = require('../../deployer')
-const util = require('util')
-const diff = require('../helpers/diff')
+const extra = require('../helpers/utils')
 
 require('../helpers/setup')(test)
 
-const ruleGold =
-    {
-        triggers: [{
-            triggerName: 'rules-trigger1',
-            deployResult: {
-                name: 'rules-trigger1',
-                publish: false,
-                annotations: [],
-                version: '0.0.3',
-                parameters: [],
-                limits: {},
-                namespace: 'org_openwhisk-deployer-test-space'
-            }
-        }],
-        rules: [{
-            ruleName: 'rules-rule1',
-            deployResult: {
-                name: 'rules-rule1',
-                publish: false,
-                annotations: [],
-                version: '0.0.2',
-                status: 'active',
-                action: {path: 'whisk.system/utils', name: 'echo'},
-                namespace: 'org_openwhisk-deployer-test-space',
-                trigger: {
-                    path: 'org_openwhisk-deployer-test-space',
-                    name: 'rules-trigger1'
-                }
-            }
-        }]
-    }
+test('echo rule', async t => {
+    const ow = t.context.bx.ow
+    await extra.deleteRules(t, ow, ['rules-1'])
+    await extra.deleteTriggers(t, ow, ['rules-trigger-1'])
 
-test('deploy-rule1', async t => {
-    const result = await deployer.deploy(t.context.bx.ow, {
+    const result = await deployer.deploy(ow, {
         basePath: 'test/rules/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest.yaml',
-        force:true
+        location: 'manifest.yaml'
     })
-    //console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, result, ruleGold)
+
+    const activation = await ow.triggers.invoke({name: 'rules-trigger-1', params: {msg: 'Hello'}})
+
+    const activationId = activation.activationId
+    t.true(typeof activationId === 'string')
+
+    const echo = await ow.activations.get({activationId})
+    t.deepEqual(echo.response.result, {msg: 'Hello'})
+
+    await extra.deleteRules(t, ow, ['rules-1'])
+    await extra.deleteTriggers(t, ow, ['rules-trigger-1'])
 })

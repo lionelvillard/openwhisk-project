@@ -1,5 +1,5 @@
 packages:
-  utils:
+  nodejs-action-1:
     actions:
       cat:
         location: cat.js

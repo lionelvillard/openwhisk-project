@@ -1,7 +1,7 @@
 triggers:
-  rules-trigger1:
+  rules-trigger-1:
 
 rules:
-  rules-rule1:
-    trigger: rules-trigger1
+  rules-1:
+    trigger: rules-trigger-1
     action: /whisk.system/utils/echo

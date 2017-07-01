@@ -17,29 +17,37 @@ const path = require('path')
 const handlers = require('./handlers')
 const names = require('@openwhisk-libs/names')
 
-const deployRawAction = (ow, actionName, action) => {
-    return ow.actions.change({
-        actionName,
-        action
-    })
+const deployRawAction = (ow, context, actionName, action) => {
+    context.logger.info(`Deploying ${actionName} (raw)`)
+
+    return ow.actions.change({actionName, action})
+        .then(() => context.logger.info(`Action ${actionName} deployed (raw)`))
+        .catch(e => {
+            context.logger.error(e)
+            Promise.reject(e)
+        })
 }
 exports.deployRawAction = deployRawAction
 
-const deployAction = (ow, actionName, parameters, annotations, limits, kind, binary) => content => {
+const deployAction = (ow, context, actionName, parameters, annotations, limits, kind, binary) => content => {
+    const code = Buffer.from(content).toString(binary ? 'base64' : 'utf8')
     const action = {
         exec: {
             kind,
-            code: binary ? new Buffer(content).toString('base64') : content
+            code
         },
         parameters,
         annotations,
         limits
     }
 
-    return ow.actions.change({
-        actionName,
-        action
-    })
+    context.logger.info(`Deploying ${actionName}`)
+    return ow.actions.change({actionName, action})
+        .then(() => context.logger.info(`Action ${actionName} deployed`))
+        .catch(e => {
+            context.logger.error(e)
+            Promise.reject(e)
+        })
 }
 exports.deployAction = deployAction
 

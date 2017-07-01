@@ -15,69 +15,39 @@
  */
 const test = require('ava')
 const deployer = require('../../deployer')
-const util = require('util')
-const diff = require('../helpers/diff')
+const extra = require('../helpers/utils')
 
 require('../helpers/setup')(test)
 
-const simpleTriggerGold =
-    {
-        triggers: [{
-            triggerName: 'simple-trigger',
-            deployResult: {
-                name: 'simple-trigger',
-                publish: false,
-                annotations: [],
-                version: '0.0.1',
-                parameters: [],
-                limits: {},
-                namespace: 'org_openwhisk-deployer-test-space'
-            }
-        }]
-    }
 
-test('deploy-trigger1', async t => {
-    const result = await deployer.deploy(t.context.bx.ow, {
+test('non-observable trigger', async t => {
+    const ow = t.context.bx.ow
+    await extra.deleteTriggers(t, ow, ['triggers-1'])
+
+    const result = await deployer.deploy(ow, {
         basePath: 'test/triggers/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest.yaml',
-        force:true
+        location: 'manifest.yaml'
     })
-    //console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, result, simpleTriggerGold)
+
+    await extra.deleteTriggers(t, ow, ['triggers-1'])
+
+    t.pass()
 })
 
-const alarmTriggerGold =
-    {
-        triggers: [{
-            triggerName: 'alarm-trigger',
-            deployResult: {
-                name: 'alarm-trigger',
-                publish: false,
-                annotations: [],
-                version: '0.0.13',
-                parameters: [],
-                limits: {},
-                namespace: 'org_openwhisk-deployer-test-space'
-            },
-            feed: '/whisk.system/alarms/alarm',
-            feedParams: {
-                cron: '0 9 8 * *',
-                trigger_payload: 'trigger_payload',
-                lifecycleEvent: 'CREATE',
-                triggerName: 'alarm-trigger',
-                authKey: '[hidden]'
-            }
-        }]
-    }
 
-test('deploy-alarm-trigger', async t => {
-    const result = await deployer.deploy(t.context.bx.ow, {
+test('alarm feed', async t => {
+    const ow = t.context.bx.ow
+    await extra.deleteFeeds(t, ow, [['/whisk.system/alarms/alarm', 'triggers-2']])
+
+    const result = await deployer.deploy(ow, {
         basePath: 'test/triggers/fixtures',
         cache: t.context.tmpdir,
-        location: 'manifest-feed.yaml',
-        force:true
+        location: 'manifest-feed.yaml'
     })
-    //console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, result, alarmTriggerGold)
+
+    t.pass()
+
+    await extra.deleteFeeds(t, ow, [['/whisk.system/alarms/alarm', 'triggers-2']])
+
 })

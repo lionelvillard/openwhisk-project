@@ -1,11 +1,11 @@
 packages:
-  sequence-test3:
+  sequences-3:
     actions:
       mysequence:
-        sequence: in-same-package, sequence-test3-1/in-other-package
+        sequence: in-same-package, sequences-3-1/in-other-package
       in-same-package:
         location: echo.js
-  sequence-test3-1:
+  sequences-3-1:
     actions:
       in-other-package:
         location: cat.js

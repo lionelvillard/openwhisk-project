@@ -15,63 +15,27 @@
  */
 const test = require('ava')
 const deployer = require('../../deployer')
-const util = require('util')
-const diff = require('../helpers/diff')
+const extra = require('../helpers/utils')
 
 require('../helpers/setup')(test)
 
-const code1Gold = {
-    packages: [{
-        qname: 'code-action1',
-        deployResult: {
-            name: 'code-action1',
-            binding: {},
-            publish: false,
-            annotations: [],
-            version: '0.0.8',
-            parameters: [],
-            namespace: 'org_openwhisk-deployer-test-space'
-        }
-    }],
-    actions: [{
-        qname: 'code-action1/echo1',
-        location: '',
-        kind: 'nodejs:default',
-        params: [],
-        deployResult: {
-            name: 'echo1',
-            publish: false,
-            annotations: [{key: 'exec', value: 'nodejs:6'}],
-            version: '0.0.1',
-            exec: {
-                kind: 'nodejs:6',
-                code: 'function main(params) { console.log(params)\nreturn params || {}\n }',
-                binary: false
-            },
-            parameters: [],
-            limits: {timeout: 60000, memory: 256, logs: 10},
-            namespace: 'org_openwhisk-deployer-test-space'
-        }
-    }]
-}
-
-test('code-action1', async t => {
+test('action with inlined code', async t => {
+    const packageName = 'code-action-1'
     const ow = t.context.bx.ow
+    await extra.deletePackage(t, ow, packageName)
+
     const result = await deployer.deploy(ow, {
         basePath: 'test/actions/fixtures/code-action',
         cache: t.context.tmpdir,
-        location: 'manifest.yaml',
-        force: true
+        location: 'manifest.yaml'
     })
 
-    //console.log(util.inspect(result, {depth: null}))
-    diff.deepEqualModulo(t, result, code1Gold)
-
     const echo = await ow.actions.invoke({
-        actionName: 'code-action1/echo1',
+        actionName: 'code-action-1/echo',
         params: {lines: ['first', 'second']},
         blocking: true
     })
     t.deepEqual(echo.response.result, {lines: ['first', 'second']})
-    t.pass()
+
+    await extra.deletePackage(t, ow, packageName)
 })

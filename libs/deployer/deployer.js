@@ -51,9 +51,8 @@ const plugins = require('./libs/pluginmgr')
  * @return {Object} a deployment report.
  */
 const deploy = (ow, args) => {
-    logger.setLevel('OFF')
-    if (args.logger_level)
-        logger.setLevel(args.logger_level)
+    const level = args.logger_level || process.env.LOGGER_LEVEL || 'OFF'
+    logger.setLevel(level)
     args.logger = logger
 
     if (!ow || args.dryrun)
@@ -115,7 +114,8 @@ const loadManifest = args => {
     return args.load(args.location)
         .then(content => {
             // TODO: bad side-effect
-            args.manifest = yaml.parse(content)
+
+            args.manifest = yaml.parse(Buffer.from(content).toString())
         })
         .catch(err => {
             return Promise.reject(err) // propagate error
@@ -266,22 +266,23 @@ const deployActions = (ow, args) => report => {
 
     while (true) {
         const actions = helpers.pendingActions(graph)
-
         if (!actions)
             break
-        const subpromises = []
+        const delayed = []
         for (const qname in actions) {
             const entry = actions[qname]
-            const promise = handlers.lookupActionHandler(entry.action).deploy(ow, args, entry.pkgName, entry.actionName, entry.action)
-            subpromises.push(promise)
+
+            const handler = handlers.lookupActionHandler(entry.action)
+            const promise = () => handler.deploy(ow, args, entry.pkgName, entry.actionName, entry.action)
+            delayed.push(promise)
         }
 
         helpers.commitActions(actions)
         if (promises) {
             promises = promises
-                .then(reportActions1 => Promise.all(subpromises).then(reportActions2 => [...reportActions1, ...reportActions2]))
+                .then(reportActions1 => Promise.all(delayed.map(fn => fn())).then(reportActions2 => [...reportActions1, ...reportActions2]))
         } else {
-            promises = Promise.all(subpromises)
+            promises = Promise.all(delayed.map(fn => fn()))
         }
     }
 
@@ -339,7 +340,7 @@ const deploySequences = (ow, args) => report => {
                         limits
                     }
 
-                    let cmd = helpers.deployRawAction(ow, actionName, action)
+                    let cmd = helpers.deployRawAction(ow, args, actionName, action)
                         .then(reporter.action(actionName, '', 'sequence', parameters))
                         .catch(reporter.action(actionName, '', 'sequence', parameters))
 
@@ -411,6 +412,7 @@ const deployFeedAction = (ow, args, feed, triggerName, parameters) => report => 
     }
 
     // TODO: check for name conflicts
+    // TODO: use ow.feeds.create
 
     params.lifecycleEvent = 'CREATE'
     params.triggerName = triggerName
@@ -479,7 +481,7 @@ const localLoader = {
                 if (err)
                     reject(err)
                 else
-                    resolve(Buffer.from(content).toString())
+                    resolve(content)
             })
         })
 
