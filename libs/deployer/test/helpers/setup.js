@@ -6,7 +6,6 @@ let bxdata
 let testdir
 
 const beforeTest = async (t) => {
-
     let ns
     if (!process.env.BX_SPACE_CI && !process.env.AUTH_DEPLOYER_CI) {
         const loggedin = await bx.login()
@@ -23,13 +22,10 @@ const beforeTest = async (t) => {
         ns = keys[0]
     }
 
-    let api_key = process.env.AUTH_DEPLOYER_CI
-    if (ns)
-        api_key = `${ns.uuid}:${ns.key}`
+    const api_key = ns ? `${ns.uuid}:${ns.key}` : process.env.AUTH_DEPLOYER_CI
 
     if (!api_key)
         throw new Error(`Could not get a namespace`)
-
 
     bxdata = {
         space: process.env.BX_SPACE_CI,
