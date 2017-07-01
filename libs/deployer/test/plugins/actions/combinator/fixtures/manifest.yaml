@@ -17,7 +17,7 @@ packages:
 
       handleError:
         kind: nodejs
-        code: >
+        code: |
           return {status: 'Um a very bad thing just happened - sorry?'}
 
       trycatch:
