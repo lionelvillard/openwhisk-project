@@ -1,5 +1,5 @@
 {
-  "name": "@openwhisk-deploy/deployer",
+  "name": "@openwhisk-libs/deploy",
   "version": "1.1.1",
   "description": "",
   "main": "deployer.js",
