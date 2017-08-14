@@ -1,0 +1,4 @@
+packages:
+  packages-utils-annos:
+    annotations:
+      myannokey: myannovalue

@@ -1,0 +1,6 @@
+triggers:
+  alarm-trigger:
+    feed: /whisk.system/alarms/alarm
+    inputs:
+      cron: 0 9 8 * *
+      trigger_payload: trigger_payload

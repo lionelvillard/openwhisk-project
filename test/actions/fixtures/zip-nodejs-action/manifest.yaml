@@ -1,0 +1,6 @@
+packages:
+  utils-zip:
+    actions:
+      cat:
+        location: cat.js
+        zip: true

@@ -1,0 +1,5 @@
+packages:
+  sequence-test1:
+    sequences:
+      mysequence:
+        sequence: /whisk.system/utils/echo, /whisk.system/utils/cat
