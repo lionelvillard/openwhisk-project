@@ -1,6 +1,0 @@
-packages:
-  zip-nodejs-action-1:
-    actions:
-      cat:
-        location: cat.js
-        zip: true

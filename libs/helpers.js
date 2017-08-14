@@ -45,7 +45,7 @@ exports.deployAction = deployAction
 
 const getKeyValues = (inputs, args) => {
     if (inputs) {
-        return Object.keys(inputs).map(key => ({key, value: resolveValue(inputs[key], args)}))
+        return Object.keys(inputs).map(key => ({ key, value: resolveValue(inputs[key], args) }))
     }
     return []
 }

@@ -80,7 +80,7 @@ const deploy = (ow, args) => {
                 return Promise.reject(e)
             })
     } catch (e) {
-        return Promise.reject({error: e})
+        return Promise.reject({ error: e })
     }
 }
 exports.deploy = deploy
@@ -259,30 +259,21 @@ const deployPackage = (ow, name, parameters, annotations, binding, publish) => {
     })
 }
 
-const deployActions = (ow, args) => report => {
-    const manifest = args.manifest
-    const graph = helpers.dependenciesGraph(manifest)
-    let promises
+const deployPendingActions = (ow, args, graph) => {
+    const actions = helpers.pendingActions(graph)
+    if (actions) {
+        const promises = []
 
-    while (true) {
-        const actions = helpers.pendingActions(graph)
-
-        if (!actions)
-            break
-        const subpromises = []
         for (const qname in actions) {
             const entry = actions[qname]
             const promise = handlers.lookupActionHandler(entry.action).deploy(ow, args, entry.pkgName, entry.actionName, entry.action)
-            subpromises.push(promise)
+            promises.push(promise)
         }
 
         helpers.commitActions(actions)
-        if (promises) {
-            promises = promises
-                .then(reportActions1 => Promise.all(subpromises).then(reportActions2 => [...reportActions1, ...reportActions2]))
-        } else {
-            promises = Promise.all(subpromises)
-        }
+
+        return Promise.all(promises)
+            .then(reportAction1 => deployPendingActions(ow, args, graph).then(reportAction2 => [...reportAction1, ...reportAction2]))
     }
 
     const remaining = helpers.remainingActions(graph)
@@ -291,12 +282,15 @@ const deployActions = (ow, args) => report => {
         return Promise.reject(`Error: cyclic dependencies detected (${keys})`)
     }
 
-    if (promises) {
-        return promises.then(reporter.entity(report, 'actions'))
-    }
-    return Promise.resolve(report)
+    return Promise.resolve([])
 }
 
+const deployActions = (ow, args) => report => {
+    const manifest = args.manifest
+    const graph = helpers.dependenciesGraph(manifest)
+    return deployPendingActions(ow, args, graph)
+        .then(reportActions => (reportActions.length > 0) ? reporter.entity(report, 'actions')(reportActions) : report)
+}
 
 const deploySequences = (ow, args) => report => {
     const manifest = args.manifest

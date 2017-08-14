@@ -5,27 +5,8 @@ specified in the format described below.
  
 # Getting started
 
-## CLI
-
 ```bash
-$ npm install @openwhisk-deploy/cli -g
-$ wskd -h 
-```
-
-## Node.js library
-
-```bash
-$ npm install @openwhisk-deploy/deployer --save
-```
-
-## OpenWhisk action
-
-(Coming soon)
-
-In your manifest, add:
-```yaml
-includes:
-  - location: github.com/lionelvillard/openwhisk-deploy
+$ npm install @openwhisk-libs/deploy --save
 ```
 
 # Features
@@ -33,7 +14,7 @@ includes:
 The main features that are currently implemented are:
 * concurrent deployment 
 * automatic dependencies management (ie. actions in a sequence are deployed before the sequence itself)
-* extensible deployment format via [plugin](libs/deployer/README.md) (experimental)
+* extensible deployment format via [plugin](plugins/README.md) (experimental)
 * [modular](docs/format.md#includes) specification
 
 Supported action kinds: single nodejs file, nodejs module and 

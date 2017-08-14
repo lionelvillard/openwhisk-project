@@ -6,3 +6,4 @@ node_modules
 test-results
 samples
 .wskd
+bin/test.sh

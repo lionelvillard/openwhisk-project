@@ -29,9 +29,9 @@ const packageGold =
                 binding: {},
                 publish: false,
                 annotations: [],
-                version: '0.0.2',
+                version: '0.0.0',
                 parameters: [],
-                namespace: 'org_openwhisk-deployer-test-space'
+                namespace: '_'
             }
         }]
     }
@@ -57,9 +57,9 @@ const packageParamGold =
                 binding: {},
                 publish: false,
                 annotations: [],
-                version: '0.0.2',
+                version: '0.0.0',
                 parameters: [{key: 'mykey', value: 'myvalue'}],
-                namespace: 'org_openwhisk-deployer-test-space'
+                namespace: '_'
             }
         }]
     }
@@ -84,9 +84,9 @@ const packageAnnoGold =
                 binding: {},
                 publish: false,
                 annotations: [{key: 'myannokey', value: 'myannovalue'}],
-                version: '0.0.3',
+                version: '0.0.0',
                 parameters: [],
-                namespace: 'org_openwhisk-deployer-test-space'
+                namespace: '_'
             }
         }]
     }
@@ -122,9 +122,9 @@ const packageBindingGold =
                         namespace: 'whisk.system'
                     }
                 }],
-                version: '0.0.3',
+                version: '0.0.0',
                 parameters: [],
-                namespace: 'org_openwhisk-deployer-test-space'
+                namespace: '_'
             }
         }]
     }
@@ -151,9 +151,9 @@ const packagePublishGold =
                 binding: {},
                 publish: true,
                 annotations: [],
-                version: '0.0.3',
+                version: '0.0.0',
                 parameters: [],
-                namespace: 'org_openwhisk-deployer-test-space'
+                namespace: '_'
             }
         }]
     }

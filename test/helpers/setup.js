@@ -5,8 +5,7 @@ const openwhisk = require('openwhisk')
 let bxdata
 
 const beforeTest = async (t) => {
-    if (process.env.AUTH_DEPLOYER_CI)
-    {
+    if (process.env.AUTH_DEPLOYER_CI) {
         bxdata = {
             ow: openwhisk({
                 apihost: 'openwhisk.ng.bluemix.net',
@@ -14,29 +13,22 @@ const beforeTest = async (t) => {
             })
         }
     }
-    else {
-        const loggedin = await bx.login(process.env.BLUEMIX_API_KEY)
-
-        if (loggedin) {
-            const space = 'openwhisk-deployer-test-space'
-            const ns = await bx.createSpace(space)
-            bxdata = {
-                space,
-                ns,
-                ow: openwhisk({
-                    apihost: 'openwhisk.ng.bluemix.net',
-                    api_key: `${ns.uuid}:${ns.key}`
-                })
-            }
-        }
-        else {
-            bxdata = {
-                ow: null
-            }
+    else if (process.env.BX_SPACE_CI) {
+        const ns = await bx.createSpace(process.env.BX_SPACE_CI)
+        bxdata = {
+            space: process.env.BX_SPACE_CI,
+            ns,
+            ow: openwhisk({
+                apihost: 'openwhisk.ng.bluemix.net',
+                api_key: `${ns.uuid}:${ns.key}`
+            })
         }
     }
+    else {
+        console.log('undefined AUTH_DEPLOYER_CI and BX_SPACE_CI')
+        process.exit(1)
+    }
 }
-
 const beforeEachTest = async t => {
     try {
         await fs.mkdir('test-results')

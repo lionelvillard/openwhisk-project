@@ -21,37 +21,96 @@ const fail = (t, actual, expected) => {
     return t.deepEqual(expected, actual)
 }
 
-const diffModulo = (t, actual, expected) => {
-    const diff = deepDiff.diff(expected, actual)
-    if (diff) {
-        for (const edit of diff) {
-
-            // not a value change: fail
-            if (edit.kind !== 'E')
-                return fail(t, actual, expected)
-
-            if (!edit.path)
-                return fail(t, actual, expected)
-
-            const l = edit.path[edit.path.length - 1]
-            const l1 = edit.path[edit.path.length - 2]
-            const l2 = edit.path[edit.path.length - 3]
-
-            if (l1 === 'components' && l2 === 'exec') {
-                const lhs = names.parseQName(edit.lhs)
-                const rhs = names.parseQName(edit.rhs)
-
-                if (lhs.pkg !== rhs.pkg || lhs.name !== rhs.name)
-                    return fail(t, actual, expected)
-
-            } else if (!(l === 'path' && l1 === 'trigger')) { // ignore trigger/path
-                if (l !== 'version' && l !== 'namespace' && l !== 'location' && l !== 'authKey')
-                    return fail(t, actual, expected)
-            }
+const normAction = action => {
+    if (action.deployResult) {
+        if (action.deployResult.version)
+            action.deployResult.version = '0.0.0'
+        if (action.deployResult.namespace) {
+            action.deployResult.namespace = action.deployResult.namespace.replace(/^[^\/]*/, '_')
 
         }
+        if (action.deployResult.exec) {
+            if (action.deployResult.exec.components) {
+                if (!action.deployResult.exec.components[0].startsWith('/whisk.system'))
+                    action.deployResult.exec.components[0] = action.deployResult.exec.components[0].replace(/^\/[^\/]*/, '/_')
+                if (!action.deployResult.exec.components[0].startsWith('/whisk.system'))
+                    action.deployResult.exec.components[1] = action.deployResult.exec.components[1].replace(/^\/[^\/]*/, '/_')
+            }
+        }
 
+        if (action.deployResult.parameters) {
+            const _actions = action.deployResult.parameters.find(item => item.key === '_actions')
+            if (_actions) {
+                if (!_actions.value[0].startsWith('/whisk.system'))
+                    _actions.value[0] = _actions.value[0].replace(/^\/[^\/]*/, '/_')
+                if (!_actions.value[1].startsWith('/whisk.system'))
+                    _actions.value[1] = _actions.value[1].replace(/^\/[^\/]*/, '/_')
+            }
+        }
+    }
+    if (action.location)
+        action.location = ''
+}
 
+const normalize = (json) => {
+    if (json.packages) {
+        for (const pkg of json.packages) {
+            if (pkg.deployResult) {
+                if (pkg.deployResult.version)
+                    pkg.deployResult.version = '0.0.0'
+                if (pkg.deployResult.namespace)
+                    pkg.deployResult.namespace = '_'
+            }
+        }
+    }
+    if (json.actions) {
+        for (const action of json.actions) {
+            normAction(action)
+        }
+    }
+    if (json.sequences) {
+        for (const action of json.sequences) {
+            normAction(action)
+        }
+    }
+    if (json.triggers) {
+        for (const trigger of json.triggers) {
+            if (trigger.deployResult) {
+                if (trigger.deployResult.version)
+                    trigger.deployResult.version = '0.0.0'
+                if (trigger.deployResult.namespace)
+                    trigger.deployResult.namespace = '_'
+            }
+            if (trigger.feedParams) {
+                if (trigger.feedParams.authKey) {
+                    trigger.feedParams.authKey = '[hidden]'
+                }
+            }
+                
+        }
+    }
+    if (json.rules) {
+        for (const rule of json.rules) {
+            if (rule.deployResult) {
+                if (rule.deployResult.version)
+                    rule.deployResult.version = '0.0.0'
+                if (rule.deployResult.namespace)
+                    rule.deployResult.namespace = '_'
+                if (rule.deployResult.trigger) {
+                    if (rule.deployResult.trigger.path) {
+                        rule.deployResult.trigger.path = '_'
+                    }
+                }
+            }
+        }
+    }
+}
+
+const diffModulo = (t, actual, expected) => {
+    normalize(actual)
+    const diff = deepDiff.diff(expected, actual)
+    if (diff) {
+        return fail(t, actual, expected)
     }
     t.pass()
 }

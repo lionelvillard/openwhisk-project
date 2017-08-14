@@ -1,5 +1,0 @@
-packages:
-  sequences-2:
-    actions:
-      mysequence:
-        sequence: /whisk.system/utils/echo, /whisk.system/utils/cat

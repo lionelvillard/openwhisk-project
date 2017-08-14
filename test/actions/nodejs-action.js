@@ -31,13 +31,13 @@ const nodejsActionGold =
                 annotations: [],
                 version: '0.0.0',
                 parameters: [],
-                namespace: 'dummy_openwhisk-deployer-test-space'
+                namespace: '_'
             }
         }],
         actions: [{
             qname: 'utils/cat',
             kind: 'nodejs:default',
-            location: 'fixtures/nodejs-action/manifest.yaml',
+            location: '',
             params: [],
             deployResult: {
                 name: 'cat',
@@ -51,7 +51,7 @@ const nodejsActionGold =
                 },
                 parameters: [],
                 limits: {timeout: 60000, memory: 256, logs: 10},
-                namespace: 'dummy_openwhisk-deployer-test-space/utils'
+                namespace: '_/utils'
             }
         }]
     }
@@ -76,21 +76,21 @@ const nodejsparamActionGold =
                 binding: {},
                 publish: false,
                 annotations: [],
-                version: '0.0.4',
+                version: '0.0.0',
                 parameters: [],
-                namespace: 'org_openwhisk-deployer-test-space'
+                namespace: '_'
             }
         }],
         actions: [{
             qname: 'utils-with-param/cat-with-param',
-            location: 'openwhisk-deploy/libs/deployer/test/actions/fixtures/nodejs-action/manifest-params.yaml',
+            location: '',
             kind: 'nodejs:default',
             params: [{key: 'mykey', value: 'myvalue'}],
             deployResult: {
                 name: 'cat-with-param',
                 publish: false,
                 annotations: [{key: 'exec', value: 'nodejs:6'}],
-                version: '0.0.4',
+                version: '0.0.0',
                 exec: {
                     kind: 'nodejs:6',
                     code: '/**\n * Equivalent to unix cat command.\n * Return all the lines in an array. All other fields in the input message are stripped.\n * @param lines An array of strings.\n */\nfunction main(msg) {\n    var lines = msg.lines || [];\n    var retn = {lines: lines, payload: lines.join("\\n")};\n    console.log(\'cat: returning \' + JSON.stringify(retn));\n    return retn;\n}\n',
@@ -98,7 +98,7 @@ const nodejsparamActionGold =
                 },
                 parameters: [{key: 'mykey', value: 'myvalue'}],
                 limits: {timeout: 60000, memory: 256, logs: 10},
-                namespace: 'org_openwhisk-deployer-test-space/utils-with-param'
+                namespace: '_/utils-with-param'
             }
         }]
     }
@@ -124,21 +124,21 @@ const nodejsannoActionGold =
                 binding: {},
                 publish: false,
                 annotations: [],
-                version: '0.0.4',
+                version: '0.0.0',
                 parameters: [],
-                namespace: 'org_openwhisk-deployer-test-space'
+                namespace: '_'
             }
         }],
         actions: [{
             qname: 'utils-with-annotation/cat-with-annotation',
-            location: 'openwhisk-deploy/libs/deployer/test/actions/fixtures/nodejs-action/manifest-annotation.yaml',
+            location: '',
             kind: 'nodejs:default',
             params: [],
             deployResult: {
                 name: 'cat-with-annotation',
                 publish: false,
                 annotations: [{key: 'myannokey', value: 'myannovalue'}, {key: 'exec', value: 'nodejs:6'}],
-                version: '0.0.4',
+                version: '0.0.0',
                 exec: {
                     kind: 'nodejs:6',
                     code: '/**\n * Equivalent to unix cat command.\n * Return all the lines in an array. All other fields in the input message are stripped.\n * @param lines An array of strings.\n */\nfunction main(msg) {\n    var lines = msg.lines || [];\n    var retn = {lines: lines, payload: lines.join("\\n")};\n    console.log(\'cat: returning \' + JSON.stringify(retn));\n    return retn;\n}\n',
@@ -146,7 +146,7 @@ const nodejsannoActionGold =
                 },
                 parameters: [],
                 limits: {timeout: 60000, memory: 256, logs: 10},
-                namespace: 'org_openwhisk-deployer-test-space/utils-with-annotation'
+                namespace: '_/utils-with-annotation'
             }
         }]
     }

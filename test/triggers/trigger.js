@@ -28,10 +28,10 @@ const simpleTriggerGold =
                 name: 'simple-trigger',
                 publish: false,
                 annotations: [],
-                version: '0.0.1',
+                version: '0.0.0',
                 parameters: [],
                 limits: {},
-                namespace: 'org_openwhisk-deployer-test-space'
+                namespace: '_'
             }
         }]
     }
@@ -55,10 +55,10 @@ const alarmTriggerGold =
                 name: 'alarm-trigger',
                 publish: false,
                 annotations: [],
-                version: '0.0.13',
+                version: '0.0.0',
                 parameters: [],
                 limits: {},
-                namespace: 'org_openwhisk-deployer-test-space'
+                namespace: '_'
             },
             feed: '/whisk.system/alarms/alarm',
             feedParams: {

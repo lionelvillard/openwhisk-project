@@ -28,9 +28,9 @@ const code1Gold = {
             binding: {},
             publish: false,
             annotations: [],
-            version: '0.0.8',
+            version: '0.0.0',
             parameters: [],
-            namespace: 'org_openwhisk-deployer-test-space'
+            namespace: '_'
         }
     }],
     actions: [{
@@ -42,7 +42,7 @@ const code1Gold = {
             name: 'echo1',
             publish: false,
             annotations: [{key: 'exec', value: 'nodejs:6'}],
-            version: '0.0.1',
+            version: '0.0.0',
             exec: {
                 kind: 'nodejs:6',
                 code: 'function main(params) { console.log(params)\nreturn params || {}\n }',
@@ -50,7 +50,7 @@ const code1Gold = {
             },
             parameters: [],
             limits: {timeout: 60000, memory: 256, logs: 10},
-            namespace: 'org_openwhisk-deployer-test-space'
+            namespace: '_/code-action1'
         }
     }]
 }

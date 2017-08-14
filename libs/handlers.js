@@ -126,7 +126,6 @@ const getComponents = (namespace, pkgName, sequence) => {
     let components = []
     for (const i in actions) {
         const component = names.resolveQName(actions[i], namespace, pkgName)
-
         // TODO: check component exists?
 
         components.push(component)

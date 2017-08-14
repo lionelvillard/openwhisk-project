@@ -28,10 +28,10 @@ const ruleGold =
                 name: 'rules-trigger1',
                 publish: false,
                 annotations: [],
-                version: '0.0.3',
+                version: '0.0.0',
                 parameters: [],
                 limits: {},
-                namespace: 'org_openwhisk-deployer-test-space'
+                namespace: '_'
             }
         }],
         rules: [{
@@ -40,12 +40,12 @@ const ruleGold =
                 name: 'rules-rule1',
                 publish: false,
                 annotations: [],
-                version: '0.0.2',
+                version: '0.0.0',
                 status: 'active',
                 action: {path: 'whisk.system/utils', name: 'echo'},
-                namespace: 'org_openwhisk-deployer-test-space',
+                namespace: '_',
                 trigger: {
-                    path: 'org_openwhisk-deployer-test-space',
+                    path: '_',
                     name: 'rules-trigger1'
                 }
             }

@@ -1,7 +1,0 @@
-packages:
-  nodejs-action-3:
-    actions:
-      echo-with-param:
-        location: echo.js
-        inputs:
-          msg: Hello
