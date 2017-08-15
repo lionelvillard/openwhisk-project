@@ -8,4 +8,4 @@ if ! type bx > /dev/null; then
     sudo ./install_bluemix_cli
 fi
 
-bx login -a https://api.ng.bluemix.net -s dev
+bx login -a https://api.ng.bluemix.net -o $BLUEMIX_ORG

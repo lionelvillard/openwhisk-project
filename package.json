@@ -1,6 +1,6 @@
 {
   "name": "@openwhisk-libs/deploy",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "",
   "main": "deployer.js",
   "scripts": {
@@ -8,7 +8,11 @@
     "pubpatch": "npm version patch && npm publish --access public",
     "pubminor": "npm version minor && npm publish --access public"
   },
-  "author": "",
+  "author": "Lionel Villard",
+  "repository": {
+    "url": "https://github.com/lionelvillard/openwhisk-deploy.git",
+    "type" : "git"
+  },
   "license": "Apache-2.0",
   "dependencies": {
     "@openwhisk-libs/names": "^1.0.0",
