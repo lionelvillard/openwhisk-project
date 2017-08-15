@@ -6,8 +6,8 @@ export BX_SPACE_CI=openwhisk-deploy-ci`uuidgen`
 
 bx iam space-create ${BX_SPACE_CI}
 
-echo Wait for key to sync
-sleep 15
+echo Wait 20s for key to sync
+sleep 20
 
 (cd ${DIR}/.. && npm test)
 code=$?
