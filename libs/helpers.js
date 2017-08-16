@@ -15,7 +15,7 @@
  */
 const path = require('path')
 const handlers = require('./handlers')
-const names = require('@openwhisk-libs/names')
+const names = require('./names')
 
 const deployRawAction = (ow, actionName, action) => {
     return ow.actions.change({
@@ -100,31 +100,43 @@ const getBinary = (action, kind) => {
 }
 exports.getBinary = getBinary
 
+// Add action to graph.
+function extendGraph(graph, ns, pkgName, actionName, action) {
+    const dependencies = handlers.lookupActionHandler(action).dependsOn(ns, pkgName, action)
+    const qname = `${pkgName}/${actionName}`
+    if (graph[qname])
+        throw new Error(`Duplicate action ${qname}`)
+
+    graph[`${pkgName}/${actionName}`] = {
+        pkgName,
+        actionName,
+        action,
+        deployed: false,
+        dependencies
+    }
+}
+
 const dependenciesGraph = manifest => {
-    const packages = manifest.packages || {}
     const graph = {}
+
+    // Process default package
+    let actions = manifest.actions || {}
+    for (const actionName in actions) {
+        extendGraph(graph, manifest.namespace, '', actionName, actions[actionName])
+    }
+
+    // Process named-packages
+    const packages = manifest.packages || {}
 
     for (const pkgName in packages) {
         const pkg = packages[pkgName] || {}
 
-        const actions = pkg.actions || {}
+        actions = pkg.actions || {}
         for (const actionName in actions) {
-            const action = actions[actionName]
-
-            const dependencies = handlers.lookupActionHandler(action).dependsOn(manifest.namespace, pkgName, action)
-            const qname = `${pkgName}/${actionName}`
-            if (graph[qname])
-                throw new Error(`Duplicate action ${qname}`)
-
-            graph[`${pkgName}/${actionName}`] = {
-                pkgName,
-                actionName,
-                action,
-                deployed: false,
-                dependencies
-            }
+            extendGraph(graph, manifest.namespace, pkgName, actionName, actions[actionName])
         }
     }
+
     return graph
 }
 exports.dependenciesGraph = dependenciesGraph

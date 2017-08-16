@@ -1,0 +1,3 @@
+actions:
+  cat-in-default-package:
+    location: nodejs-action/cat.js

@@ -11,6 +11,7 @@ A *deployment* is an *object* representing a collection of OpenWhisk entities to
 
 - [`includes`](#includes) (array, optional)
 - [`packages`](#packages) (object, optional)
+- [`actions`](#actions) (object, optional)
 - [`triggers`](#triggers) (object, optional)
 - [`rules`](#rules) (object, optional)
 
@@ -93,8 +94,8 @@ An *object* representing the content of a package.
 
 An *object* representing a list of `action`s. 
 
-Actions can be specified in any order: `openwhisk-deploy` makes sure
-actions depending of other actions are deployed after these actions.
+Actions can be specified in any order, e.g. actions composing sequences can be specified after sequences.
+An error is raised when there is a dependency cycle.  
 
 ## Properties
 

@@ -17,7 +17,7 @@
 const builder = require('./builders')
 const helpers = require('./helpers')
 const reporter = require('./reporter')
-const names = require('@openwhisk-libs/names')
+const names = require('./names')
 const path = require('path')
 const plugins = require('./pluginmgr')
 
@@ -35,7 +35,7 @@ const handleCopy = (ow, args, pkgName, actionName, action) => {
     const params = helpers.getKeyValues(action.inputs, args)
     const annotations = helpers.getKeyValues(action.annotations, args)
     const limits = action.limits || {}
-    const qname = `${pkgName}/${actionName}`
+    const qname = names.makeQName(null, pkgName, actionName)
 
     return getAction(ow, sourceActionName)
         .then(deployCopyAction(ow, qname, params, annotations, limits))
@@ -114,7 +114,7 @@ const handleSequence = (ow, args, pkgName, actionName, action) => {
         annotations,
         limits
     }
-    const qname = `${pkgName}/${actionName}`
+    const qname = names.makeQName(null, pkgName, actionName)
     return helpers.deployRawAction(ow, qname, sequence)
         .then(reporter.action(qname, '', 'sequence', parameters))
         .catch(reporter.action(qname, '', 'sequence', parameters))
@@ -167,7 +167,7 @@ const handleCode = (ow, args, pkgName, actionName, action) => {
         annotations,
         limits
     }
-    const qname = `${pkgName}/${actionName}`
+    const qname = names.makeQName(null, pkgName, actionName)
 
     return helpers.deployRawAction(ow, qname, wskaction)
         .then(reporter.action(qname, '', kind, parameters))
@@ -178,7 +178,6 @@ const handleCode = (ow, args, pkgName, actionName, action) => {
 const dependsOnCode = (namespace, pkgName, action) => {
     return []
 }
-
 
 // --- Fallback
 
@@ -195,7 +194,7 @@ const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
     const limits = action.limits || {}
 
     const binary = helpers.getBinary(action, kind)
-    const qname = `${pkgName}/${actionName}`
+    const qname = names.makeQName(null, pkgName, actionName)
 
     return buildAction(args, kind, action)
         .then(args.load)
