@@ -18,9 +18,10 @@ A *deployment* is an *object* representing a collection of OpenWhisk entities to
 ### Example
 
 ```yaml
-includes:
-packages:
-triggers:
+includes:  # includes other deployment
+actions:   # actions in the default package
+packages:  # actions in packages and package bindings
+triggers:  
 rules:
 ```
 
