@@ -15,7 +15,7 @@
  */
 const chevrotain = require('chevrotain')
 const utils = require('../../../libs/utils')
-const names = require('@openwhisk-libs/names')
+const names = require('../../../libs/names')
 
 // ----------------- lexer -----------------
 
