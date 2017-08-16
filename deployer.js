@@ -72,7 +72,6 @@ const deploy = (ow, args) => {
             .then(deployPackages(ow, args, false)) // bindings
             .then(deployPackages(ow, args, true))  // new packages
             .then(deployActions(ow, args))
-            .then(deploySequences(ow, args))
             .then(deployTriggers(ow, args))
             .then(deployRules(ow, args))
             .catch(e => {
@@ -290,61 +289,6 @@ const deployActions = (ow, args) => report => {
     const graph = helpers.dependenciesGraph(manifest)
     return deployPendingActions(ow, args, graph)
         .then(reportActions => (reportActions.length > 0) ? reporter.entity(report, 'actions')(reportActions) : report)
-}
-
-const deploySequences = (ow, args) => report => {
-    const manifest = args.manifest
-    if (manifest.hasOwnProperty('packages')) {
-        const packages = manifest.packages
-        const promises = []
-        for (const pkgName in packages) {
-            const pkg = packages[pkgName] || {}
-
-            if (pkg.hasOwnProperty('sequences')) {
-                const sequences = pkg.sequences
-                for (let actionName in sequences) {
-                    const sequence = sequences[actionName]
-                    actionName = `${pkgName}/${actionName}`
-
-                    let components = []
-
-                    if (!sequence.hasOwnProperty('sequence'))
-                        throw `Missing property 'sequence' on sequence ${actionName}.`
-
-                    let actions = sequence.sequence.split(',')
-                    for (let i in actions) {
-                        const component = names.resolveQName(actions[i], manifest.namespace, pkgName)
-
-                        // TODO: check component exists?
-
-                        components.push(component)
-                    }
-                    const parameters = helpers.getKeyValues(sequence.inputs, args)
-                    const annotations = helpers.getKeyValues(sequence.annotations, args)
-                    const limits = sequence.limits || {}
-
-                    const action = {
-                        exec: {
-                            kind: 'sequence',
-                            components
-                        },
-                        parameters,
-                        annotations,
-                        limits
-                    }
-
-                    let cmd = helpers.deployRawAction(ow, actionName, action)
-                        .then(reporter.action(actionName, '', 'sequence', parameters))
-                        .catch(reporter.action(actionName, '', 'sequence', parameters))
-
-                    promises.push(cmd)
-                }
-            }
-        }
-        if (promises.length != 0)
-            return Promise.all(promises).then(reporter.entity(report, 'sequences'))
-    }
-    return Promise.resolve(report)
 }
 
 const deployTriggers = (ow, args) => report => {

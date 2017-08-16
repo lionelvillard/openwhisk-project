@@ -1,7 +1,6 @@
 [![Build Status](https://travis-ci.org/lionelvillard/openwhisk-deploy.svg?branch=master)](https://travis-ci.org/lionelvillard/openwhisk-deploy)
 
-This project provides a set of libraries and an CLI for deploying OpenWhisk entities 
-specified in the format described below.
+This project provides a tool for deploying OpenWhisk entities specified in the format described below.
  
 # Getting started
 
@@ -17,8 +16,10 @@ The main features that are currently implemented are:
 * extensible deployment format via [plugin](plugins/README.md) (experimental)
 * [modular](docs/format.md#includes) specification
 
-Supported action kinds: single nodejs file, nodejs module and 
-inline nodejs code.
+Supported action kinds: 
+- single nodejs file
+- nodejs packages 
+- inline nodejs code
 
 # Example
 

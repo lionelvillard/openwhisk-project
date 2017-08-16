@@ -34,7 +34,7 @@ const sequenceGold =
                 namespace: '_'
             }
         }],
-        sequences: [{
+        actions: [{
             qname: 'sequence-test1/mysequence',
             location: '',
             kind: 'sequence',
@@ -65,6 +65,8 @@ test('deploy-sequence1', async t => {
         location: 'manifest.yaml',
         force: true
     })
+    // console.log(util.inspect(result, { depth: null }))
+
     diff.deepEqualModulo(t, result, sequenceGold)
 })
 

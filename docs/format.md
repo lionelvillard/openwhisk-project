@@ -83,8 +83,8 @@ An *object* representing the content of a package.
 
 ### Properties
 
-- `actions` (object, optional): a list of actions
-- `sequences` (object, optional): a list of sequence actions
+- [`actions`](#actions) (object, optional): a list of actions
+- [`sequences`](#sequences) (object, optional): a list of sequence actions
 - `inputs` ([`parameters`](#parameters), optional): package parameters
 - `annotations` ([`annotations`](#annotations), optional)
 - `publish` (boolean, optional, default: false): indicate whether the package is public or private
@@ -98,7 +98,7 @@ actions depending of other actions are deployed after these actions.
 
 ## Properties
 
-- `{action-name}` ([`action`](#action) | [`sequence`](#sequence) | [`copy`](#copy)| [`inline`](#inline), optional)
+- `{action-name}` ([`action`](#action) | [`sequence`](#sequence) | [`copy`](#copy) | [`inline`](#inline), optional)
 
   `action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
   and must be unique among the list of action names and sequence action names. 
@@ -107,15 +107,16 @@ actions depending of other actions are deployed after these actions.
 
 An *object* representing an action. Extends [`baseAction`](#baseaction)
 
-
 ### Properties
 
 - `location` (string, required): the action code location
    
    Must be a path relative to the directory containing the deployment file.
+
 - `kind` (enum, optional): the action kind. If not provided, it is determined based on the location file extension
    - `nodejs`: node js action. Selected when file extension is `.js` 
    - `nodejs:6`
+
 - `zip` (boolean, optional, default: false): whether to zip the action. 
    
    - For `nodejs` action, `npm install --production` is run before `zip` 
@@ -188,18 +189,6 @@ packages:
           console.log(params)
           return params || {}
 ```
-
-## `sequences`
-
-An *object* representing a list of `sequence` actions.
-
-## Properties
-
-- `{sequence-action-name}` ([`sequence`](#sequence), optional)
-
-  `sequence-action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
-  and must be unique among the list of action names and sequence action names. 
-
 ## `sequence`
 
 An *object* representing a sequence action. Extends [`baseAction`](#baseaction)
@@ -216,7 +205,7 @@ An *object* representing a sequence action. Extends [`baseAction`](#baseaction)
 ```yaml
 packages:
   utils:
-    sequences:
+    actions:
       mysequence:
         sequence: /whisk.system/utils/echo, /whisk.system/utils/cat
 ```
