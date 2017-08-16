@@ -1,4 +1,4 @@
-const bx = require('@openwhisk-libs/bluemix')
+const bx = require('../../libs/bluemix')
 const fs = require('fs-extra')
 const openwhisk = require('openwhisk')
 

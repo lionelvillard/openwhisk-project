@@ -20,7 +20,7 @@ const path = require('path')
 const simpleGit = require('simple-git')
 const logger = require('log4js').getLogger()
 
-const names = require('@openwhisk-libs/names')
+const names = require('./libs/names')
 const utils = require('./libs/utils')
 const fakeow = require('./libs/fakeow')
 const reporter = require('./libs/reporter')

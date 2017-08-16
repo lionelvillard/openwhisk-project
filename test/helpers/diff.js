@@ -15,7 +15,6 @@
  */
 
 const deepDiff = require('deep-diff')
-const names = require('@openwhisk-libs/names')
 
 const fail = (t, actual, expected) => {
     return t.deepEqual(expected, actual)
