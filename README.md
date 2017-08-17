@@ -20,6 +20,7 @@ Supported action kinds:
 - single nodejs file
 - nodejs packages 
 - inline nodejs code
+- docker
 
 # Example
 

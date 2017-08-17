@@ -265,7 +265,8 @@ const deployPendingActions = (ow, args, graph) => {
 
         for (const qname in actions) {
             const entry = actions[qname]
-            const promise = handlers.lookupActionHandler(entry.action).deploy(ow, args, entry.pkgName, entry.actionName, entry.action)
+            const action = entry.action
+            const promise = handlers.lookupActionHandler(action).deploy(ow, args, action)
             promises.push(promise)
         }
 

@@ -16,6 +16,7 @@
 const path = require('path')
 const handlers = require('./handlers')
 const names = require('./names')
+const fs = require('fs')
 
 const deployRawAction = (ow, actionName, action) => {
     return ow.actions.change({
@@ -71,6 +72,20 @@ const resolveValue = (value, args) => {
     return value
 }
 
+// Normalize action location, e.g. /../myaction containing Dockerfile become /../myaction/Dockerfile
+const normalizeLocation = action => {
+    if (!action.location)
+        return
+
+    if (fs.existsSync(path.join(action.location, 'Dockerfile'))) {
+        action.location = path.join(action.location, 'Dockerfile')
+    }
+    if (fs.existsSync(path.join(action.location, 'package.json'))) {
+        action.location = path.join(action.location, 'package.json')
+    }
+}
+exports.normalizeLocation = normalizeLocation
+
 const kindsForExt = {
     '.js': 'nodejs:default',
     '.py': 'python:default',
@@ -82,13 +97,14 @@ const getKind = action => {
     if (action.hasOwnProperty('kind'))
         return action.kind
 
-    // Try to infer the kind
     const p = path.parse(action.location)
-    const kind = kindsForExt[p.ext]
-    if (kind)
-        return kind
+    if (p.base === 'package.json')
+        return 'nodejs:default'
 
-    return 'blackbox'
+    if (p.base === 'Dockerfile')
+        return 'blackbox'
+
+    return kindsForExt[p.ext]
 }
 exports.getKind = getKind
 
@@ -100,22 +116,53 @@ const getBinary = (action, kind) => {
 }
 exports.getBinary = getBinary
 
+const getDockerImage = (manifest, action) => {
+    const dockerhub = args.manifest.dockerhub
+    if (!dockerhub)
+        return { error: 'Missing dockerhub configuration' }
+
+    const username = dockerhub.username
+    if (!username)
+        return { error: 'Missing dockerhub.username' }
+
+    function espace(wskname) {
+        return wskname ? wskname.replace(/[\s@_]/, '.') : ''
+    }
+    
+    return { image: `${username}/${escape(action.packageName)}/${escape(action.actionName)}` }
+}
+exports.getDockerImage = getDockerImage
+
 // Add action to graph.
 function extendGraph(graph, ns, pkgName, actionName, action) {
-    const dependencies = handlers.lookupActionHandler(action).dependsOn(ns, pkgName, action)
+    action.actionName = actionName
+    action.packageName = pkgName
+
+    const dependencies = handlers.lookupActionHandler(action).dependsOn(ns, action)
     const qname = `${pkgName}/${actionName}`
     if (graph[qname])
         throw new Error(`Duplicate action ${qname}`)
 
     graph[`${pkgName}/${actionName}`] = {
-        pkgName,
-        actionName,
         action,
         deployed: false,
         dependencies
     }
 }
 
+/* Compute a dependency graph of the form
+   
+   {
+       "pkgname/actionname": { 
+           action,
+           deployed: false|true,
+           dependencies: [ actionname ]
+       }
+       ...
+   } 
+
+   pkgname/actionname can be deployed when all its dependencies have been marked as deployed
+*/
 const dependenciesGraph = manifest => {
     const graph = {}
 

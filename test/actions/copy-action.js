@@ -140,7 +140,7 @@ test('copy-local-action', async t => {
         force: true
     })
 
-    // console.log(util.inspect(result, {depth: null}))
+    //console.log(util.inspect(result, {depth: null}))
     diff.deepEqualModulo(t, result, copyLocalActionGold)
 
     const cat = await ow.actions.invoke({

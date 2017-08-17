@@ -98,12 +98,12 @@ An *object* representing a list of `action`s.
 Actions can be specified in any order, e.g. actions composing sequences can be specified after sequences.
 An error is raised when there is a dependency cycle.  
 
-## Properties
+### Properties
 
-- `{action-name}` ([`action`](#action) | [`sequence`](#sequence) | [`copy`](#copy) | [`inline`](#inline), optional)
+- `{action-name}` ([`action`](#action) | [`sequence`](#sequence) | [`copy`](#copy) | [`inline`](#inline) | [`docker`](#inline), optional)
 
   `action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
-  and must be unique among the list of action names and sequence action names. 
+  and must be unique among the list of action names.
 
 ## `action`
 
@@ -111,19 +111,22 @@ An *object* representing an action. Extends [`baseAction`](#baseaction)
 
 ### Properties
 
-- `location` (string, required): the action code location
+- `location` (string, required): the action code location. Either a folder or a file.
    
    Must be a path relative to the directory containing the deployment file.
 
-- `kind` (enum, optional): the action kind. If not provided, it is determined based on the location file extension
-   - `nodejs`: node js action. Selected when file extension is `.js` 
-   - `nodejs:6`
-
+- `kind` (enum, optional): the action kind. Determined automatically (see below)  
+   - `nodejs`: node js (latest builtin version) action. This is the default kind when 
+       - the location points to a file with the extension `.js`
+       - the location points to `package.json` 
+       - the location points to a folder containing `package.json` 
+   - `nodejs:6`: builtin node js 6.* action. See the [nodejs6 docker file](https://raw.githubusercontent.com/apache/incubator-openwhisk/master/core/nodejs6Action/Dockerfile) for the details of which npm packages are available. 
+   
 - `zip` (boolean, optional, default: false): whether to zip the action. 
    
    - For `nodejs` action, `npm install --production` is run before `zip` 
 
-## Example
+### Example
 
 ```yaml
 packages:
@@ -146,14 +149,14 @@ Extends [`baseAction`](#baseaction)
 
 - `copy` (string, optional): the name of the action to copy. Subject to [naming resolution](#entity-name-resolution)
 
-    Copy `parameters`, `annotations`,`limits` and the action executable content.
+    Copy `parameters`, `annotations`, `limits` and the action executable content.
     Can be overridden or extended with [`inputs`](#parameters), [`annotations`](#annotations), [`limits`](#limits)
 
     The action to copy can either be locally defined (in the same manifest) 
     or already deployed.
 
   
-## Example
+### Example
 
 ```yaml
 packages:
@@ -180,7 +183,7 @@ Extends [`baseAction`](#baseaction)
 - `extra` (string, optional): additional code   
 - `kind` ([`baseAction`](#baseaction) enum, required): the required action kind
    
-## Example
+### Example
 
 ```yaml
 packages:
@@ -210,6 +213,22 @@ packages:
     actions:
       mysequence:
         sequence: /whisk.system/utils/echo, /whisk.system/utils/cat
+```
+
+## `docker`
+
+A docker action. See [docker action](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-docker-actions) for more details
+
+### Properties
+
+- `docker` (string, required): a docker image.
+
+### Example
+
+```yaml
+actions:
+  docker-action:
+    image: openwhisk/dockerskeleton
 ```
 
 ## `baseAction`
@@ -274,7 +293,7 @@ An `object` representing a list of `rules`s.
 
 ### Properties
 
-- `{rule-name}` ([`rule`](#rule), optional)
+- `{rule-name}` ([`rule`](#rule), optional): 
 
 ## `rule`
 
@@ -295,6 +314,7 @@ rules:
     trigger: image-uploaded
     action: write-from-cloudant-sequence
 ```
+
 
 ## `parameters`
 

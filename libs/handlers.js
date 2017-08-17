@@ -23,19 +23,21 @@ const plugins = require('./pluginmgr')
 
 // --- Copy action
 
-const handleCopy = (ow, args, pkgName, actionName, action) => {
+const handleCopy = (ow, args, action) => {
     const manifest = args.manifest
-    const sourceActionName = names.resolveQName(action.copy, manifest.namespace, pkgName)
+    const sourceActionName = names.resolveQName(action.copy, manifest.namespace, action.packageName)
 
     const sourceAction = findAction(manifest, sourceActionName)
     if (sourceAction) {
-        return lookupActionHandler(sourceAction).deploy(ow, args, pkgName, actionName, sourceAction)
+        const patchedAction = Object.assign(sourceAction, {actionName: action.actionName})
+        return lookupActionHandler(patchedAction).deploy(ow, args, patchedAction)
     }
 
     const params = helpers.getKeyValues(action.inputs, args)
     const annotations = helpers.getKeyValues(action.annotations, args)
     const limits = action.limits || {}
-    const qname = names.makeQName(null, pkgName, actionName)
+    
+    const qname = names.makeQName(null, action.packageName, action.actionName)
 
     return getAction(ow, sourceActionName)
         .then(deployCopyAction(ow, qname, params, annotations, limits))
@@ -43,12 +45,12 @@ const handleCopy = (ow, args, pkgName, actionName, action) => {
         .catch(reporter.action(qname, sourceActionName, '<copied>', params))
 }
 
-const dependsOnCopy = (namespace, pkgName, action) => {
-    return [names.resolveQName(action.copy, namespace, pkgName)]
+const dependsOnCopy = (namespace, action) => {
+    return [names.resolveQName(action.copy, namespace, action.packageName)]
 }
 
 const getAction = (ow, actionName) => {
-    return ow.actions.get({actionName})
+    return ow.actions.get({ actionName })
 }
 
 const deployCopyAction = (ow, actionName, params, annos, newlimits) => sourceAction => {
@@ -99,9 +101,9 @@ const findAction = (manifest, actionName) => {
 
 // --- Sequence
 
-const handleSequence = (ow, args, pkgName, actionName, action) => {
+const handleSequence = (ow, args, action) => {
     const manifest = args.manifest
-    const components = getComponents(manifest.namespace, pkgName, action.sequence)
+    const components = getComponents(manifest.namespace, action.packageName, action.sequence)
     const parameters = helpers.getKeyValues(action.inputs, args)
     const annotations = helpers.getKeyValues(action.annotations, args)
     const limits = action.limits || {}
@@ -114,11 +116,10 @@ const handleSequence = (ow, args, pkgName, actionName, action) => {
         annotations,
         limits
     }
-    const qname = names.makeQName(null, pkgName, actionName)
+    const qname = names.makeQName(null, action.packageName, action.actionName)
     return helpers.deployRawAction(ow, qname, sequence)
         .then(reporter.action(qname, '', 'sequence', parameters))
         .catch(reporter.action(qname, '', 'sequence', parameters))
-
 }
 
 const getComponents = (namespace, pkgName, sequence) => {
@@ -133,15 +134,40 @@ const getComponents = (namespace, pkgName, sequence) => {
     return components
 }
 
-const dependsOnSequence = (namespace, pkgName, action) => {
-    return getComponents(namespace, pkgName, action.sequence)
+const dependsOnSequence = (namespace, action) => {
+    return getComponents(namespace, action.packageName, action.sequence)
 }
+
+
+// --- Docker action
+
+const handleImage = (ow, args, action) => {
+    const manifest = args.manifest
+    const image = action.image
+    const parameters = helpers.getKeyValues(action.inputs, args)
+    const annotations = helpers.getKeyValues(action.annotations, args)
+    const limits = action.limits || {}
+    const wskaction = {
+        exec: {
+            kind: 'blackbox',
+            image
+        },
+        parameters,
+        annotations,
+        limits
+    }
+    const qname = names.makeQName(null, action.packageName, action.actionName)
+    return helpers.deployRawAction(ow, qname, wskaction)
+        .then(reporter.action(qname, '', 'image', parameters))
+        .catch(reporter.action(qname, '', 'image', parameters))
+}
+
 
 // --- Code
 
-const handleCode = (ow, args, pkgName, actionName, action) => {
+const handleCode = (ow, args, action) => {
     if (!action.hasOwnProperty('kind'))
-        throw new Error(`Missing property 'kind' in packages/actions/${actionName}`)
+        throw new Error(`Missing property 'kind' in packages/actions/${action.actionName}`)
 
     let kind = action.kind
     let code = action.code
@@ -154,6 +180,7 @@ const handleCode = (ow, args, pkgName, actionName, action) => {
         case 'nodejs:6':
             code = `function main(params) { ${code} }`
             break
+        case 'nodejs:6':
         default:
             throw new Error(`Unsupported action kind ${kind}`)
     }
@@ -162,32 +189,33 @@ const handleCode = (ow, args, pkgName, actionName, action) => {
     const annotations = helpers.getKeyValues(action.annotations, args)
     const limits = action.limits || {}
     const wskaction = {
-        exec: {kind, code},
+        exec: { kind, code },
         parameters,
         annotations,
         limits
     }
-    const qname = names.makeQName(null, pkgName, actionName)
+    const qname = names.makeQName(null, action.packageName, action.actionName)
 
     return helpers.deployRawAction(ow, qname, wskaction)
         .then(reporter.action(qname, '', kind, parameters))
         .catch(reporter.action(qname, '', kind, parameters))
-
 }
-
-const dependsOnCode = (namespace, pkgName, action) => {
-    return []
-}
-
+ 
 // --- Fallback
 
-const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
+const handleDefaultAction = (ow, args, action) => {
+    const pkgName = action.packageName
+    const actionName = action.actionName
     if (!action.hasOwnProperty('location')) {
-        throw new Error(`Missing property 'location' in packages/actions/${actionName}`)
+        throw new Error(`Missing property 'location' in ${pkgName}/actions/${actionName}`)
     }
 
     action.location = path.resolve(args.basePath, action.location)
+    helpers.normalizeLocation(action)
     const kind = helpers.getKind(action)
+    if (!kind) {
+        throw new Error(`Could not automatically determined 'kind' in ${pkgName}/actions/${actionName}`)
+    }
 
     const params = helpers.getKeyValues(action.inputs, args)
     const annotations = helpers.getKeyValues(action.annotations, args)
@@ -205,19 +233,20 @@ const handleDefaultAction = (ow, args, pkgName, actionName, action) => {
 
 // --- Plugin
 
-const handlePluginAction = plugin => (ow, args, pkgName, actionName, action) => {
-    const context = {pkgName, actionName, action}
+const handlePluginAction = plugin => (ow, args, action) => {
+    const context = { pkgName: action.packageName, actionName: action.actionName, action }
     let entities = plugin.getEntities(context)
     if (!Array.isArray(entities))
         entities = [entities]
 
     const promises = []
-    for (const entity of entities) {
+    for (const newaction of entities) {
         // handle only actions for now
-        if (!entity.hasOwnProperty('action'))
+        if (!newaction.hasOwnProperty('actionName'))
             throw new Error(`Plugin ${plugin.__pluginName} returned an invalid entity ${JSON.stringify(entity)}`)
 
-        const promise = lookupActionHandler(entity.action).deploy(ow, args, pkgName, entity.actionName, entity.action)
+        newaction.packageName = action.packageName
+        const promise = lookupActionHandler(newaction).deploy(ow, args, newaction)
         promises.push(promise)
     }
     return Promise.all(promises)
@@ -236,7 +265,11 @@ const actionsHandlers = {
     },
     code: {
         deploy: handleCode,
-        dependsOn: dependsOnCode
+        dependsOn: () => []
+    },
+    image: {
+        deploy: handleImage,
+        dependsOn: () => []
     }
 }
 
@@ -265,10 +298,7 @@ exports.lookupActionHandler = lookupActionHandler
 
 // --- Asset builders
 
-// const checkFileExists = location => {
-//
-// }
-
+// TODO: deprecate
 const buildAction = (context, kind, action) => {
     const baseLocInCache = path.dirname(path.join(context.cache, path.relative('test', action.location)))
     const builderArgs = {

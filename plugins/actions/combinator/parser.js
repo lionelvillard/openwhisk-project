@@ -216,9 +216,7 @@ module.exports = {
         if (parser.errors.length > 0)
             throw parser.errors
 
-        return {
-            actionName: context.actionName,
-            action
-        }
+        action.actionName  = context.actionName
+        return action
     }
 }

@@ -19,7 +19,7 @@ const fs = require('fs')
 const path = require('path')
 
 const actionPlugins = {}
-const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'zip', 'annotations', 'sequence', 'extra']
+const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'zip', 'annotations', 'sequence', 'extra', 'actionName', 'packageName', 'docker']
 
 // Build plugin index.
 const init = context => {
