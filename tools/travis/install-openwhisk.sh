@@ -17,3 +17,15 @@ $ANSIBLE_CMD initdb.yml
 
 $ANSIBLE_CMD wipe.yml
 $ANSIBLE_CMD openwhisk.yml -e '{"openwhisk_cli":{"installation_mode":"remote","remote":{"name":"OpenWhisk_CLI","dest_name":"OpenWhisk_CLI","location":"https://github.com/apache/incubator-openwhisk-cli/releases/download/latest"}}}'
+
+cd ..
+cat whisk.properties
+
+cp $TRAVIS_BUILD_DIR/tools/travis/wskprops ~/.wskprops
+./bin/wsk property set --auth `cat ansible/files/auth.guest`
+cat ~/.wskprops
+
+
+export OPENWHISK_DIR=$TRAVIS_BUILD_DIR/openwhisk
+
+$OPENWHISK_DIR/bin/wsk property get
