@@ -360,6 +360,6 @@ An *object* representing action limits
 ## Entity name resolution
 
 Non-fully qualified entity names are resolved as follows:
-  - partially qualified names (ie. `pkgName/name`) are resolved using the enclosing namespace
-  - unqualified names (ie. `name`) are resolved using the enclosing package name (if any) and namespace. 
+  - partially qualified names (`packageName/actionName`) are resolved using the enclosing namespace
+  - unqualified names (`actionName`) are resolved using the enclosing package name (if any) and namespace. 
 

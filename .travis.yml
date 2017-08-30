@@ -6,7 +6,11 @@ node_js: node
 env:
   - LOGGER_LEVEL='INFO'
 
+services:
+  - docker
+
 before_install:
+  - $TRAVIS_BUILD_DIR/tools/travis/install-openwhisk.sh
   - $TRAVIS_BUILD_DIR/bin/bxsetup.sh
 
 install:
