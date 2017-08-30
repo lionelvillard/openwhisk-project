@@ -25,7 +25,5 @@ cp $TRAVIS_BUILD_DIR/tools/travis/wskprops ~/.wskprops
 ./bin/wsk property set --auth `cat ansible/files/auth.guest`
 cat ~/.wskprops
 
-
 export OPENWHISK_DIR=$TRAVIS_BUILD_DIR/openwhisk
-export NODE_TLS_REJECT_UNAUTHORIZED=0
-$OPENWHISK_DIR/bin/wsk property get
+$OPENWHISK_DIR/bin/wsk -i property get
