@@ -4,4 +4,4 @@ packages:
       cat:
         location: cat.js
       cat-copy:
-        copy: cat2
+        copy: cat

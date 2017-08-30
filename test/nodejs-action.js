@@ -18,6 +18,7 @@ const utils = require('./helpers/utils');
 const deployer = require('../deploy');
 
 describe('nodejs action', function () {
+    this.timeout(5000);
     const ctx = {};
 
     before(utils.before(ctx));
