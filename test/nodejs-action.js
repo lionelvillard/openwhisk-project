@@ -73,4 +73,20 @@ describe('nodejs action', function () {
                 { key: 'exec', value: 'nodejs:6' }])
     });
 
+    it('deploy nodejs action in default package', async function () {
+        const result = await deployer.deploy(ctx.ow, {
+            basePath: 'test/fixtures/nodejs/',
+            cache: ctx.cacheDir,
+            location: 'manifest-default-package.yaml',
+            force: true
+        });
+
+        const cat = await ctx.ow.actions.invoke({
+            actionName: 'nodejs-default-package',
+            params: { lines: ['first', 'second'] },
+            blocking: true
+        })
+        assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' })
+    });
+
 });
