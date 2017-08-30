@@ -142,7 +142,7 @@ const resolveManifest = (ow, args) => {
 
 const configCache = args => () => {
     if (!args.cache) {
-        args.cache = `${args.basePath}/.wskdeploy`
+        args.cache = `${args.basePath}/.openwhisk`
         return fse.mkdirs(args.cache) // async since using fs-extra
     }
 

@@ -18,7 +18,7 @@ const utils = require('./helpers/utils');
 const deployer = require('../deploy');
 
 describe('docker', function () {
-    this.timeout(5000);
+    this.timeout(60000);
 
     const ctx = {};
 
