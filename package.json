@@ -2,7 +2,7 @@
   "name": "@openwhisk-libs/deploy",
   "version": "0.2.0",
   "description": "",
-  "main": "deployer.js",
+  "main": "deploy.js",
   "scripts": {
     "test": "mocha"
   },

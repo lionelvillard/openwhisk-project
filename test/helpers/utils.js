@@ -37,7 +37,7 @@ const getWsk = () => {
     return openwhisk({
         api_key: wskprops.AUTH,
         apihost: wskprops.APIHOST,
-        insecure: true
+        ignore_certs: true
     });
 
 }

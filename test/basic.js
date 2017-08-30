@@ -15,7 +15,7 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const deployer = require('../deployer');
+const deployer = require('../deploy');
 
 describe('basic yaml handling tests', function () {
     before(utils.before(this));
