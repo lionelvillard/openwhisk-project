@@ -17,24 +17,28 @@ const assert = require('assert');
 const utils = require('./helpers/utils');
 const deployer = require('../deploy');
 
-describe('basic yaml handling tests', function () {
+describe('zip nodejs action', function () {
     const ctx = {};
-    
+
     before(utils.before(ctx));
     after(utils.after(ctx));
 
-    it('empty manifest', async function() {
-        await deployer.deploy(null, { cache: ctx.cacheDir, manifest: '' });
-        assert.ok(true);
+    it('deploy zipped nodejs action', async function () {
+        this.timeout(3000);
+
+        const result = await deployer.deploy(ctx.ow, {
+            basePath: 'test/fixtures/nodejs-zip',
+            cache: ctx.cacheDir,
+            location: 'manifest.yaml',
+            force: true
+        });
+
+        const cat = await ctx.ow.actions.invoke({
+            actionName: 'nodejs-zip/cat',
+            params: { lines: ['first', 'second'] },
+            blocking: true
+        })
+        assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' })
     });
 
-    it('no manifest', async function () {
-        try {
-            await deployer.deploy(null, { cache: ctx.cacheDir, location: 'donotexist.yaml' });
-            assert.fail('should not be here');
-        } catch (e) {
-            assert.ok(true);
-        }
-    })
-
-});
+})

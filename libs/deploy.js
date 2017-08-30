@@ -114,7 +114,7 @@ const loadManifest = args => {
     return args.load(args.location)
         .then(content => {
             // TODO: bad side-effect
-            args.manifest = yaml.parse(content)
+            args.manifest = yaml.parse(Buffer.from(content).toString())
         })
         .catch(err => {
             return Promise.reject(err) // propagate error
@@ -418,7 +418,7 @@ const localLoader = {
                 if (err)
                     reject(err)
                 else
-                    resolve(Buffer.from(content).toString())
+                    resolve(content)
             })
         })
 

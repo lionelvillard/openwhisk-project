@@ -1,5 +1,5 @@
 packages:
-  utils-zip:
+  nodejs-zip:
     actions:
       cat:
         location: cat.js

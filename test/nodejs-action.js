@@ -26,7 +26,7 @@ describe('nodejs action', function () {
     it('deploy-nodejs-action', async function () {
         const result = await deployer.deploy(ctx.ow, {
             basePath: 'test/fixtures/nodejs/',
-            cache: this.cacheDir,
+            cache: ctx.cacheDir,
             location: 'manifest.yaml',
             force: true
         });
@@ -42,7 +42,7 @@ describe('nodejs action', function () {
     it('deploy-nodejs-action-params', async function () {
         const result = await deployer.deploy(ctx.ow, {
             basePath: 'test/fixtures/nodejs/',
-            cache: this.cacheDir,
+            cache: ctx.cacheDir,
             location: 'manifest-params.yaml',
             force: true
         });
@@ -57,7 +57,7 @@ describe('nodejs action', function () {
     it('deploy-nodejs-action-annotations', async function () {
         const result = await deployer.deploy(ctx.ow, {
             basePath: 'test/fixtures/nodejs/',
-            cache: this.cacheDir,
+            cache: ctx.cacheDir,
             location: 'manifest-annotations.yaml',
             force: true
         });

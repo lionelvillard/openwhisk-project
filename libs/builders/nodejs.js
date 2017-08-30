@@ -76,6 +76,8 @@ const npmInstall = src => () => new Promise((resolve, reject) => {
         cwd: src
     }
 
+    // see https://github.com/npm/npm/pull/7249 for extra etc directory
+
     exec(`npm  install --production --prefix .`, execOptions, error => {
             if (error)
                 return reject(error)

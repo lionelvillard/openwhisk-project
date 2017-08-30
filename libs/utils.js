@@ -64,7 +64,7 @@ const makeZip = (targetZip, src) => new Promise((resolve, reject) => {
         zlib: {level: 9}
     })
 
-    output.on('close', () => {
+    output.on('close', () => {  
         resolve()
     })
 

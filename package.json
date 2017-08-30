@@ -13,13 +13,13 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "archiver": "^2.0.0",
+    "archiver": "^2.0.3",
     "chevrotain": "^0.29.0",
     "child-process-promise": "^2.2.1",
     "fs-extra": "^3.0.1",
     "log4js": "^1.1.1",
-    "openwhisk": "^3.6.0",
-    "simple-git": "^1.75.0",
+    "openwhisk": "^3.7.0",
+    "simple-git": "^1.76.0",
     "yamljs": "^0.2.8"
   },
   "devDependencies": {

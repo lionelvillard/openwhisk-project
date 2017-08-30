@@ -30,7 +30,7 @@ const deployAction = (ow, actionName, parameters, annotations, limits, kind, bin
     const action = {
         exec: {
             kind,
-            code: binary ? new Buffer(content).toString('base64') : content
+            code: Buffer.from(content).toString(binary ? 'base64' : 'utf8')
         },
         parameters,
         annotations,
@@ -128,7 +128,7 @@ const getDockerImage = (manifest, action) => {
     function espace(wskname) {
         return wskname ? wskname.replace(/[\s@_]/, '.') : ''
     }
-    
+
     return { image: `${username}/${escape(action.packageName)}/${escape(action.actionName)}` }
 }
 exports.getDockerImage = getDockerImage
