@@ -8,3 +8,4 @@ test-results
 bin/test.sh
 docker/*
 examples/*
+.wskprops
