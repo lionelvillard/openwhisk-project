@@ -27,5 +27,5 @@ cat ~/.wskprops
 
 
 export OPENWHISK_DIR=$TRAVIS_BUILD_DIR/openwhisk
-
+export NODE_TLS_REJECT_UNAUTHORIZED=0
 $OPENWHISK_DIR/bin/wsk property get
