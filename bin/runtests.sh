@@ -2,9 +2,9 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-export BX_SPACE_CI=openwhisk-deploy-ci`uuidgen`
+SPACE=${BX_SPACE:-openwhisk-deploy-ci`uuidgen`}
 
-bx iam space-create ${BX_SPACE_CI}
+bx iam space-create ${SPACE}
 
 echo Wait 20s for key to sync
 sleep 20
@@ -15,6 +15,6 @@ code=$?
 (cd ${DIR}/../plugins/actions/combinator && npm test)
 (( code = code || $? ))
 
-bx iam space-delete ${BX_SPACE_CI} -f
+bx iam space-delete ${SPACE} -f
 
 exit $code

@@ -1,7 +1,7 @@
 packages:
-  utils-with-param:
+  nodejs-with-param:
     actions:
       cat-with-param:
         location: cat.js
         inputs:
-          mykey: myvalue
+          lines: ['first', 'second']

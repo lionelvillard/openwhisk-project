@@ -4,9 +4,7 @@
   "description": "",
   "main": "deployer.js",
   "scripts": {
-    "test": "ava",
-    "pubpatch": "npm version patch && npm publish --access public",
-    "pubminor": "npm version minor && npm publish --access public"
+    "test": "mocha"
   },
   "author": "Lionel Villard",
   "repository": {
@@ -18,7 +16,6 @@
     "archiver": "^2.0.0",
     "chevrotain": "^0.29.0",
     "child-process-promise": "^2.2.1",
-    "expand-home-dir": "0.0.3",
     "fs-extra": "^3.0.1",
     "log4js": "^1.1.1",
     "openwhisk": "^3.6.0",
@@ -26,7 +23,11 @@
     "yamljs": "^0.2.8"
   },
   "devDependencies": {
-    "ava": "^0.19.1",
-    "deep-diff": "^0.3.8"
+    "assert": "^1.4.1",
+    "chai": "^4.1.1",
+    "deep-diff": "^0.3.8",
+    "expand-home-dir": "0.0.3",
+    "mocha": "^3.5.0",
+    "properties-parser": "^0.3.1"
   }
 }
