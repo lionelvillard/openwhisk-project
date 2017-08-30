@@ -67,3 +67,17 @@ packages:
 # Deployment format specification
 
 See [specification](docs/format.md)
+
+# Development
+
+```bash
+$ git clone https://github.com/lionelvillard/openwhisk-deploy.git
+$ cd openwhisk-deploy
+$ npm i
+```
+
+To run the tests, it is recommended to create the file `.wskprops` in the project root directory. Then do:
+
+```bash
+$ ./bin/runtests.sh
+```
