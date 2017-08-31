@@ -1,5 +1,5 @@
 triggers:
-  alarm-trigger:
+  trigger-alarm:
     feed: /whisk.system/alarms/alarm
     inputs:
       cron: 0 9 8 * *

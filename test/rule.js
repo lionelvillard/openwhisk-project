@@ -17,28 +17,23 @@ const assert = require('assert');
 const utils = require('./helpers/utils');
 const deployer = require('../deploy');
 
-describe('zip nodejs action', function () {
-    this.timeout(10000);
-
+describe('testing rules', function () {
+    this.timeout(5000);
     const ctx = {};
 
     before(utils.before(ctx));
     after(utils.after(ctx));
 
-    it('deploy zipped nodejs action', async function () {
+    it('deploy a rule', async function () {
         const result = await deployer.deploy(ctx.ow, {
-            basePath: 'test/fixtures/nodejs-zip',
+            basePath: 'test/fixtures/rules/',
             cache: ctx.cacheDir,
             location: 'manifest.yaml',
             force: true
         });
 
-        const cat = await ctx.ow.actions.invoke({
-            actionName: 'nodejs-zip/cat',
-            params: { lines: ['first', 'second'] },
-            blocking: true
-        })
-        assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' })
-    });
-
-})
+        const activationId = await ctx.ow.triggers.invoke({name: 'rules-trigger', params: {msg:'hello'} });
+        const r = await ctx.ow.activations.result(activationId);
+        assert.deepStrictEqual(r, { result: { msg: 'hello' }, success: true, status: 'success' });
+    }); 
+});
