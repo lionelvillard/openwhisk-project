@@ -9,6 +9,10 @@ A *deployment* is an *object* representing a collection of OpenWhisk entities to
 
 ### Properties
 
+- PROPOSAL: service (string, optional) : the service name. 
+  
+  When specified, deployed entities are fully managed by linking them to the service name. Do not change it without proper review as commands like `undeploy` may not work as expected.  
+
 - [`includes`](#includes) (array, optional)
 - [`packages`](#packages) (object, optional)
 - [`actions`](#actions) (object, optional)
@@ -18,6 +22,8 @@ A *deployment* is an *object* representing a collection of OpenWhisk entities to
 ### Example
 
 ```yaml
+service: example
+
 includes:  # includes other deployment
 actions:   # actions in the default package
 packages:  # actions in packages and package bindings
