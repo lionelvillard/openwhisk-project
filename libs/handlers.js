@@ -47,7 +47,7 @@ const dependsOnCopy = (namespace, action) => {
     return [names.resolveQName(action.copy, namespace, action.packageName)]
 }
 
-const deployCopyAction = (ctx, actionName, params, annos, newlimits) => sourceAction => {
+const deployCopyAction = (ctx, actionName, params, annos, newlimits) => sourceAction => { 
     const actionParams = helpers.indexKeyValues(sourceAction.parameters)
     const actionAnnos = helpers.indexKeyValues(sourceAction.annotations)
 

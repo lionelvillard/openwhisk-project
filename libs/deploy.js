@@ -27,6 +27,7 @@ const reporter = require('./reporter')
 const handlers = require('./handlers')
 const helpers = require('./helpers')
 const plugins = require('./pluginmgr')
+const init = require('./init')
 
 /**
  * Deploy OpenWhisk entities (actions, sequence, rules, etc...)
@@ -50,25 +51,14 @@ const plugins = require('./pluginmgr')
  *
  * @return {Object} a deployment report.
  */
-const deploy = (ow, args) => {
-    logger.setLevel('OFF')
-    if (args.logger_level)
-        logger.setLevel(args.logger_level)
-    args.logger = logger
-
-    if (!ow || args.dryrun)
-        ow = fakeow
-
-    configLoader(args)
-    configOW(ow, args)
+async function deploy(ow, args) {
+    await init.init(ow, args);
+    ow = args.ow;
 
     logger.debug('setup promises')
 
     try {
-        return resolveManifest(ow, args)
-            .then(configCache(args))
-            .then(plugins.init(args))
-            .then(deployIncludes(ow, args))
+        return deployIncludes(ow, args)()
             .then(deployPackages(ow, args, false)) // bindings
             .then(deployPackages(ow, args, true))  // new packages
             .then(deployActions(ow, args))
