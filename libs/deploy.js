@@ -13,57 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const fs = require('fs')
-const fse = require('fs-extra')
-const yaml = require('yamljs')
-const path = require('path')
+const fs = require('fs')  
 const simpleGit = require('simple-git')
 const logger = require('log4js').getLogger()
 
 const names = require('./names')
 const utils = require('./utils')
-const fakeow = require('./fakeow')
 const reporter = require('./reporter')
 const handlers = require('./handlers')
 const helpers = require('./helpers')
-const plugins = require('./pluginmgr')
 const init = require('./init')
 
-/**
- * Deploy OpenWhisk entities (actions, sequence, rules, etc...)
- *
- * @param {Object}        [ow]                - OpenWhisk client. Perform a dry-run if not provided.
- * @param {Object}        args
- * @param {Object|string} [args.manifest]     - manifest used for deployment
- * @param {string}        [args.location]     - manifest location. Ignored if manifest is provided
- * @param {string}        [args.cache]        - cache location
- * @param {boolean}       [args.force]        - perform update operation when true. Default is 'false'
- * @param {string}        [args.logger_level] - logger level ('ALL', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE', 'OFF')
- *
- * @param {Object} args.assets.conf           - assets loader configuration
- * @param {string} args.assets.conf.kind      - kind of loader (0=local, 1=github)
- * @param {string} [args.assets.conf.owner]   - github owner
- * @param {string} [args.assets.conf.repo]    - github repo
- * @param {string} [args.assets.conf.sha]     - github sha.
- * @param {string} [args.assets.conf.release] - github release containing pre-built assets.
- *
- * @param {Object} [args.env]                 - the environment use to resolve $xx variables. Precede process.env.
- *
- * @return {Object} a deployment report.
- */
-async function deploy(ow, args) {
-    await init.init(ow, args);
-    ow = args.ow;
-
+// Deploy OpenWhisk entities (actions, sequence, rules, etc...)
+async function deploy(args) {
+    await init.init(args);
+    
     logger.debug('setup promises')
 
     try {
-        return deployIncludes(ow, args)()
-            .then(deployPackages(ow, args, false)) // bindings
-            .then(deployPackages(ow, args, true))  // new packages
-            .then(deployActions(ow, args))
-            .then(deployTriggers(ow, args))
-            .then(deployRules(ow, args))
+        return deployIncludes(args)
+            .then(deployPackages(args, false)) // bindings
+            .then(deployPackages(args, true))  // new packages
+            .then(deployActions(args))
+            .then(deployTriggers(args))
+            .then(deployRules(args))
             .catch(e => {
                 logger.error(e)
                 return Promise.reject(e)
@@ -75,73 +48,7 @@ async function deploy(ow, args) {
 }
 module.exports = deploy;
 
-const configLoader = args => {
-    let kind = ((args.hasOwnProperty('assets') && args.assets.hasOwnProperty('conf')) ? args.assets.conf.kind : 0) || 0
-    if (kind < 0 || kind >= loaders.length)
-        throw `Invalid asset loader configuration. Kind ${kind} unsupported.`
-
-    args.load = loaders[kind].make(args)
-}
-
-const configOW = (ow, args) => {
-    if (!args.force || args.force === false) {
-        ow.packages.change = ow.packages.create
-        ow.triggers.change = ow.triggers.create
-        ow.routes.change = ow.routes.create
-        ow.actions.change = ow.actions.create
-        ow.feeds.change = ow.feeds.create
-        ow.rules.change = ow.rules.create
-    } else {
-        ow.packages.change = ow.packages.update
-        ow.triggers.change = ow.triggers.update
-        ow.routes.change = ow.routes.update
-        ow.actions.change = ow.actions.update
-        ow.feeds.change = ow.feeds.update
-        ow.rules.change = ow.rules.update
-    }
-    args.ow = ow;
-}
-
-const loadManifest = args => {
-    return args.load(args.location)
-        .then(content => {
-            // TODO: bad side-effect
-            args.manifest = yaml.parse(Buffer.from(content).toString())
-        })
-        .catch(err => {
-            return Promise.reject(err) // propagate error
-        })
-}
-
-const resolveManifest = (ow, args) => {
-    if (args.manifest || args.manifest === '') {
-        if (typeof args.manifest === 'string') {
-            args.manifest = yaml.parse(args.manifest) || {}
-        }
-        args.basePath = args.basePath || process.cwd()
-        return Promise.resolve()
-    }
-
-    if (args.location) {
-        args.location = path.resolve(args.basePath || process.cwd(), args.location)
-        args.basePath = path.parse(args.location).dir
-
-        return loadManifest(args)
-    }
-
-    throw 'No valid manifest found'
-}
-
-const configCache = args => () => {
-    if (!args.cache) {
-        args.cache = `${args.basePath}/.openwhisk`
-        return fse.mkdirs(args.cache) // async since using fs-extra
-    }
-
-    return Promise.resolve()
-}
-
-const deployIncludes = (ow, args) => () => {
+const deployIncludes = (args) => {
     const manifest = args.manifest
     args.manifest.namespace = '_'
     if (manifest.hasOwnProperty('includes')) {
@@ -165,6 +72,7 @@ const deployIncludes = (ow, args) => () => {
             const targetDir = `${args.basePath}/deps/${repo}`
 
             let subdeploy = {
+                ow: args.ow,
                 basePath: `${targetDir}/${path}`,
                 cache: args.cache,
                 location: 'manifest.yaml',
@@ -176,7 +84,7 @@ const deployIncludes = (ow, args) => () => {
                 .then(cloneRepo(owner, repo, targetDir))
                 .then(() => {
                     logger.debug(`sub-deploy ${location}`)
-                    return deploy(ow, subdeploy)
+                    return deploy(subdeploy)
                 })
 
             promises.push(promise)
@@ -200,7 +108,7 @@ const cloneRepo = (owner, repo, targetDir) => exists => new Promise(resolve => {
 })
 
 // Deploy packages (excluding bindings, and package content)
-const deployPackages = (ow, args, bindings) => report => {
+const deployPackages = (args, bindings) => report => {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('packages')) {
         const packages = manifest.packages
@@ -225,7 +133,7 @@ const deployPackages = (ow, args, bindings) => report => {
                 const annotations = utils.getAnnotations(args, pkg.annotations)
                 const publish = pkg.hasOwnProperty('publish') ? pkg.publish : false
 
-                const cmd = deployPackage(ow, name, parameters, annotations, binding, publish)
+                const cmd = deployPackage(args.ow, name, parameters, annotations, binding, publish)
                     .then(reporter.package(name))
                     .catch(reporter.package(name))
 
@@ -277,14 +185,14 @@ const deployPendingActions = (ctx, graph) => {
     return Promise.resolve([])
 }
 
-const deployActions = (ow, ctx) => report => {
+const deployActions = (ctx) => report => {
     const manifest = ctx.manifest
     const graph = helpers.dependenciesGraph(manifest)
     return deployPendingActions(ctx, graph)
         .then(reportActions => (reportActions.length > 0) ? reporter.entity(report, 'actions')(reportActions) : report)
 }
 
-const deployTriggers = (ow, args) => report => {
+const deployTriggers = args => report => {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('triggers')) {
         const triggers = manifest.triggers
@@ -306,13 +214,13 @@ const deployTriggers = (ow, args) => report => {
                 triggerBody.parameters = parameters
             }
 
-            let cmd = deployTrigger(ow, args, triggerName, triggerBody)
+            let cmd = deployTrigger(args.ow, args, triggerName, triggerBody)
                 .then(reporter.trigger(triggerName))
                 .catch(reporter.trigger(triggerName))
 
             if (isFeed) {
                 cmd = cmd
-                    .then(deployFeedAction(ow, args, trigger.feed, triggerName, parameters))
+                    .then(deployFeedAction(args, trigger.feed, triggerName, parameters))
             }
 
             promises.push(cmd)
@@ -331,7 +239,7 @@ const deployTrigger = (ow, args, triggerName, trigger) => {
     })
 }
 
-const deployFeedAction = (ow, args, feed, triggerName, parameters) => report => {
+const deployFeedAction = (args, feed, triggerName, parameters) => report => {
     // Invoke action creating feed action sending events to the specified trigger name
 
     // transform parameters
@@ -345,9 +253,9 @@ const deployFeedAction = (ow, args, feed, triggerName, parameters) => report => 
 
     params.lifecycleEvent = 'CREATE'
     params.triggerName = triggerName
-    params.authKey = ow.namespaces.client.options.api_key
+    params.authKey = args.ow.namespaces.client.options.api_key
 
-    return invokeAction(ow, feed, params)
+    return invokeAction(args.ow, feed, params)
         .then(reporter.feed(report, feed, params))
         .catch(reporter.feed(report, feed, params))
 }
@@ -360,7 +268,7 @@ const invokeAction = (ow, actionName, params) => {
     })
 }
 
-const deployRules = (ow, args) => report => {
+const deployRules = args => report => {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('rules')) {
         const rules = manifest.rules
@@ -368,7 +276,7 @@ const deployRules = (ow, args) => report => {
         for (let ruleName in rules) {
             let rule = rules[ruleName]
 
-            let cmd = deployRule(ow, ruleName, rule.trigger, rule.action)
+            let cmd = deployRule(args.ow, ruleName, rule.trigger, rule.action)
                 .then(reporter.rule(ruleName))
                 .catch(reporter.rule(ruleName))
 
@@ -389,102 +297,7 @@ const deployRule = (ow, ruleName, trigger, action) => {
 }
 
 // -- Utils
-
-function haveRepo(args) {
-    return args.hasOwnProperty('owner') && args.hasOwnProperty('repo') && args.hasOwnProperty('sha')
-}
-
-
-// --- Asset loaders
-
-const localLoader = {
-
-    make: args => {
-        return localLoader.load
-    },
-
-    load: location => {
-        return new Promise((resolve, reject) => {
-            logger.debug(`read local file ${location}`)
-            fs.readFile(location, (err, content) => {
-                if (err)
-                    reject(err)
-                else
-                    resolve(content)
-            })
-        })
-
-    }
-}
-
-const githubLoader = {
-
-    make: (args) => {
-        if (!utils.haveRepo(args))
-            throw `Missing GitHub configuration.`
-        let conf = args.assets.conf
-        return localLoader.load(conf.owner, conf.repo, conf.release)
-    },
-
-    load: (owner, repo, release) => location => {
-        let cmd
-        if (zip) {
-            // Stored as an asset.
-            cmd = fetchAsset(args.owner, args.repo, args.release, location.replace('/', '.'))
-        } else {
-            // Just fetch raw content
-            cmd = utils.fetchContent(args, location)
-        }
-    }
-}
-
-const loaders = [
-    localLoader, githubLoader
-]
-
-
-// Search for asset id corresponding to asset name
-const searchAssetId = (release, assetName) => {
-    let assets = release.assets
-
-    for (let i in assets) {
-        let asset = assets[i]
-        if (asset.name === 'manifest.yaml') {
-            return asset.id
-        }
-    }
-
-    return undefined
-}
-
-// Fetch release asset by name
-const fetchAsset = (owner, repo, release, assetName) => {
-    if (typeof release !== 'object') {
-        return {
-            deployed: false,
-            reason: `Missing GitHub release with asset ${assetName}`
-        }
-    }
-
-    let assetId = searchAssetId(release, assetName)
-
-    if (assetId) {
-        return request({
-            uri: `https://api.github.com/repos/${owner}/${repo}/releases/assets/${assetId}`,
-            headers: {
-                'User-Agent': 'Apache OpenWhisk Deploy',
-                Accept: 'application/octet-stream'
-            }
-        }).then(result => {
-            console.log(`fetched ${assetName}`)
-            return result
-        })
-    }
-
-    return Promise.reject(`Missing ${assetName} asset.`)
-}
-
-
+ 
 const checkFileExists = file => new Promise(resolve => {
     fs.exists(file, result => resolve(result))
 })

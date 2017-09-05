@@ -25,7 +25,8 @@ describe('testing trigger', function () {
     after(utils.after(ctx));
 
     it('deploy a trigger', async function () {
-        const result = await deployer.deploy(ctx.ow, {
+        const result = await deployer.deploy({
+            ow: ctx.ow, 
             basePath: 'test/fixtures/triggers/',
             cache: ctx.cacheDir,
             location: 'manifest.yaml',
@@ -37,7 +38,8 @@ describe('testing trigger', function () {
     }); 
     
     it('deploy an alarm', async function () {
-        const result = await deployer.deploy(ctx.ow, {
+        const result = await deployer.deploy({
+            ow: ctx.ow, 
             basePath: 'test/fixtures/triggers/',
             cache: ctx.cacheDir,
             location: 'manifest-alarm.yaml',

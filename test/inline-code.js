@@ -25,7 +25,8 @@ describe('inline code', function () {
     after(utils.after(ctx));
 
     it('deploy inlined echo', async function () {
-        const result = await deployer.deploy(ctx.ow, {
+        const result = await deployer.deploy({
+            ow: ctx.ow,
             basePath: 'test/fixtures/inline-code/',
             cache: ctx.cacheDir,
             location: 'manifest.yaml',

@@ -26,7 +26,8 @@ describe('zip nodejs action', function () {
     after(utils.after(ctx));
 
     it('deploy zipped nodejs action', async function () {
-        const result = await deployer.deploy(ctx.ow, {
+        const result = await deployer.deploy({
+            ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs-zip',
             cache: ctx.cacheDir,
             location: 'manifest.yaml',

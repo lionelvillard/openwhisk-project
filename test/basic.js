@@ -25,13 +25,13 @@ describe('basic yaml handling tests', function () {
     after(utils.after(ctx));
 
     it('empty manifest', async function() {
-        await deployer.deploy(null, { cache: ctx.cacheDir, manifest: '' });
+        await deployer.deploy({ cache: ctx.cacheDir, manifest: '' });
         assert.ok(true);
     });
 
     it('no manifest', async function () {
         try {
-            await deployer.deploy(null, { cache: ctx.cacheDir, location: 'donotexist.yaml' });
+            await deployer.deploy({ cache: ctx.cacheDir, location: 'donotexist.yaml' });
             assert.fail('should not be here');
         } catch (e) {
             assert.ok(true);

@@ -25,7 +25,8 @@ describe('nodejs action', function () {
     after(utils.after(ctx));
 
     it('deploy-nodejs-action', async function () {
-        const result = await deployer.deploy(ctx.ow, {
+        const result = await deployer.deploy({
+            ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
             location: 'manifest.yaml',
@@ -41,7 +42,8 @@ describe('nodejs action', function () {
     });
 
     it('deploy-nodejs-action-params', async function () {
-        const result = await deployer.deploy(ctx.ow, {
+        const result = await deployer.deploy({
+            ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
             location: 'manifest-params.yaml',
@@ -56,7 +58,8 @@ describe('nodejs action', function () {
     });
 
     it('deploy-nodejs-action-annotations', async function () {
-        const result = await deployer.deploy(ctx.ow, {
+        const result = await deployer.deploy({
+            ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
             location: 'manifest-annotations.yaml',
@@ -75,7 +78,8 @@ describe('nodejs action', function () {
     });
 
     it('deploy nodejs action in default package', async function () {
-        const result = await deployer.deploy(ctx.ow, {
+        const result = await deployer.deploy({
+            ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
             location: 'manifest-default-package.yaml',

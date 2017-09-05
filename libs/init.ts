@@ -41,15 +41,15 @@ interface Config {
     basePath?: string;
 }
 
-export async function init(ow: any, config: Config) {
+export async function init(config: Config) {
     if (!config.logger)
         config.logger = getLogger();
 
     config.logger_level = config.logger_level || 'off';
     config.logger.setLevel(config.logger_level);
 
-    if (!ow)
-        ow = fakeow;
+    if (!config.ow)
+        config.ow = fakeow;
 
     async function load(location: string) {
         config.logger.debug(`read local file ${location}`);
@@ -60,6 +60,7 @@ export async function init(ow: any, config: Config) {
     if (!config.load)
         config.load = load;
 
+    const ow = config.ow;
     if (!config.force) {
         ow.packages.change = ow.packages.create;
         ow.triggers.change = ow.triggers.create;
@@ -76,7 +77,7 @@ export async function init(ow: any, config: Config) {
         ow.rules.change = ow.rules.update;
     }
     config.ow = ow;
-    
+
     await resolveManifest(config);
     await configCache(config);
     await plugins.init(config);
