@@ -9,3 +9,5 @@ bin/test.sh
 docker/*
 examples/*
 .wskprops
+*.map
+libs/init.js

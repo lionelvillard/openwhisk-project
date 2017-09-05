@@ -20,31 +20,31 @@ module.exports = (ow, args) => {
         await cleanActions();
         await cleanPackages();
         await cleanRules();
-        return cleanTriggers();
+        await cleanTriggers();
     }
 
     async function cleanActions() {
         const actions = await ow.actions.list();
-        const promises = actions.map(action => ow.actions.delete(action));
-        return Promise.all(promises);
+        const promises = actions.map(action => ow.actions.delete(action) );
+        await Promise.all(promises);
     }
 
     async function cleanPackages() {
         const packages = await ow.packages.list();
         const promises = packages.map(pkg => ow.packages.delete(pkg));
-        return Promise.all(promises);
+        await Promise.all(promises);
     }
 
     async function cleanRules() {
         const rules = await ow.rules.list();
         const promises = rules.map(rule => ow.rules.delete(rule));
-        return Promise.all(promises);
+        await Promise.all(promises);
     }
 
     async function cleanTriggers() {
         const triggers = await ow.triggers.list();
         const promises = triggers.map(trigger => ow.triggers.delete(trigger));
-        return Promise.all(promises);
+        await Promise.all(promises);
     }
 
     return cleanAll();
