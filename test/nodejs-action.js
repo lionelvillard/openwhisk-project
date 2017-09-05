@@ -15,10 +15,10 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const deployer = require('../deploy');
+const deployer = require('..');
 
 describe('nodejs action', function () {
-    this.timeout(5000);
+    this.timeout(10000);
     const ctx = {};
 
     before(utils.before(ctx));
@@ -29,9 +29,9 @@ describe('nodejs action', function () {
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
             location: 'manifest.yaml',
-            force: true
+            force: true 
         });
-
+ 
         const cat = await ctx.ow.actions.invoke({
             actionName: 'nodejs/cat',
             params: { lines: ['first', 'second'] },
@@ -45,7 +45,7 @@ describe('nodejs action', function () {
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
             location: 'manifest-params.yaml',
-            force: true
+            force: true 
         });
 
         const cat = await ctx.ow.actions.invoke({

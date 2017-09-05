@@ -18,32 +18,6 @@ const handlers = require('./handlers')
 const names = require('./names')
 const fs = require('fs')
 
-const deployRawAction = (ow, actionName, action) => {
-    return ow.actions.change({
-        actionName,
-        action
-    })
-}
-exports.deployRawAction = deployRawAction
-
-const deployAction = (ow, actionName, parameters, annotations, limits, kind, binary) => content => {
-    const action = {
-        exec: {
-            kind,
-            code: Buffer.from(content).toString(binary ? 'base64' : 'utf8')
-        },
-        parameters,
-        annotations,
-        limits
-    }
-
-    return ow.actions.change({
-        actionName,
-        action
-    })
-}
-exports.deployAction = deployAction
-
 const getKeyValues = (inputs, args) => {
     if (inputs) {
         return Object.keys(inputs).map(key => ({ key, value: resolveValue(inputs[key], args) }))

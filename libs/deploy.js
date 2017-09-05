@@ -79,10 +79,11 @@ const deploy = (ow, args) => {
                 return Promise.reject(e)
             })
     } catch (e) {
+        logger.error(JSON.stringify(e));
         return Promise.reject({ error: e })
     }
 }
-exports.deploy = deploy
+module.exports = deploy;
 
 const configLoader = args => {
     let kind = ((args.hasOwnProperty('assets') && args.assets.hasOwnProperty('conf')) ? args.assets.conf.kind : 0) || 0
@@ -108,6 +109,7 @@ const configOW = (ow, args) => {
         ow.feeds.change = ow.feeds.update
         ow.rules.change = ow.rules.update
     }
+    args.ow = ow;
 }
 
 const loadManifest = args => {
@@ -230,7 +232,7 @@ const deployPackages = (ow, args, bindings) => report => {
                     }
                 }
                 const parameters = helpers.getKeyValues(pkg.inputs)
-                const annotations = helpers.getKeyValues(pkg.annotations)
+                const annotations = utils.getAnnotations(args, pkg.annotations)
                 const publish = pkg.hasOwnProperty('publish') ? pkg.publish : false
 
                 const cmd = deployPackage(ow, name, parameters, annotations, binding, publish)
@@ -258,7 +260,7 @@ const deployPackage = (ow, name, parameters, annotations, binding, publish) => {
     })
 }
 
-const deployPendingActions = (ow, args, graph) => {
+const deployPendingActions = (ctx, graph) => {
     const actions = helpers.pendingActions(graph)
     if (actions) {
         const promises = []
@@ -266,14 +268,14 @@ const deployPendingActions = (ow, args, graph) => {
         for (const qname in actions) {
             const entry = actions[qname]
             const action = entry.action
-            const promise = handlers.lookupActionHandler(action).deploy(ow, args, action)
+            const promise = handlers.lookupActionHandler(action).deploy(ctx, action)
             promises.push(promise)
         }
 
         helpers.commitActions(actions)
 
         return Promise.all(promises)
-            .then(reportAction1 => deployPendingActions(ow, args, graph).then(reportAction2 => [...reportAction1, ...reportAction2]))
+            .then(reportAction1 => deployPendingActions(ctx, graph).then(reportAction2 => [...reportAction1, ...reportAction2]))
     }
 
     const remaining = helpers.remainingActions(graph)
@@ -285,10 +287,10 @@ const deployPendingActions = (ow, args, graph) => {
     return Promise.resolve([])
 }
 
-const deployActions = (ow, args) => report => {
-    const manifest = args.manifest
+const deployActions = (ow, ctx) => report => {
+    const manifest = ctx.manifest
     const graph = helpers.dependenciesGraph(manifest)
-    return deployPendingActions(ow, args, graph)
+    return deployPendingActions(ctx, graph)
         .then(reportActions => (reportActions.length > 0) ? reporter.entity(report, 'actions')(reportActions) : report)
 }
 

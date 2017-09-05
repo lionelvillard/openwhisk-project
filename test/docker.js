@@ -15,7 +15,7 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const deployer = require('../deploy');
+const deployer = require('..');
 
 describe('docker', function () {
     this.timeout(60000);

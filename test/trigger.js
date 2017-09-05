@@ -15,7 +15,7 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const deployer = require('../deploy');
+const deployer = require('..');
 
 describe('testing trigger', function () {
     this.timeout(5000);

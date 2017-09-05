@@ -15,10 +15,11 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const deployer = require('../deploy');
+const deployer = require('..');
 
 
 describe('copy action', function () {
+    this.timeout(10000);
     const ctx = {};
 
     before(utils.before(ctx));
@@ -29,7 +30,7 @@ describe('copy action', function () {
             basePath: 'test/fixtures/copy/',
             cache: ctx.cacheDir,
             location: 'manifest.yaml',
-            force: true
+            force: true 
         });
 
         const cat = await ctx.ow.actions.invoke({
@@ -40,14 +41,12 @@ describe('copy action', function () {
         assert.deepEqual(cat.response.result, {lines: ['first', 'second'], payload: 'first\nsecond'})
     });
 
-
-
     it('copy user action', async function () {
         const result = await deployer.deploy(ctx.ow, {
             basePath: 'test/fixtures/copy/',
             cache: ctx.cacheDir,
             location: 'manifest-local.yaml',
-            force: true
+            force: true 
         });
 
         const cat = await ctx.ow.actions.invoke({

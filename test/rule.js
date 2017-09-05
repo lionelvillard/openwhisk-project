@@ -15,10 +15,10 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const deployer = require('../deploy');
+const deployer = require('..');
 
 describe('testing rules', function () {
-    this.timeout(5000);
+    this.timeout(10000);
     const ctx = {};
 
     before(utils.before(ctx));

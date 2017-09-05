@@ -15,45 +15,39 @@
  */
 
 const builder = require('./builders')
+const utils = require('./utils')
 const helpers = require('./helpers')
-const reporter = require('./reporter')
 const names = require('./names')
 const path = require('path')
 const plugins = require('./pluginmgr')
 
 // --- Copy action
 
-const handleCopy = (ow, args, action) => {
-    const manifest = args.manifest
+const handleCopy = (ctx, action) => {
+    const manifest = ctx.manifest
     const sourceActionName = names.resolveQName(action.copy, manifest.namespace, action.packageName)
 
     const sourceAction = findAction(manifest, sourceActionName)
     if (sourceAction) {
-        const patchedAction = Object.assign(sourceAction, {actionName: action.actionName})
-        return lookupActionHandler(patchedAction).deploy(ow, args, patchedAction)
+        const patchedAction = Object.assign(sourceAction, { actionName: action.actionName })
+        return lookupActionHandler(patchedAction).deploy(ctx, patchedAction)
     }
 
-    const params = helpers.getKeyValues(action.inputs, args)
-    const annotations = helpers.getKeyValues(action.annotations, args)
+    const params = helpers.getKeyValues(action.inputs, ctx)
+    const annotations = helpers.getKeyValues(action.annotations, ctx)
     const limits = action.limits || {}
-    
-    const qname = names.makeQName(null, action.packageName, action.actionName)
 
-    return getAction(ow, sourceActionName)
-        .then(deployCopyAction(ow, qname, params, annotations, limits))
-        .then(reporter.action(qname, sourceActionName, '<copied>', params))
-        .catch(reporter.action(qname, sourceActionName, '<copied>', params))
+    const qname = names.makeQName('_', action.packageName, action.actionName)
+
+    return ctx.ow.actions.get({name: sourceActionName})
+        .then(deployCopyAction(ctx, qname, params, annotations, limits)) 
 }
 
 const dependsOnCopy = (namespace, action) => {
     return [names.resolveQName(action.copy, namespace, action.packageName)]
 }
 
-const getAction = (ow, actionName) => {
-    return ow.actions.get({ actionName })
-}
-
-const deployCopyAction = (ow, actionName, params, annos, newlimits) => sourceAction => {
+const deployCopyAction = (ctx, actionName, params, annos, newlimits) => sourceAction => {
     const actionParams = helpers.indexKeyValues(sourceAction.parameters)
     const actionAnnos = helpers.indexKeyValues(sourceAction.annotations)
 
@@ -71,16 +65,13 @@ const deployCopyAction = (ow, actionName, params, annos, newlimits) => sourceAct
     const parameters = helpers.getKeyValues(actionParams)
     const annotations = helpers.getKeyValues(actionParams)
 
-    const action = {
-        exec: sourceAction.exec,
-        parameters,
-        annotations,
-        limits
-    }
-    return ow.actions.change({
-        actionName,
-        action
-    })
+    return utils.deployRawAction(ctx, actionName,
+        {
+            exec: sourceAction.exec,
+            parameters,
+            annotations,
+            limits
+        });
 }
 
 // Look for the action of the given full-qualified name in the manifest. Skip includes declarations (for now)
@@ -101,11 +92,11 @@ const findAction = (manifest, actionName) => {
 
 // --- Sequence
 
-const handleSequence = (ow, args, action) => {
-    const manifest = args.manifest
+const handleSequence = (ctx, action) => {
+    const manifest = ctx.manifest
     const components = getComponents(manifest.namespace, action.packageName, action.sequence)
-    const parameters = helpers.getKeyValues(action.inputs, args)
-    const annotations = helpers.getKeyValues(action.annotations, args)
+    const parameters = helpers.getKeyValues(action.inputs, ctx)
+    const annotations = helpers.getKeyValues(action.annotations, ctx)
     const limits = action.limits || {}
     const sequence = {
         exec: {
@@ -117,9 +108,7 @@ const handleSequence = (ow, args, action) => {
         limits
     }
     const qname = names.makeQName(null, action.packageName, action.actionName)
-    return helpers.deployRawAction(ow, qname, sequence)
-        .then(reporter.action(qname, '', 'sequence', parameters))
-        .catch(reporter.action(qname, '', 'sequence', parameters))
+    return utils.deployRawAction(ctx, qname, sequence);
 }
 
 const getComponents = (namespace, pkgName, sequence) => {
@@ -141,11 +130,11 @@ const dependsOnSequence = (namespace, action) => {
 
 // --- Docker action
 
-const handleImage = (ow, args, action) => {
-    const manifest = args.manifest
+const handleImage = (ctx, action) => {
+    const manifest = ctx.manifest
     const image = action.image
-    const parameters = helpers.getKeyValues(action.inputs, args)
-    const annotations = helpers.getKeyValues(action.annotations, args)
+    const parameters = helpers.getKeyValues(action.inputs, ctx)
+    const annotations = helpers.getKeyValues(action.annotations, ctx)
     const limits = action.limits || {}
     const wskaction = {
         exec: {
@@ -156,16 +145,13 @@ const handleImage = (ow, args, action) => {
         annotations,
         limits
     }
-    const qname = names.makeQName(null, action.packageName, action.actionName)
-    return helpers.deployRawAction(ow, qname, wskaction)
-        .then(reporter.action(qname, '', 'image', parameters))
-        .catch(reporter.action(qname, '', 'image', parameters))
+    const qname = names.makeQName('_', action.packageName, action.actionName)
+    return utils.deployRawAction(ctx, qname, wskaction);
 }
-
 
 // --- Code
 
-const handleCode = (ow, args, action) => {
+const handleCode = (ctx, action) => {
     if (!action.hasOwnProperty('kind'))
         throw new Error(`Missing property 'kind' in packages/actions/${action.actionName}`)
 
@@ -185,8 +171,8 @@ const handleCode = (ow, args, action) => {
             throw new Error(`Unsupported action kind ${kind}`)
     }
 
-    const parameters = helpers.getKeyValues(action.inputs, args)
-    const annotations = helpers.getKeyValues(action.annotations, args)
+    const parameters = helpers.getKeyValues(action.inputs, ctx)
+    const annotations = helpers.getKeyValues(action.annotations, ctx)
     const limits = action.limits || {}
     const wskaction = {
         exec: { kind, code },
@@ -194,46 +180,42 @@ const handleCode = (ow, args, action) => {
         annotations,
         limits
     }
-    const qname = names.makeQName(null, action.packageName, action.actionName)
+    const qname = names.makeQName('_', action.packageName, action.actionName)
 
-    return helpers.deployRawAction(ow, qname, wskaction)
-        .then(reporter.action(qname, '', kind, parameters))
-        .catch(reporter.action(qname, '', kind, parameters))
+    return utils.deployRawAction(ctx, qname, wskaction);
 }
- 
+
 // --- Fallback
 
-const handleDefaultAction = (ow, args, action) => {
+const handleDefaultAction = (ctx, action) => {
     const pkgName = action.packageName
     const actionName = action.actionName
     if (!action.hasOwnProperty('location')) {
         throw new Error(`Missing property 'location' in ${pkgName}/actions/${actionName}`)
     }
 
-    action.location = path.resolve(args.basePath, action.location)
+    action.location = path.resolve(ctx.basePath, action.location)
     helpers.normalizeLocation(action)
     const kind = helpers.getKind(action)
     if (!kind) {
         throw new Error(`Could not automatically determined 'kind' in ${pkgName}/actions/${actionName}`)
     }
 
-    const params = helpers.getKeyValues(action.inputs, args)
-    const annotations = helpers.getKeyValues(action.annotations, args)
+    const parameters = helpers.getKeyValues(action.inputs, ctx)
+    const annotations = helpers.getKeyValues(action.annotations, ctx)
     const limits = action.limits || {}
 
     const binary = helpers.getBinary(action, kind)
-    const qname = names.makeQName(null, pkgName, actionName)
+    const qname = names.makeQName('_', pkgName, actionName)
 
-    return buildAction(args, kind, action)
-        .then(args.load)
-        .then(helpers.deployAction(ow, qname, params, annotations, limits, kind, binary))
-        .then(reporter.action(qname, args.location, kind, params))
-        .catch(reporter.action(qname, args.location, kind, params))
+    return buildAction(ctx, kind, action)
+        .then(ctx.load)
+        .then(utils.deployActionWithContent(ctx, qname, { exec: { kind }, parameters, annotations, limits }, binary))  
 }
 
 // --- Plugin
 
-const handlePluginAction = plugin => (ow, args, action) => {
+const handlePluginAction = plugin => (ctx, action) => {
     const context = { pkgName: action.packageName, actionName: action.actionName, action }
     let entities = plugin.getEntities(context)
     if (!Array.isArray(entities))
@@ -246,7 +228,7 @@ const handlePluginAction = plugin => (ow, args, action) => {
             throw new Error(`Plugin ${plugin.__pluginName} returned an invalid entity ${JSON.stringify(entity)}`)
 
         newaction.packageName = action.packageName
-        const promise = lookupActionHandler(newaction).deploy(ow, args, newaction)
+        const promise = lookupActionHandler(newaction).deploy(ow, ctx, newaction)
         promises.push(promise)
     }
     return Promise.all(promises)

@@ -14,4 +14,6 @@
  * limitations under the License.
  */
 
-module.exports = require('./libs/deploy');
+exports.auth = require('./libs/auth');
+exports.deploy = require('./libs/deploy');
+exports.undeploy = require('./libs/undeploy');

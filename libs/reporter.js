@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// TODO: deprecate and use log4js
+
+
 
 const reportEntity = (report, name) => subreport => {
     report[name] = subreport

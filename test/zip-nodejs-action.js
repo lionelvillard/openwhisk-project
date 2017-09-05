@@ -15,7 +15,7 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const deployer = require('../deploy');
+const deployer = require('..');
 
 describe('zip nodejs action', function () {
     this.timeout(10000);
@@ -32,7 +32,7 @@ describe('zip nodejs action', function () {
             location: 'manifest.yaml',
             force: true
         });
-
+    
         const cat = await ctx.ow.actions.invoke({
             actionName: 'nodejs-zip/cat',
             params: { lines: ['first', 'second'] },

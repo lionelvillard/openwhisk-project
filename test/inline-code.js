@@ -15,9 +15,10 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const deployer = require('../deploy');
+const deployer = require('..');
 
 describe('inline code', function () {
+    this.timeout(10000);
     const ctx = {};
 
     before(utils.before(ctx));

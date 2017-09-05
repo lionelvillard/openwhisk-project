@@ -61,10 +61,10 @@ exports.haveRepo = haveRepo
 const makeZip = (targetZip, src) => new Promise((resolve, reject) => {
     const output = fs.createWriteStream(targetZip)
     const archive = archiver('zip', {
-        zlib: {level: 9}
+        zlib: { level: 9 }
     })
 
-    output.on('close', () => {  
+    output.on('close', () => {
         resolve()
     })
 
@@ -109,3 +109,61 @@ const initFromBaseAction = baseAction => {
     return action
 }
 exports.initFromBaseAction = initFromBaseAction
+
+// --- Conversion functions from manifest format to rest params
+
+const getAnnotations = (args, annotations) => {
+    const converted = getKeyValues(annotations);
+    if (args.manifest.service) {
+        converted.push({ key: 'managed', value: args.manifest.service });
+    }
+}
+exports.getAnnotations = getAnnotations;
+
+const getKeyValues = (inputs, args) => {
+    if (inputs) {
+        return Object.keys(inputs).map(key => ({ key, value: resolveValue(inputs[key], args) }))
+    }
+    return []
+}
+exports.getKeyValues = getKeyValues
+
+const indexKeyValues = kvs => {
+    const index = {}
+    if (kvs) {
+        kvs.forEach(kv => index[kv.key] = kv.value)
+    }
+    return index
+}
+exports.indexKeyValues = indexKeyValues
+
+// TODO: support ${} format 
+const resolveValue = (value, args) => {
+    if (typeof value === 'string' && value.startsWith('$')) {
+        const key = value.substr(1)
+        if (args.env && args.env[key])
+            return args.env[key]
+
+        return process.env[key]
+    }
+    return value
+}
+
+
+// --- low level deployment functions
+
+const deployRawAction = (ctx, actionName, action) => {
+    ctx.logger.info(`[ACTION] [DEPLOYING] ${actionName}`);
+    ctx.logger.trace(`[ACTION] [DEPLOYING] ${JSON.stringify(action)}`);
+    return ctx.ow.actions.change({
+        actionName,
+        action
+    }).then(r => {ctx.logger.info(`[ACTION] [DEPLOYED] ${JSON.stringify(r)}`); return r;})
+}
+exports.deployRawAction = deployRawAction;
+
+const deployActionWithContent = (ctx, actionName, action, binary) => content => {
+    action.exec.code = Buffer.from(content).toString(binary ? 'base64' : 'utf8');
+    return deployRawAction(ctx, actionName, action);
+}
+exports.deployActionWithContent = deployActionWithContent;
