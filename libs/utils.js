@@ -17,7 +17,6 @@ const request = require('request-promise')
 const archiver = require('archiver')
 const fs = require('fs')
 
-
 // Check manifest is present, otherwise fetch it.
 function assignManifest(args) {
     if (args.hasOwnProperty('manifest')) {
@@ -35,6 +34,8 @@ function assignManifest(args) {
         })
 }
 exports.assignManifest = assignManifest
+
+
 
 // Fetch file content in GitHubRepository
 function fetchContent(args, location) {
@@ -158,7 +159,7 @@ const deployRawAction = (ctx, actionName, action) => {
     return ctx.ow.actions.change({
         actionName,
         action
-    }).then(r => {ctx.logger.info(`[ACTION] [DEPLOYED] ${JSON.stringify(r)}`); return r;})
+    }).then(r => { ctx.logger.info(`[ACTION] [DEPLOYED] ${JSON.stringify(r)}`); return r; })
 }
 exports.deployRawAction = deployRawAction;
 
@@ -167,3 +168,52 @@ const deployActionWithContent = (ctx, actionName, action, binary) => content => 
     return deployRawAction(ctx, actionName, action);
 }
 exports.deployActionWithContent = deployActionWithContent;
+
+
+// Helper functions managing openwhisk configuration files
+
+const getPackage = (manifest, packageName, create = false) => {
+    let pkgCfg;
+    if (packageName) {
+        let pkgsCfg = manifest.packages;
+        if (!pkgsCfg) {
+            if (!create)
+                return null;
+
+            pkgsCfg = manifest.packages = {};
+        }
+        pkgCfg = pkgsCfg[packageName];
+        if (!pkgCfg) {
+            if (!create)
+                return null;
+
+            pkgCfg = manifest.packages[packageName] = {};
+        }
+    } else {
+        pkgCfg = manifest;
+    }
+    return pkgCfg;
+}
+exports.getPackage = getPackage
+
+const getAction = (manifest, packageName, actionName, create = false) => {
+    const pkgCfg = getPackage(manifest, packageName, create)
+    if (!pkgCfg)
+        return null;
+
+    let actionsCfg = pkgCfg.actions
+    if (!actionsCfg) {
+        if (!create)
+            return null;
+        actionsCfg = pkgCfg.actions = {}
+    }
+    let actionCfg = actionsCfg[actionName]
+    if (!actionCfg) {
+        if (!create)
+            return null;
+        
+        actionCfg = actionsCfg[actionName] = {}
+    }
+    return actionCfg
+}
+exports.getAction = getAction

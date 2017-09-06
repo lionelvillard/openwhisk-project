@@ -11,3 +11,4 @@ examples/*
 .wskprops
 *.map
 libs/init.js
+libs/undeploy.js

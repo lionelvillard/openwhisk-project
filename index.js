@@ -16,4 +16,4 @@
 
 exports.auth = require('./libs/auth');
 exports.deploy = require('./libs/deploy');
-exports.undeploy = require('./libs/undeploy');
+exports.undeploy = require('./libs/undeploy').undeploy;

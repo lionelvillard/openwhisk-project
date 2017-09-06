@@ -1,0 +1,5 @@
+packages:
+  nodejs-unmanaged:
+    actions:
+      cat:
+        location: cat.js

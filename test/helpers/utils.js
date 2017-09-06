@@ -8,7 +8,7 @@ const before = ctx => async () => {
     fs.mkdirsSync('test-results');
     ctx.cacheDir = await fs.mkdtemp('test-results/test');
     ctx.ow = wskd.auth.initWsk();
-    await wskd.undeploy(ctx.ow);
+    await wskd.undeploy({ ow: ctx.ow });
 }
 exports.before = before;
 

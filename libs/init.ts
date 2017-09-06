@@ -25,8 +25,9 @@ type YAML = any;
 
 type Loader = (string) => Promise<Buffer>;
 
-interface Config {
+export interface Config {
     ow?: any;                       // OpenWhisk client. Perform a dry-run if not provided.
+    dryrun?: boolean;               // dry run (false by default)
 
     manifest?: YAML | string;       // manifest used for deployment. Parsed or unparsed.
     location?: string;              // manifest location. Ignored if manifest is provided
@@ -48,8 +49,10 @@ export async function init(config: Config) {
     config.logger_level = config.logger_level || 'off';
     config.logger.setLevel(config.logger_level);
 
-    if (!config.ow)
+    if (!config.ow) {
         config.ow = fakeow;
+        config.dryrun = true;
+    }
 
     async function load(location: string) {
         config.logger.debug(`read local file ${location}`);
@@ -81,8 +84,9 @@ export async function init(config: Config) {
     await resolveManifest(config);
     await configCache(config);
     await plugins.init(config);
-}
 
+    config.logger.debug(JSON.stringify(config));
+}
 
 async function resolveManifest(config: Config) {
     if (config.manifest || config.manifest === '') {
@@ -90,18 +94,12 @@ async function resolveManifest(config: Config) {
             config.manifest = yaml.parse(config.manifest) || {};
         }
         config.basePath = config.basePath || process.cwd();
-        return;
-    }
-
-    if (config.location) {
+    } else if (config.location) {
         config.location = path.resolve(config.basePath || process.cwd(), config.location);
         config.basePath = path.parse(config.location).dir;
 
         await loadManifest(config);
-        return;
     }
-
-    throw 'No valid manifest found';
 }
 
 async function loadManifest(config: Config) {
@@ -110,7 +108,7 @@ async function loadManifest(config: Config) {
 }
 
 async function configCache(config: Config) {
-    if (!config.cache) {
+    if (!config.cache && config.basePath) {
         config.cache = `${config.basePath}/.openwhisk`
         await fs.mkdirs(config.cache) // async since using fs-extra
     }
