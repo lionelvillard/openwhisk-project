@@ -34,7 +34,7 @@ const handleCopy = (ctx, action) => {
     }
 
     const params = helpers.getKeyValues(action.inputs, ctx)
-    const annotations = helpers.getKeyValues(action.annotations, ctx)
+    const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
 
     const qname = names.makeQName('_', action.packageName, action.actionName)
@@ -63,7 +63,7 @@ const deployCopyAction = (ctx, actionName, params, annos, newlimits) => sourceAc
         limits.logs = newlimits.logs
 
     const parameters = helpers.getKeyValues(actionParams)
-    const annotations = helpers.getKeyValues(actionParams)
+    const annotations = utils.getAnnotations(ctx, actionAnnos);
 
     return utils.deployRawAction(ctx, actionName,
         {
@@ -96,7 +96,7 @@ const handleSequence = (ctx, action) => {
     const manifest = ctx.manifest
     const components = getComponents(manifest.namespace, action.packageName, action.sequence)
     const parameters = helpers.getKeyValues(action.inputs, ctx)
-    const annotations = helpers.getKeyValues(action.annotations, ctx)
+    const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
     const sequence = {
         exec: {
@@ -134,7 +134,7 @@ const handleImage = (ctx, action) => {
     const manifest = ctx.manifest
     const image = action.image
     const parameters = helpers.getKeyValues(action.inputs, ctx)
-    const annotations = helpers.getKeyValues(action.annotations, ctx)
+    const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
     const wskaction = {
         exec: {
@@ -172,7 +172,7 @@ const handleCode = (ctx, action) => {
     }
 
     const parameters = helpers.getKeyValues(action.inputs, ctx)
-    const annotations = helpers.getKeyValues(action.annotations, ctx)
+    const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
     const wskaction = {
         exec: { kind, code },
@@ -202,7 +202,7 @@ const handleDefaultAction = (ctx, action) => {
     }
 
     const parameters = helpers.getKeyValues(action.inputs, ctx)
-    const annotations = helpers.getKeyValues(action.annotations, ctx)
+    const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
 
     const binary = helpers.getBinary(action, kind)

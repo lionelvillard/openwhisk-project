@@ -22,7 +22,7 @@ export async function undeploy(config: cfg.Config) {
     await cfg.init(config);
 
     const manifest = config.manifest; // if null, then delete all!
-    const service = manifest ? manifest.service : null; // only delete resources belonging to the service.
+    const service = manifest ? manifest.name : null; // only delete resources belonging to the service.
     const ow = config.ow;
     const dryrun = config.dryrun;
 

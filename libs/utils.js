@@ -113,11 +113,12 @@ exports.initFromBaseAction = initFromBaseAction
 
 // --- Conversion functions from manifest format to rest params
 
-const getAnnotations = (args, annotations) => {
+const getAnnotations = (config, annotations) => {
     const converted = getKeyValues(annotations);
-    if (args.manifest.service) {
-        converted.push({ key: 'managed', value: args.manifest.service });
+    if (config.manifest.name) {
+        converted.push({ key: 'managed', value: config.manifest.name });
     }
+    return converted;
 }
 exports.getAnnotations = getAnnotations;
 

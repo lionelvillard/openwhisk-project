@@ -104,7 +104,6 @@ const cloneRepo = (owner, repo, targetDir) => exists => new Promise(resolve => {
             resolve()
         })
     }
-
 })
 
 // Deploy packages (excluding bindings, and package content)
@@ -203,7 +202,7 @@ const deployTriggers = args => report => {
             const isFeed = trigger.hasOwnProperty('feed')
 
             const parameters = helpers.getKeyValues(trigger.inputs, args)
-            const annotations = helpers.getKeyValues(trigger.annotations, args)
+            const annotations = utils.getAnnotations(args, trigger.annotations)
             const publish = trigger.hasOwnProperty('publish') ? trigger.publish : false
 
             const triggerBody = {

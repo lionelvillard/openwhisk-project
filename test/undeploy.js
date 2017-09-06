@@ -18,13 +18,13 @@ const utils = require('./helpers/utils');
 const wskd = require('..');
 
 describe('testing undeploy', function () {
-    this.timeout(5000);
+    this.timeout(10000);
     const ctx = {};
 
     before(utils.before(ctx));
     after(utils.after(ctx));
 
-    it('undeploy an unmanaged action', async function () {
+    it('undeploy unmanaged action in manifest', async function () {
         const result = await wskd.deploy({
             ow: ctx.ow,
             basePath: 'test/fixtures/nodejs/',
@@ -33,22 +33,104 @@ describe('testing undeploy', function () {
             force: true
         });
         let cat = await ctx.ow.actions.get({ name: 'nodejs-unmanaged/cat' });
-    
+        assert.equal(cat.name, 'cat');
+
         await wskd.undeploy({
             ow: ctx.ow,
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
             location: 'unmanaged.yaml'
         });
-        assert.equal(cat.name, 'cat');
-        
+
         try {
             cat = await ctx.ow.actions.get({ name: 'nodejs-unmanaged/cat' });
-            assert.fail('cat should not be deployed');
+            assert.fail('cat should have been undeployed');
         } catch (e) {
             assert.equal(e.statusCode, 404);
         }
     });
 
+    it('undeploy managed action, same manifest', async function () {
+
+        await wskd.deploy({
+            ow: ctx.ow,
+            basePath: 'test/fixtures/nodejs/',
+            cache: ctx.cacheDir,
+            location: 'unmanaged.yaml',
+            force: true
+        });
+
+        await wskd.deploy({
+            ow: ctx.ow,
+            basePath: 'test/fixtures/nodejs/',
+            cache: ctx.cacheDir,
+            location: 'managed.yaml',
+            force: true
+        });
+        let ucat = await ctx.ow.actions.get({ name: 'nodejs-unmanaged/cat' });
+        let mcat = await ctx.ow.actions.get({ name: 'nodejs-managed/cat' });
+
+        assert.ok(ucat.annotations.length === 1); // exec
+        assert.ok(mcat.annotations.length === 2);
+        assert.ok(mcat.annotations[0].key === 'managed');
+
+        await wskd.undeploy({
+            ow: ctx.ow,
+            basePath: 'test/fixtures/nodejs/',
+            cache: ctx.cacheDir,
+            location: 'managed.yaml'
+        });
+
+        ucat = await ctx.ow.actions.get({ name: 'nodejs-unmanaged/cat' });
+        assert.equal(ucat.name, 'cat');
+
+        try {
+            mcat = await ctx.ow.actions.get({ name: 'nodejs-managed/cat' });
+            assert.fail('cat should have been undeployed');
+        } catch (e) {
+            assert.equal(e.statusCode, 404);
+        }
+    });
+
+    it('undeploy managed action, manifest without managed action', async function () {
+        await wskd.deploy({
+            ow: ctx.ow,
+            basePath: 'test/fixtures/nodejs/',
+            cache: ctx.cacheDir,
+            location: 'unmanaged.yaml',
+            force: true
+        });
+
+        await wskd.deploy({
+            ow: ctx.ow,
+            basePath: 'test/fixtures/nodejs/',
+            cache: ctx.cacheDir,
+            location: 'managed.yaml',
+            force: true
+        });
+        let ucat = await ctx.ow.actions.get({ name: 'nodejs-unmanaged/cat' });
+        let mcat = await ctx.ow.actions.get({ name: 'nodejs-managed/cat' });
+
+        assert.ok(ucat.annotations.length === 1); // exec
+        assert.ok(mcat.annotations.length === 2);
+        assert.ok(mcat.annotations[0].key === 'managed');
+
+        await wskd.undeploy({
+            ow: ctx.ow,
+            basePath: 'test/fixtures/nodejs/',
+            cache: ctx.cacheDir,
+            location: 'managed-edited.yaml'
+        });
+
+        ucat = await ctx.ow.actions.get({ name: 'nodejs-unmanaged/cat' });
+        assert.equal(ucat.name, 'cat');
+
+        try {
+            mcat = await ctx.ow.actions.get({ name: 'nodejs-managed/cat' });
+            assert.fail('cat should have been undeployed');
+        } catch (e) {
+            assert.equal(e.statusCode, 404);
+        }
+    });
 
 }); 

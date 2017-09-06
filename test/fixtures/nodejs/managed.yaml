@@ -1,0 +1,7 @@
+name: nodejs-managed 
+
+packages:
+  nodejs-managed:
+    actions:
+      cat:
+        location: cat.js
