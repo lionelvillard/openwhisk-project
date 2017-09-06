@@ -11,10 +11,13 @@ $ npm install @openwhisk-libs/deploy --save
 # Features
 
 The main features that are currently implemented are:
-* concurrent deployment 
+* deploy and undeploy a set of OpenWhisk entities
+* safe namespace sharing: deploy multiple independent projects into a single OpenWhisk namespace
+* robust [undeploy](docs/format/md#Properties): changes in the deployment file does not affect undeploy
 * automatic dependencies management (ie. actions in a sequence are deployed before the sequence itself)
 * extensible deployment format via [plugin](plugins/README.md) (experimental)
 * [modular](docs/format.md#includes) specification
+* concurrent deployment and undeployment
 
 Supported action kinds: 
 - single nodejs file
@@ -79,5 +82,5 @@ $ npm i
 To run the tests, it is recommended to create the file `.wskprops` in the project root directory. Then do:
 
 ```bash
-$ ./bin/runtests.sh
+$ npm test
 ```

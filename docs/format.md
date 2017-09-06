@@ -9,9 +9,9 @@ A *deployment* is an *object* representing a collection of OpenWhisk entities to
 
 ### Properties
 
-- PROPOSAL: service (string, optional) : the service name. 
+- name (string, optional) : the name associated to the entities described in the deployment. 
   
-  When specified, deployed entities are fully managed by linking them to the service name. Do not change it without proper review as commands like `undeploy` may not work as expected.  
+  When specified, deployed entities are fully managed by linking them to the name by adding the special `managed` annotation. Do not change this  without proper review as commands like `undeploy` may not work as expected.  
 
 - [`includes`](#includes) (array, optional)
 - [`packages`](#packages) (object, optional)
