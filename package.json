@@ -1,5 +1,5 @@
 {
-  "name": "@openwhisk-libs/deploy",
+  "name": "@openwhisk/deploy",
   "version": "0.2.0",
   "description": "",
   "main": "index.js",
@@ -18,13 +18,15 @@
     "archiver": "^2.0.3",
     "chevrotain": "^0.29.0",
     "child-process-promise": "^2.2.1",
+    "expand-home-dir": "0.0.3",
     "fs-extra": "^3.0.1",
     "log4js": "^1.1.1",
     "openwhisk": "^3.7.0",
+    "properties-parser": "^0.3.1",
+    "recursive-readdir": "^2.2.1",
     "simple-git": "^1.76.0",
     "yamljs": "^0.2.8",
-    "properties-parser": "^0.3.1",
-    "expand-home-dir": "0.0.3"
+    "yeoman-environment": "^2.0.3"
   },
   "devDependencies": {
     "@types/log4js": "0.0.33",

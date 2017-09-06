@@ -17,3 +17,9 @@
 exports.auth = require('./libs/auth');
 exports.deploy = require('./libs/deploy');
 exports.undeploy = require('./libs/undeploy').undeploy;
+
+// Experimental
+exports.refresh = require('./libs/refresh.js'); 
+exports.sync = require('./libs/sync.js');
+exports.env = require('./libs/env.js');
+exports.yo = require('./libs/yo.js');
