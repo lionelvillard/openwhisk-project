@@ -62,27 +62,155 @@ export default async function undeploy(config: cfg.Config) {
     async function cleanRules() {
         const rules = await config.ow.rules.list();
 
-        // TODO: managed
-        const promises = rules.map(rule => config.ow.rules.delete(rule));
+        const promises = [];
+        for (const rule of rules) {
+            if (await mustUndeployRule(rule)) {
+                promises.push(ow.rules.delete(rule));
+            }
+        }
         await Promise.all(promises);
     }
 
     async function cleanTriggers() {
         const triggers = await config.ow.triggers.list();
-
-        // TODO: managed
-        const promises = triggers.map(trigger => config.ow.triggers.delete(trigger));
+        const promises = [];
+        for (const trigger of triggers) {
+            if (await mustUndeployTrigger(trigger)) {
+                promises.push(ow.triggers.delete(trigger));
+        
+                // TODO: feed issue #39
+            }
+        }
         await Promise.all(promises);
     }
 
     async function cleanApis() {
         const apis = (await config.ow.routes.list()).apis;
-
-        // TODO: managed
-        const promises = apis.map(api => config.ow.routes.delete({ basepath: api.value.apidoc.basePath }));
+        const promises = [];
+        for (const api of apis) {
+            const basepath =  api.value.apidoc.basePath;
+            if (await mustUndeployApi(basepath)) {
+                promises.push(ow.routes.delete({basepath})); 
+            }
+        }
         await Promise.all(promises);
     }
 
+    async function mustUndeployAction(action) {
+        if (dryrun)
+            return false;
+
+        let deployed
+        try {
+            deployed = await ow.actions.get(action);
+        } catch (e) {
+            return false; // does not exist => don't deploy
+        }
+
+        if (manifest) {
+            let serviceAnnotation = getManagedAnnotation(deployed);
+
+            const actionName = `/${action.namespace}/${action.name}`;
+            const qname = names.parseQName(actionName);
+            const inmanifest = utils.getAction(manifest, qname.pkg, qname.name);
+            return mustUndeploy(inmanifest, serviceAnnotation, actionName);
+        }
+
+        // no manifest: undeploy all.
+        return true;
+    }
+
+    async function mustUndeployPackage(pkg) {
+        if (dryrun)
+            return false;
+        
+        let deployed
+        try {
+            deployed = await ow.packages.get(pkg);
+        } catch (e) {
+            return false; // does not exist => don't deploy
+        }
+
+        if (deployed.actions.length > 0)
+            return false;
+
+        if (manifest) {
+            const serviceAnnotation = getManagedAnnotation(deployed);
+            const inmanifest = utils.getPackage(manifest, pkg.name);
+            return mustUndeploy(inmanifest, serviceAnnotation, pkg.name);
+        }
+
+        // no manifest: undeploy all.
+        return true;
+    }
+
+    async function mustUndeployRule(rule) {
+        if (dryrun)
+            return false;
+        
+        let deployed
+        try {
+            deployed = await ow.rules.get(rule);
+        } catch (e) {
+            return false; // does not exist => don't deploy
+        }
+        
+        if (manifest) {
+            const serviceAnnotation = getManagedAnnotation(deployed);
+            const inmanifest = utils.getRule(manifest, rule.name);
+            return mustUndeploy(inmanifest, serviceAnnotation, rule.name);
+        }
+
+        // no manifest: undeploy all.
+        return true;
+    }
+
+
+    async function mustUndeployTrigger(trigger) {
+        if (dryrun)
+            return false;
+        
+        let deployed
+        try {
+            deployed = await ow.triggers.get(trigger);
+        } catch (e) {
+            return false; // does not exist => don't deploy
+        }
+        
+        if (manifest) {
+            const serviceAnnotation = getManagedAnnotation(deployed);
+            const inmanifest = utils.getTrigger(manifest, trigger.name);
+            return mustUndeploy(inmanifest, serviceAnnotation, rule.name);
+        }
+
+        // no manifest: undeploy all.
+        return true;
+    }
+
+    async function mustUndeployApi(basepath) {
+        if (dryrun)
+            return false;
+        
+        // TODO: routes.get
+        // let deployed
+        // try {
+        //     deployed = await ow.routes.get(trigger);
+        // } catch (e) {
+        //     return false; // does not exist => don't deploy
+        // }
+        
+        if (manifest) {
+            const serviceAnnotation = null; // = getManagedAnnotation(deployed);
+            const inmanifest = utils.getApi(manifest, basepath);
+            return mustUndeploy(inmanifest, serviceAnnotation, basepath);
+        }
+
+        // no manifest: undeploy all.
+        return true;
+    }
+
+    // utitites 
+    
     function getManagedAnnotation(entity) {
         if (service) {
             const managedList = entity.annotations.filter(anno => anno.key === 'managed').map(kv => kv.value);
@@ -94,65 +222,18 @@ export default async function undeploy(config: cfg.Config) {
         }
         return null;
     }
-
-    async function mustUndeployAction(action) {
-        if (dryrun)
-            return false;
-        if (manifest) {
-            let serviceAnnotation;
-            if (service) {
-                try {
-                    const deployed = await ow.actions.get(action);
-                    serviceAnnotation = getManagedAnnotation(deployed);
-                } catch (e) {
-                    config.logger.error(JSON.stringify(e));
-                    return false;
-                }
+ 
+    function mustUndeploy(inmanifest, inservice, name) {
+        if (inmanifest) {
+            if (inservice && inservice !== service) {
+                // entity is managed by another service. Bail out
+                config.logger.fatal(`Fatal: ${name} is managed by the service ${inservice}`);
+                throw `Fatal: ${name} is managed by the service ${inservice}`;
             }
-
-            const qname = names.parseQName(`/${action.namespace}/${action.name}`);
-            const description = utils.getAction(manifest, qname.pkg, qname.name);
-            if (description) {
-                if (serviceAnnotation && serviceAnnotation !== service) {
-                    // action is managed by another service. Bail out
-                    config.logger.fatal(`Fatal: action ${action.name} is managed by the service ${serviceAnnotation}`);
-                    throw `Fatal: action ${action.name} is managed by the service ${serviceAnnotation}`;
-                }
-                return true;
-            }
-            // not in the manifest => undeploy only if belong to service
-            return service ? service === serviceAnnotation : false;
+            return true;
         }
-
-        // no manifest: undeploy all.
-        return true;
+        // not in the manifest => undeploy only if belong to service
+        return service ? service === inservice : false;
     }
 
-    async function mustUndeployPackage(pkg) {
-        if (dryrun)
-            return false;
-        const deployed = await ow.packages.get(pkg);
-
-        if (deployed.actions.length > 0)
-            return false;
-
-        if (manifest) {
-            const serviceAnnotation = getManagedAnnotation(deployed);
-            const description = utils.getPackage(manifest, pkg.name);
-            if (description) {
-                if (serviceAnnotation && serviceAnnotation !== service) {
-                    // action is managed by another service. Bail out
-                    config.logger.fatal(`Fatal conflict: package ${pkg.name} is managed by the service ${serviceAnnotation}`);
-                    throw `Fatal conflict: package ${pkg.name} is managed by the service ${serviceAnnotation}`;
-                }
-                return true;
-            }
-
-            // not in the manifest => undeploy only if belong to service
-            return service ? service === serviceAnnotation : false;
-        }
-
-        // no manifest: undeploy all.
-        return true;
-    }
 }

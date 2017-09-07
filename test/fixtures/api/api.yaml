@@ -4,7 +4,7 @@ actions:
     code : |
       return {payload: `Hello world ${params.name}`};
 apis:
-  hello:
+  /hello:
     basePath: /hello
     paths:
       /world:

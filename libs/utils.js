@@ -212,9 +212,66 @@ const getAction = (manifest, packageName, actionName, create = false) => {
     if (!actionCfg) {
         if (!create)
             return null;
-        
+
         actionCfg = actionsCfg[actionName] = {}
     }
     return actionCfg
 }
 exports.getAction = getAction
+
+const getTrigger = (manifest, triggerName, create = false) => {
+    let triggersCfg = manifest.triggers;
+    if (!triggersCfg) {
+        if (!create)
+            return null;
+        triggersCfg = manifest.triggers = {};
+    }
+    let triggerCfg = triggersCfg[triggerName];
+    if (!triggerCfg) {
+        if (!create)
+            return null;
+
+        triggerCfg = triggersCfg[triggerName] = {};
+    }
+    return triggerCfg;
+}
+exports.getTrigger = getTrigger;
+
+const getRule = (manifest, ruleName, create = false) => {
+    let rulesCfg = manifest.rules;
+    if (!rulesCfg) {
+        if (!create)
+            return null;
+        rulesCfg = manifest.rules = {};
+    }
+    let ruleCfg = rulesCfg[ruleName];
+    if (!ruleCfg) {
+        if (!create)
+            return null;
+
+        ruleCfg = rulesCfg[ruleName] = {};
+    }
+    return ruleCfg;
+}
+exports.getRule = getRule;
+
+
+const getApi = (manifest, apiName, create = false) => {
+    // TODO: currently treat apiname as being basePath
+    let apisCfg = manifest.apis;
+    if (!apisCfg) {
+        if (!create)
+            return null;
+        apisCfg = manifest.apis = {};
+    }
+    let apiCfg = apisCfg[apiName];
+    if (!apiCfg) {
+        if (!create)
+            return null;
+
+        apiCfg = apisCfg[apiName] = {};
+    }
+    return apiCfg;
+}
+exports.getApi = getApi;
+
