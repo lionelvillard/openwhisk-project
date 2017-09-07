@@ -180,7 +180,7 @@ export default async function undeploy(config: cfg.Config) {
         if (manifest) {
             const serviceAnnotation = getManagedAnnotation(deployed);
             const inmanifest = utils.getTrigger(manifest, trigger.name);
-            return mustUndeploy(inmanifest, serviceAnnotation, rule.name);
+            return mustUndeploy(inmanifest, serviceAnnotation, trigger.name);
         }
 
         // no manifest: undeploy all.
