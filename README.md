@@ -1,11 +1,11 @@
 [![Build Status](https://travis-ci.org/lionelvillard/openwhisk-deploy.svg?branch=master)](https://travis-ci.org/lionelvillard/openwhisk-deploy)
 
-This project provides a tool for deploying OpenWhisk entities specified in the format described below.
+This project provides a set of tools for managing a collection of OpenWhisk entities and related services (eg. Cloudant, Redis, etc...).      
  
 # Getting started
 
 ```bash
-$ npm install @openwhisk-libs/deploy --save
+$ npm install @openwhisk/deploy --save
 ```
 
 # Features

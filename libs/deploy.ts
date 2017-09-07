@@ -13,40 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const fs = require('fs')  
+const fs = require('fs')
 const simpleGit = require('simple-git')
 const logger = require('log4js').getLogger()
 
 const names = require('./names')
 const utils = require('./utils')
-const reporter = require('./reporter')
 const handlers = require('./handlers')
 const helpers = require('./helpers')
 const init = require('./init')
 
-// Deploy OpenWhisk entities (actions, sequence, rules, etc...)
-async function deploy(args) {
+export default async function deploy(args) {
     await init.init(args);
-    
-    logger.debug('setup promises')
 
     try {
-        return deployIncludes(args)
-            .then(deployPackages(args, false)) // bindings
-            .then(deployPackages(args, true))  // new packages
-            .then(deployActions(args))
-            .then(deployTriggers(args))
-            .then(deployRules(args))
-            .catch(e => {
-                logger.error(e)
-                return Promise.reject(e)
-            })
+        await deployIncludes(args);
+        await deployPackages(args, false); // bindings
+        await deployPackages(args, true);  // new packages
+        await deployActions(args);
+        await deployTriggers(args);
+        await deployRules(args);
+        await deployApis(args);
     } catch (e) {
-        logger.error(JSON.stringify(e));
-        return Promise.reject({ error: e })
+        logger.error(e)
+        return Promise.reject(e)
     }
 }
-module.exports = deploy;
 
 const deployIncludes = (args) => {
     const manifest = args.manifest
@@ -89,10 +81,10 @@ const deployIncludes = (args) => {
 
             promises.push(promise)
         }
-        return Promise.all(promises).then(reporter.entity({}, 'includes'))
+        return Promise.all(promises)
     }
 
-    return Promise.resolve({})
+    return true
 }
 
 const cloneRepo = (owner, repo, targetDir) => exists => new Promise(resolve => {
@@ -107,7 +99,7 @@ const cloneRepo = (owner, repo, targetDir) => exists => new Promise(resolve => {
 })
 
 // Deploy packages (excluding bindings, and package content)
-const deployPackages = (args, bindings) => report => {
+function deployPackages(args, bindings) {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('packages')) {
         const packages = manifest.packages
@@ -132,20 +124,18 @@ const deployPackages = (args, bindings) => report => {
                 const annotations = utils.getAnnotations(args, pkg.annotations)
                 const publish = pkg.hasOwnProperty('publish') ? pkg.publish : false
 
-                const cmd = deployPackage(args.ow, name, parameters, annotations, binding, publish)
-                    .then(reporter.package(name))
-                    .catch(reporter.package(name))
+                const cmd = deployPackage(args.ow, name, parameters, annotations, binding, publish);
 
                 promises.push(cmd)
             }
         }
         if (promises.length != 0)
-            return Promise.all(promises).then(reporter.entity(report, 'packages'))
+            return Promise.all(promises)
     }
-    return Promise.resolve(report)
+    return true
 }
 
-const deployPackage = (ow, name, parameters, annotations, binding, publish) => {
+function deployPackage(ow, name, parameters, annotations, binding, publish) {
     return ow.packages.change({
         name,
         package: {
@@ -184,14 +174,13 @@ const deployPendingActions = (ctx, graph) => {
     return Promise.resolve([])
 }
 
-const deployActions = (ctx) => report => {
+function deployActions(ctx) {
     const manifest = ctx.manifest
     const graph = helpers.dependenciesGraph(manifest)
-    return deployPendingActions(ctx, graph)
-        .then(reportActions => (reportActions.length > 0) ? reporter.entity(report, 'actions')(reportActions) : report)
+    return deployPendingActions(ctx, graph);
 }
 
-const deployTriggers = args => report => {
+function deployTriggers(args) {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('triggers')) {
         const triggers = manifest.triggers
@@ -205,58 +194,61 @@ const deployTriggers = args => report => {
             const annotations = utils.getAnnotations(args, trigger.annotations)
             const publish = trigger.hasOwnProperty('publish') ? trigger.publish : false
 
-            const triggerBody = {
+            let triggerBody: any = {
                 annotations,
                 publish
             }
-            if (!isFeed) {
+            if (isFeed) {
+                annotations.feed = trigger.feed;
+            } else {
                 triggerBody.parameters = parameters
             }
 
-            let cmd = deployTrigger(args.ow, args, triggerName, triggerBody)
-                .then(reporter.trigger(triggerName))
-                .catch(reporter.trigger(triggerName))
+            let cmd = args.ow.triggers.change({
+                triggerName,
+                trigger: triggerBody,
+                parameters,
+                annotations}); 
+
 
             if (isFeed) {
                 cmd = cmd
-                    .then(deployFeedAction(args, trigger.feed, triggerName, parameters))
+                    .then(() => deployFeedAction(args, trigger.feed, triggerName, parameters))
+                    
+
             }
 
             promises.push(cmd)
         }
 
         if (promises.length != 0)
-            return Promise.all(promises).then(reporter.entity(report, 'triggers'))
+            return Promise.all(promises);
     }
-    return Promise.resolve(report)
-}
+    return true
+} 
 
-const deployTrigger = (ow, args, triggerName, trigger) => {
-    return ow.triggers.change({
-        triggerName,
-        trigger
-    })
-}
-
-const deployFeedAction = (args, feed, triggerName, parameters) => report => {
+const deployFeedAction = (args, feed, triggerName, parameters) => {
     // Invoke action creating feed action sending events to the specified trigger name
+    let params = {
+        lifecycleEvent: 'CREATE',
+        triggerName,
+        authKey: args.ow.namespaces.client.options.api_key
+    }
+
+    // if feedArgPassed {
+    //     flags.common.annotation = append(flags.common.annotation, getFormattedJSON("feed", flags.common.feed))
+    // }
 
     // transform parameters
-    const params = {}
     for (let i in parameters) {
         let p = parameters[i]
+
+        // TODO: check for name conflicts
+
         params[p.key] = p.value
     }
 
-    // TODO: check for name conflicts
-
-    params.lifecycleEvent = 'CREATE'
-    params.triggerName = triggerName
-    params.authKey = args.ow.namespaces.client.options.api_key
-
     return invokeAction(args.ow, feed, params)
-        .then(reporter.feed(report, feed, params))
-        .catch(reporter.feed(report, feed, params))
 }
 
 const invokeAction = (ow, actionName, params) => {
@@ -264,10 +256,10 @@ const invokeAction = (ow, actionName, params) => {
         actionName,
         blocking: true,
         params
-    })
+    }).catch(e => true ); // ignore for now. See issue #39
 }
 
-const deployRules = args => report => {
+function deployRules(args) {
     const manifest = args.manifest
     if (manifest.hasOwnProperty('rules')) {
         const rules = manifest.rules
@@ -276,16 +268,15 @@ const deployRules = args => report => {
             let rule = rules[ruleName]
 
             let cmd = deployRule(args.ow, ruleName, rule.trigger, rule.action)
-                .then(reporter.rule(ruleName))
-                .catch(reporter.rule(ruleName))
 
             promises.push(cmd)
         }
         if (promises.length != 0)
-            return Promise.all(promises).then(reporter.entity(report, 'rules'))
+            return Promise.all(promises)
     }
-    return Promise.resolve(report)
+    return true
 }
+
 
 const deployRule = (ow, ruleName, trigger, action) => {
     return ow.rules.change({
@@ -295,8 +286,54 @@ const deployRule = (ow, ruleName, trigger, action) => {
     })
 }
 
+// --- Apis
+
+enum API_VERBS { GET, PUT, POST, DELETE, PATCH, HEAD, OPTIONS };
+
+
+async function deployApis(args) {
+    const manifest = args.manifest;
+    const apis = manifest.apis;
+    if (apis) {
+        const promises = [];
+        for (const apiname in apis) {
+            const api = apis[apiname];
+
+            const basepath = api.basePath;
+            if (!basepath)
+                throw `Missing basePath property for API ${apiname}`;
+
+            const paths = api.paths;
+            if (paths) {
+                for (const relpath in paths) {
+                    const verbs = paths[relpath];
+                    for (const verb in verbs) {
+
+                        if (!(verb.toUpperCase() in API_VERBS))
+                            throw `Invalid API verb: ${verb} for API ${apiname}`;
+
+                        const action = verbs[verb];
+                        const route = { basepath, relpath, operation: verb, action };
+                        args.logger.info(`Add route ${JSON.stringify(route, null, 2)}`);
+                       
+                        const cmd = args.ow.routes.create(route);
+
+                        promises.push(cmd)
+                    }
+                }
+            } else {
+                args.logger.info('no paths for API ${apiname}');
+            }
+        }
+        if (promises.length != 0)
+            return Promise.all(promises)
+    }
+}
+
 // -- Utils
- 
-const checkFileExists = file => new Promise(resolve => {
-    fs.exists(file, result => resolve(result))
-})
+
+function checkFileExists(file) {
+    return new Promise(resolve => {
+        fs.exists(file, result => resolve(result))
+    })
+}

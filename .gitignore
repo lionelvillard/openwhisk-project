@@ -12,3 +12,4 @@ examples/*
 *.map
 libs/init.js
 libs/undeploy.js
+libs/deploy.js

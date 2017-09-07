@@ -60,7 +60,8 @@ const auth = (options = {}) => {
         return {
             api_key: wskprops.AUTH,
             apihost: wskprops.APIHOST,
-            ignore_certs: wskprops.IGNORE_CERTS || false
+            ignore_certs: wskprops.IGNORE_CERTS || false,
+            apigw_token: wskprops.APIGW_ACCESS_TOKEN
         }
     }
 
@@ -76,6 +77,7 @@ const resolveVariables = (options = {}) => {
     variables.auth = options.auth || wskprops.AUTH
     variables.apihost = options.apihost || wskprops.APIHOST
     variables.ignore_certs = options.ignore_certs || wskprops.IGNORE_CERTS || false
+    variables.apigw_token = options.apigw_token || wskprops.APIGW_ACCESS_TOKEN
 
     return variables
 }
@@ -83,6 +85,6 @@ exports.resolveVariables = resolveVariables
 
 const initWsk = (options = {}) => {
     const vars = resolveVariables(options);
-    return openwhisk({ api_key: vars.auth, apihost: vars.apihost, ignore_certs: vars.ignore_certs })
+    return openwhisk({ api_key: vars.auth, apihost: vars.apihost, ignore_certs: vars.ignore_certs, apigw_token: vars.apigw_token })
 }
 exports.initWsk = initWsk

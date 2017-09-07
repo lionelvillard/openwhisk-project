@@ -1,0 +1,12 @@
+actions:
+  hello:
+    kind: nodejs
+    code : |
+      return {payload: `Hello world ${params.name}`};
+apis:
+  hello:
+    basePath: /hello
+    paths:
+      /world:
+        get: hello
+            
