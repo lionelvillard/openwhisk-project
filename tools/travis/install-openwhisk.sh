@@ -24,7 +24,7 @@ cat whisk.properties
 
 cp $TRAVIS_BUILD_DIR/tools/travis/wskprops ~/.wskprops
 ./bin/wsk property set --auth `cat ansible/files/auth.guest`
-echo $APIGW_ACCESS_TOKEN >> ~/.wskprops
+echo APIGW_ACCESS_TOKEN=$APIGW_ACCESS_TOKEN >> ~/.wskprops
 cat ~/.wskprops
 
 export OPENWHISK_DIR=$TRAVIS_BUILD_DIR/openwhisk

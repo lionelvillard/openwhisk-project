@@ -18,7 +18,7 @@ import * as cfg from './init';
 const names = require('./names');
 const utils = require('./utils');
 
-export async function undeploy(config: cfg.Config) {
+export default async function undeploy(config: cfg.Config) {
     await cfg.init(config);
 
     const manifest = config.manifest; // if null, then delete all!
@@ -34,6 +34,7 @@ export async function undeploy(config: cfg.Config) {
         await cleanPackages();
         await cleanRules();
         await cleanTriggers();
+        await cleanApis();
     }
 
     async function cleanActions() {
@@ -60,13 +61,25 @@ export async function undeploy(config: cfg.Config) {
 
     async function cleanRules() {
         const rules = await config.ow.rules.list();
+
+        // TODO: managed
         const promises = rules.map(rule => config.ow.rules.delete(rule));
         await Promise.all(promises);
     }
 
     async function cleanTriggers() {
         const triggers = await config.ow.triggers.list();
+
+        // TODO: managed
         const promises = triggers.map(trigger => config.ow.triggers.delete(trigger));
+        await Promise.all(promises);
+    }
+
+    async function cleanApis() {
+        const apis = (await config.ow.routes.list()).apis;
+
+        // TODO: managed
+        const promises = apis.map(api => config.ow.routes.delete({ basepath: api.value.apidoc.basePath }));
         await Promise.all(promises);
     }
 
@@ -96,7 +109,7 @@ export async function undeploy(config: cfg.Config) {
                     return false;
                 }
             }
-           
+
             const qname = names.parseQName(`/${action.namespace}/${action.name}`);
             const description = utils.getAction(manifest, qname.pkg, qname.name);
             if (description) {
