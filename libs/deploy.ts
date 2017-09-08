@@ -40,7 +40,7 @@ export default async function deploy(args) {
     }
 }
 
-const deployIncludes = (args) => {
+function deployIncludes(args) {
     const manifest = args.manifest
     args.manifest.namespace = '_'
     if (manifest.hasOwnProperty('includes')) {
@@ -181,14 +181,14 @@ function deployActions(ctx) {
 }
 
 function deployTriggers(args) {
-    const manifest = args.manifest
-    if (manifest.hasOwnProperty('triggers')) {
-        const triggers = manifest.triggers
-
-        const promises = []
+    const manifest = args.manifest;
+    const triggers = manifest.triggers;
+    if (triggers) {
+        const ow = args.ow;
+        const promises = [];
         for (const triggerName in triggers) {
-            const trigger = triggers[triggerName] || {}
-            const isFeed = trigger.hasOwnProperty('feed')
+            const trigger = triggers[triggerName] || {};
+            const feed = trigger.feed;
 
             const parameters = helpers.getKeyValues(trigger.inputs, args)
             const annotations = utils.getAnnotations(args, trigger.annotations)
@@ -198,65 +198,38 @@ function deployTriggers(args) {
                 annotations,
                 publish
             }
-            if (isFeed) {
+
+            if (feed) {
+                // this will help for deleting the feed
                 annotations.feed = trigger.feed;
             } else {
                 triggerBody.parameters = parameters
             }
 
-            let cmd = args.ow.triggers.change({
+            let promise = ow.triggers.change({
                 triggerName,
                 trigger: triggerBody,
                 parameters,
-                annotations}); 
+                annotations
+            }).then(() => args.logger.info(`[TRIGGER] [CREATED] ${triggerName}`));
 
-
-            if (isFeed) {
-                cmd = cmd
-                    .then(() => deployFeedAction(args, trigger.feed, triggerName, parameters))
-                    
-
+            if (feed) {
+                // transform parameters { .. : key , : value } to { key: value } 
+                let params = {};
+                for (const p of parameters) {
+                    params[p.key] = p.value
+                }
+                promise = promise.then(() => args.ow.feeds.change({ name: feed, trigger: triggerName, params }))
+                    .then(() => args.logger.info(`[FEED] [CREATED] ${feed}`))
+                    .catch(e => true); // Ignore for now See issue #41
             }
 
-            promises.push(cmd)
+            promises.push(promise);
         }
 
         if (promises.length != 0)
             return Promise.all(promises);
     }
-    return true
-} 
-
-const deployFeedAction = (args, feed, triggerName, parameters) => {
-    // Invoke action creating feed action sending events to the specified trigger name
-    let params = {
-        lifecycleEvent: 'CREATE',
-        triggerName,
-        authKey: args.ow.namespaces.client.options.api_key
-    }
-
-    // if feedArgPassed {
-    //     flags.common.annotation = append(flags.common.annotation, getFormattedJSON("feed", flags.common.feed))
-    // }
-
-    // transform parameters
-    for (let i in parameters) {
-        let p = parameters[i]
-
-        // TODO: check for name conflicts
-
-        params[p.key] = p.value
-    }
-
-    return invokeAction(args.ow, feed, params)
-}
-
-const invokeAction = (ow, actionName, params) => {
-    return ow.actions.invoke({
-        actionName,
-        blocking: true,
-        params
-    }).catch(e => true ); // ignore for now. See issue #39
 }
 
 function deployRules(args) {
@@ -315,7 +288,7 @@ async function deployApis(args) {
                         const action = verbs[verb];
                         const route = { basepath, relpath, operation: verb, action };
                         args.logger.info(`Add route ${JSON.stringify(route, null, 2)}`);
-                       
+
                         const cmd = args.ow.routes.create(route);
 
                         promises.push(cmd)

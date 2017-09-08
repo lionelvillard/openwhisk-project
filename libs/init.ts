@@ -76,7 +76,7 @@ export async function init(config: Config) {
         ow.triggers.change = ow.triggers.update;
         ow.routes.change = ow.routes.update;
         ow.actions.change = ow.actions.update;
-        ow.feeds.change = ow.feeds.update;
+        ow.feeds.change = ow.feeds.create;  // update? See issue #41
         ow.rules.change = ow.rules.update;
     }
     config.ow = ow;
