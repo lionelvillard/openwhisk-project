@@ -13,13 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+const assert = require('assert');
+const utils = require('./helpers/utils');
+const wskd = require('./..');
 
-exports.auth = require('./libs/auth');
-exports.deploy = require('./libs/deploy').default;
-exports.undeploy = require('./libs/undeploy');
+describe('testing sync', function () {
+    const ctx = {};
 
-// Experimental
-exports.refresh = require('./libs/refresh.js'); 
-exports.sync = require('./libs/sync.js');
-exports.env = require('./libs/env.js');
-exports.yo = require('./libs/yo.js');
+    before(utils.before(ctx));
+    after(utils.after(ctx));
+
+    function assertNamespaceEmpty(json) {
+        assert.equal(json.packages.length, 0);
+        assert.equal(json.actions.length, 0);
+        assert.equal(json.rules.length, 0);
+        assert.equal(json.triggers.length, 0);
+        assert.equal(json.apis.length, 0);
+    }
+
+    it.skip('empty files directory', async function () {
+    });
+
+});

@@ -11,8 +11,10 @@ $ npm install @openwhisk/deploy --save
 # Main Features
 
 - deploy: deploy a set of OpenWhisk entities from description stored in [deployment configuration files](docs/format.md).
-- undeploy: undeploy a set of OpenWhisk entities.
-- refresh: update the local deployment configuration files against deployed entities
+- undeploy: undeploy a set of managed OpenWhisk entities.
+- clean: remove *all* deployed entities in a namespace.
+- refresh: update the local deployment configuration files against deployed entities.
+- sync: update the local deployment configuration files against files stored locally.
 
 # Example
 

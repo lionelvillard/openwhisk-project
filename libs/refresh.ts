@@ -18,7 +18,7 @@ import * as cfg from './init';
 const names = require('./names');
 
 enum Targets { JSON = 1, BASH, YAML };
-
+ 
 export interface Config extends cfg.Config {
     target?: Targets;
 }

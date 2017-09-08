@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 const assert = require('assert');
-const utils = require('../helpers/utils');
-const wskd = require('../..');
+const utils = require('./helpers/utils');
+const wskd = require('./..');
 const { exec } = require('child-process-promise');
 const fs = require('fs-extra');
 

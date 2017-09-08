@@ -46,7 +46,7 @@ export async function init(config: Config) {
     if (!config.logger)
         config.logger = getLogger();
 
-    config.logger_level = config.logger_level || 'off';
+    config.logger_level = config.logger_level || process.env.LOGGER_LEVEL || 'off';
     config.logger.setLevel(config.logger_level);
 
     if (!config.ow) {
