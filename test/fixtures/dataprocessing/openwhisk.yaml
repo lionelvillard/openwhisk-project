@@ -46,7 +46,7 @@ packages:
       # Creating sequence that ties database read to handling action
       write-from-cloudant-sequence:
         #sequence: openwhisk-cloudant/read, write-from-cloudant
-        sequence: /whisk.system/cloudant/read, write-from-cloudant
+        sequence: /whisk.system/utils/echo, write-from-cloudant
 
 triggers:
   # Trigger named "image-uploaded"

@@ -160,7 +160,10 @@ const deployRawAction = (ctx, actionName, action) => {
     return ctx.ow.actions.change({
         actionName,
         action
-    }).then(r => { ctx.logger.info(`[ACTION] [DEPLOYED] ${JSON.stringify(r)}`); return r; })
+    }).then(r => {
+        if (r.exec) delete r.exec.code;
+        ctx.logger.info(`[ACTION] [DEPLOYED] ${JSON.stringify(r)}`);
+    });
 }
 exports.deployRawAction = deployRawAction;
 
