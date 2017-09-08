@@ -1,34 +1,53 @@
 # Deployment Format Specification
 
-The deployment specification uses the YAML syntax and JSON schema to describe constraints
-on the syntax. These constraints are presented below.
+This document formally described the deployment format and semantic used by `OpenWhisk Deploy`. 
 
-## `Deployment` (top-level schema)
+The deployment configuration files are written in `YAML`. Since `JSON` and `YAML` are closely related, 
+we use JSON schema to define the constraints imposed on the deployment files. These constraints are presented below,
+along with some examples. 
 
-A *deployment* is an *object* representing a collection of OpenWhisk entities to be deployed.
+
+## `deployment` (top-level schema)
+
+A *deployment* is an *object* representing a collection of OpenWhisk entities (actions, packages, rules, triggers and apis) to be deployed.
 
 ### Properties
 
-- name (string, optional) : the name associated to the entities described in the deployment. 
+- `name` (string, optional) : the name associated to the entities described in the deployment. When set, do not change this without proper review as commands like `undeploy` may not work as expected.   
   
-  When specified, deployed entities are fully managed by linking them to the name by adding the special `managed` annotation. Do not change this  without proper review as commands like `undeploy` may not work as expected.  
+  When specified, deployed entities are *fully managed*.
+  
+  *Unmanaged* entities are entities deployed using a tool other than OpenWhisk Deploy, such as `wsk`. 
+  
+  *Partially managed* entities are entities described in deployment files and deployed using OpenWhisk Deploy.
+  
+  Compare to partially managed entities, fully managed deployments provide these additional guarantees:
+  - during deployment: 
+     - entities removed from deployment files are also undeployed 
+     - external (not managed by this deployment) entities are not overwritten. (Conflict detection) 
+  - during undeployment:
+     - all entities are undeployed, independently of changes in deployment files.
+
+  Internally, a fully managed entity contains the annotation called `managed`.
 
 - [`includes`](#includes) (array, optional)
 - [`packages`](#packages) (object, optional)
 - [`actions`](#actions) (object, optional)
 - [`triggers`](#triggers) (object, optional)
 - [`rules`](#rules) (object, optional)
+- [`apis`](#apis) (object, optional)
 
 ### Example
 
 ```yaml
-service: example
+name: example
 
 includes:  # includes other deployment
 actions:   # actions in the default package
 packages:  # actions in packages and package bindings
 triggers:  
 rules:
+apis:
 ```
 
 ## `includes` 
@@ -102,7 +121,7 @@ An *object* representing the content of a package.
 An *object* representing a list of `action`s. 
 
 Actions can be specified in any order, e.g. actions composing sequences can be specified after sequences.
-An error is raised when there is a dependency cycle.  
+An error is raised when a cyclic dependency is detected.  
 
 ### Properties
 
@@ -295,11 +314,11 @@ triggers:
 
 ## `rules`
 
-An `object` representing a list of `rules`s.
+An `object` representing a list of `rule`s.
 
 ### Properties
 
-- `{rule-name}` ([`rule`](#rule), optional): 
+- `{rule-name}` ([`rule`](#rule), optional)
 
 ## `rule`
 
@@ -321,6 +340,55 @@ rules:
     action: write-from-cloudant-sequence
 ```
 
+## `apis`
+
+An `object` representing a list of `api`s.
+
+### Properties
+
+- `{apiname}` ([`api`](#api), optional): 
+
+## `api`
+
+An `object` representing an api. The format loosely follows the [OpenAPI](https://www.openapis.org/) format. 
+
+### Properties
+
+- basePath (string, required): the API base path. LIMITATION: currently it **must** be the same as the api name
+- paths ([`apiPaths`](#apiPaths), optional): the list of relative paths   
+     
+### Example
+
+```yaml
+apis:
+  /hello:
+    basePath: /hello
+    paths:
+      /world:
+        get: hello
+```
+
+## `apiPaths`
+
+An `object` representing a list of relative api `path`s.
+
+### Properties
+
+- `{relpath}` ([`apiPath`](#apiPath), optional): 
+
+## `apiPath`
+
+An `object` representing a path. 
+
+### Properties
+
+- `get` (string, optional): the action name of the GET operation
+- `put` (string, optional): the action name of the PUT operation
+- `post` (string, optional): the action name of the POST operation
+- `delete` (string, optional): the action name of the DELETE operation
+- `options` (string, optional): the action name of the OPTIONS operation
+- `head` (string, optional): the action name of the HEAD operation
+- `patch` (string, optional): the action name of the PATCH operation
 
 ## `parameters`
 
@@ -352,7 +420,6 @@ An *object* representing a list of annotations
 
 - `{key}` (string, optional)
 
-
 ## `limits`
 
 An *object* representing action limits
@@ -368,4 +435,3 @@ An *object* representing action limits
 Non-fully qualified entity names are resolved as follows:
   - partially qualified names (`packageName/actionName`) are resolved using the enclosing namespace
   - unqualified names (`actionName`) are resolved using the enclosing package name (if any) and namespace. 
-
