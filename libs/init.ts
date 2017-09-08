@@ -100,6 +100,8 @@ async function resolveManifest(config: Config) {
 
         await loadManifest(config);
     }
+
+    // ok no manifest, fine.
 }
 
 async function loadManifest(config: Config) {
@@ -112,4 +114,6 @@ async function configCache(config: Config) {
         config.cache = `${config.basePath}/.openwhisk`
         await fs.mkdirs(config.cache) // async since using fs-extra
     }
+
+    // ok, no cache, fine.
 }

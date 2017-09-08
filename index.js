@@ -16,10 +16,10 @@
 
 exports.auth = require('./libs/auth');
 exports.deploy = require('./libs/deploy').default;
-exports.undeploy = require('./libs/undeploy').default;
+exports.undeploy = require('./libs/undeploy');
+exports.refresh = require('./libs/refresh.js'); 
 
 // Experimental
-exports.refresh = require('./libs/refresh.js'); 
 exports.sync = require('./libs/sync.js');
 exports.env = require('./libs/env.js');
 exports.yo = require('./libs/yo.js');

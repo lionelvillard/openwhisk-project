@@ -18,7 +18,12 @@ import * as cfg from './init';
 const names = require('./names');
 const utils = require('./utils');
 
-export default async function undeploy(config: cfg.Config) {
+// remove all entities
+export async function all(ow) {
+    return apply({ ow });
+}
+
+export async function apply(config: cfg.Config) {
     await cfg.init(config);
 
     const manifest = config.manifest; // if null, then delete all!

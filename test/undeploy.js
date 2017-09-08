@@ -35,7 +35,7 @@ describe('testing undeploy', function () {
         let cat = await ctx.ow.actions.get({ name: 'nodejs-unmanaged/cat' });
         assert.equal(cat.name, 'cat');
 
-        await wskd.undeploy({
+        await wskd.undeploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -74,7 +74,7 @@ describe('testing undeploy', function () {
         assert.ok(mcat.annotations.length === 2);
         assert.ok(mcat.annotations[0].key === 'managed');
 
-        await wskd.undeploy({
+        await wskd.undeploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -115,7 +115,7 @@ describe('testing undeploy', function () {
         assert.ok(mcat.annotations.length === 2);
         assert.ok(mcat.annotations[0].key === 'managed');
 
-        await wskd.undeploy({
+        await wskd.undeploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
