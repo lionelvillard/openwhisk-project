@@ -8,22 +8,11 @@ This project provides a set of tools for managing a collection of OpenWhisk enti
 $ npm install @openwhisk/deploy --save
 ```
 
-# Features
+# Main Features
 
-The main features that are currently implemented are:
-* deploy and undeploy a set of OpenWhisk entities
-* safe namespace sharing: deploy multiple independent projects into a single OpenWhisk namespace
-* robust [undeploy](docs/format/md#Properties): changes in the deployment file does not affect undeploy
-* automatic dependencies management (ie. actions in a sequence are deployed before the sequence itself)
-* extensible deployment format via [plugin](plugins/README.md) (experimental)
-* [modular](docs/format.md#includes) specification
-* concurrent deployment and undeployment
-
-Supported action kinds: 
-- single nodejs file
-- nodejs packages 
-- inline nodejs code
-- docker
+- deploy: deploy a set of OpenWhisk entities from description stored in [deployment configuration files](docs/format.md).
+- undeploy: undeploy a set of OpenWhisk entities.
+- refresh: update the local deployment configuration files against deployed entities
 
 # Example
 
