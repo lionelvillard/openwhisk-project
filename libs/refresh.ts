@@ -112,7 +112,7 @@ if [ "$OPENWHISK_HOME" != "" ]; then
   WSK=$OPENWHISK_HOME/bin/wsk 
 fi
 
-WSK=$WSK $OPENWHISK_INSECURE
+WSK="$WSK $OPENWHISK_INSECURE"
 `;
 
     for (const pkg of pkgs) {
