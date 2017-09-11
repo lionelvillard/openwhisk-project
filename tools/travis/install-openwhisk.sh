@@ -28,5 +28,6 @@ cp $TRAVIS_BUILD_DIR/tools/travis/wskprops ~/.wskprops
 #echo APIGW_ACCESS_TOKEN=$APIGW_ACCESS_TOKEN >> ~/.wskprops
 cat ~/.wskprops
 
-export OPENWHISK_DIR=$TRAVIS_BUILD_DIR/openwhisk
-$OPENWHISK_DIR/bin/wsk -i property get
+export OPENWHISK_HOME=$TRAVIS_BUILD_DIR/openwhisk
+$OPENWHISK_HOME/bin/wsk -i property get
+

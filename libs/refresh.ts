@@ -92,10 +92,8 @@ export async function apply(config: Config) {
         return Object.keys(apis).map(key => apis[key].value.apidoc);
     }
 
-
-
-
 }
+
 // -- Bash conversion functions.
 
 function toBash(json) {
@@ -105,12 +103,12 @@ function toBash(json) {
 }
 
 function writePackages(pkgs) {
-    let bashPkgs = '#!/usr/bin/env bash\n'
+    let bashPkgs = '#!/usr/bin/env bash\nWSK=wsk\nif [ "$OPENWHISK_HOME" != "" ]; then\n  WSK=$OPENWHISK_HOME/bin/wsk\nfi';
     for (const pkg of pkgs) {
         if (pkg.binding.name)
-            bashPkgs += `\n\nwsk package bind ${pkg.binding.namespace}/${pkg.binding.name} ${pkg.name}`
+            bashPkgs += `\n\n$WSK package bind ${pkg.binding.namespace}/${pkg.binding.name} ${pkg.name}`
         else
-            bashPkgs += `\n\nwsk package create ${pkg.name}`
+            bashPkgs += `\n\n$WSK package create ${pkg.name}`
 
         bashPkgs += writeKeyValues(pkg.parameters, '-p')
         bashPkgs += writeKeyValues(pkg.annotations, '-a')
@@ -133,7 +131,7 @@ function writeActions(actions) {
 
         switch (kind) {
             case 'sequence':
-                bashSequence += `\n\nwsk action update ${pkgName}${action.name} `;
+                bashSequence += `\n\n$WSK action update ${pkgName}${action.name} `;
                 let sep = '';
                 action.exec.components.forEach(c => {
                     bashSequence += sep;
@@ -160,7 +158,7 @@ function writeActions(actions) {
                 const file = afile ? afile.value : undefined;
                 const loc = file ? file : `actions/${action.name}.js`;
 
-                bashActions += `\n\nwsk action update ${pkgName}${action.name} ${loc}`;
+                bashActions += `\n\n$WSK action update ${pkgName}${action.name} ${loc}`;
                 bashActions += writeKeyValues(action.parameters, '-p');
                 bashActions += writeKeyValues(action.annotations, '-a', ['exec', 'parameters']);
                 break;

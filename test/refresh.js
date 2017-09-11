@@ -23,7 +23,7 @@ describe('testing refresh', function () {
     const ctx = {};
 
     before(utils.before(ctx));
-    after(utils.after(ctx));
+//    after(utils.after(ctx));
 
     function assertNamespaceEmpty(json) {
         assert.equal(json.packages.length, 0);
