@@ -41,7 +41,7 @@ describe('testing refresh', function () {
         assertNamespaceEmpty(result);
     });
 
-    it('data processing', async function () {
+    it('data processing - bash', async function () {
         this.timeout(30000);
 
         await wskd.deploy({
@@ -50,7 +50,7 @@ describe('testing refresh', function () {
             cache: ctx.cacheDir,
             location: 'openwhisk.yaml'
         });
-        
+
         const json = await wskd.refresh.apply({
             ow: ctx.ow,
             target: 1 // raw
@@ -77,19 +77,39 @@ describe('testing refresh', function () {
         await fs.copy('test/fixtures/dataprocessing/', `${ctx.cacheDir}`);
         await fs.writeFile(`${ctx.cacheDir}/deploy.sh`, bash);
         await fs.chmod(`${ctx.cacheDir}/deploy.sh`, 0o755);
-        
-        const result = await exec('./deploy.sh', {cwd: ctx.cacheDir, shell: '/bin/bash'});
+
+        const result = await exec('./deploy.sh', { cwd: ctx.cacheDir, shell: '/bin/bash' });
         assert.ok(!result.error);
         assert.equal(result.stderr, '');
 
-        const writeTo = await ctx.ow.actions.get({name: 'data-processing/write-to-cloudant'});
-        const writeFrom = await ctx.ow.actions.get({name: 'data-processing/write-from-cloudant'});
-        const writeFromSeq = await ctx.ow.actions.get({name: 'data-processing/write-from-cloudant-sequence'});
+        const writeTo = await ctx.ow.actions.get({ name: 'data-processing/write-to-cloudant' });
+        const writeFrom = await ctx.ow.actions.get({ name: 'data-processing/write-from-cloudant' });
+        const writeFromSeq = await ctx.ow.actions.get({ name: 'data-processing/write-from-cloudant-sequence' });
 
         assert.equal(writeTo.name, 'write-to-cloudant');
         assert.equal(writeFrom.name, 'write-from-cloudant');
         assert.equal(writeFromSeq.name, 'write-from-cloudant-sequence');
     });
+
+    it('data processing - yaml', async function () {
+        this.timeout(30000);
+        
+        await wskd.undeploy.all(ctx.ow);
+        
+        await wskd.deploy({
+            ow: ctx.ow,
+            basePath: 'test/fixtures/dataprocessing/',
+            cache: ctx.cacheDir,
+            location: 'openwhisk.yaml'
+        });
+
+        const yaml = await wskd.refresh.apply({
+            ow: ctx.ow,
+            target: 3 // yaml
+        });
+        
+        assert.ok(yaml.packages['data-processing']);
+    })
 
 
 });

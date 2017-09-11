@@ -54,7 +54,7 @@ function parseQName(qname) {
     }
     // TODO: check name
 
-    return {namespace, pkg, name};
+    return { namespace, pkg, name };
 };
 exports.parseQName = parseQName;
 
@@ -70,7 +70,7 @@ exports.resolveQName = resolveQName;
 // Make qname from parts
 function makeQName(namespace, packageName, actionName) {
     let qname = ''
-    if (namespace )
+    if (namespace)
         qname += `/${namespace}/`
     if (packageName)
         qname += `${packageName}/`
@@ -78,3 +78,15 @@ function makeQName(namespace, packageName, actionName) {
     return qname
 };
 exports.makeQName = makeQName;
+
+// Compute relative qname /_/ 
+function relativeQName(qname, namespace, packageName) {
+    const parts = parseQName(qname);
+    if (parts.namespace !== '_' && parts.namespace !== namespace) {
+        return qname;
+    }
+    if (parts.pkg === packageName)
+        return parts.name;
+    return parts.pkg ? `${parts.pkg}/${parts.name}` : parts.name;
+}
+exports.relativeQName = relativeQName;
