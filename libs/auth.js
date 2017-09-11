@@ -74,8 +74,8 @@ const resolveVariables = (options = {}) => {
     const wskprops = readWskProps() || {}
     const variables = {}
 
-    variables.auth = options.auth || wskprops.AUTH
-    variables.apihost = options.apihost || wskprops.APIHOST
+    variables.auth = options.auth || process.env.WHISK_AUTH || wskprops.AUTH 
+    variables.apihost = options.apihost || process.env.WHISK_APIHOST || wskprops.APIHOST 
     variables.ignore_certs = options.ignore_certs || wskprops.IGNORE_CERTS || false
     variables.apigw_token = options.apigw_token || wskprops.APIGW_ACCESS_TOKEN
 
