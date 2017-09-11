@@ -11,6 +11,7 @@ services:
 
 before_install:
   - $TRAVIS_BUILD_DIR/tools/travis/install-openwhisk.sh
+  - export OPENWHISK_HOME=$TRAVIS_BUILD_DIR/openwhisk
 # - $TRAVIS_BUILD_DIR/bin/bxsetup.sh
 
 install:

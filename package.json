@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "pretest": "tsc",
+    "postinstall": "tsc",
     "test": "mocha",
     "compile": "tsc -watch -p ./"
   },
