@@ -103,7 +103,18 @@ function toBash(json) {
 }
 
 function writePackages(pkgs) {
-    let bashPkgs = '#!/usr/bin/env bash\nWSK=wsk\nif [ "$OPENWHISK_HOME" != "" ]; then\n  WSK=$OPENWHISK_HOME/bin/wsk\nfi';
+    let bashPkgs = 
+`#!/usr/bin/env bash
+
+WSK=wsk
+
+if [ "$OPENWHISK_HOME" != "" ]; then
+  WSK=$OPENWHISK_HOME/bin/wsk 
+fi
+
+WSK=$WSK $OPENWHISK_INSECURE
+`;
+
     for (const pkg of pkgs) {
         if (pkg.binding.name)
             bashPkgs += `\n\n$WSK package bind ${pkg.binding.namespace}/${pkg.binding.name} ${pkg.name}`
