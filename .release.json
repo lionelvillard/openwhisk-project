@@ -1,5 +1,7 @@
 {
     "github": {
-        "preRelease": true
+        "release": true,
+        "preRelease": true,
+        "tokenRef": "GITHUB_TOKEN"
     }
 }
