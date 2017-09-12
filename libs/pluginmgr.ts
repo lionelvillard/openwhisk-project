@@ -15,43 +15,41 @@
  */
 
 // Simple plugins manager
-const fs = require('fs')
-const path = require('path')
+import * as fs from 'fs-extra';
+import * as path from 'path';
 
 const actionPlugins = {}
 const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'zip', 'annotations', 'sequence', 'extra', 'actionName', 'packageName', 'docker']
 
 // Build plugin index.
-const init = context => {
-    return loadDescs(context, './plugins/actions')
+export async function init(config) {
+    return loadDescs(config, './plugins/actions');
 }
-exports.init = init
 
-const loadDescs = (context, dir) => new Promise((resolve, reject) => {
-    const root = path.join(__dirname, '..', dir)
-    fs.readdir(root, (err, files) => {
-        if (err)
-            return reject(err)
+async function loadDescs(config, dir) {
+    const root = path.join(__dirname, '..', dir);
+    try {
+        const files = await fs.readdir(root);
 
         for (const file of files) {
             if (!RESERVED_ACTION_KEYWORDS.includes(file))
-                actionPlugins[file] = path.join(root, file)
+                actionPlugins[file] = path.join(root, file);
             else
-                context.logger.warn(`Skipping ${file}: it is a reserved plugin name`)
+                config.logger.warn(`Skipping ${file}: it is a reserved plugin name`);
         }
 
-        resolve()
-    })
-})
+    } catch (e) {
+        config.logger.error(JSON.stringify(e, null, 2));
+    }
+}
 
-const getActionPlugin = action => {
+export function getActionPlugin(action) {
     for (const name in actionPlugins) {
         if (action.hasOwnProperty(name)) {
-            const plugin = require(actionPlugins[name])
-            plugin.__pluginName = name
-            return plugin
+            const plugin = require(actionPlugins[name]);
+            plugin.__pluginName = name;
+            return plugin;
         }
     }
-    return null
+    return null;
 }
-exports.getActionPlugin = getActionPlugin
