@@ -30,6 +30,11 @@ A *deployment* is an *object* representing a collection of OpenWhisk entities (a
 
   Internally, a fully managed entity contains the annotation called `managed`.
 
+- `basePath` (string, optional) : the relative or absolute base path used to resolve relative location. The actual absolute base path is resolved as follows:
+   - if there is a `basePath` specified in the deployment file and it is absolute, use it.
+   - otherwise: if there is a `basePath` specified in the deployment file and it is relative, resolve it by using the contextual base path (see below), and use it.
+   - otherwise: use the directory containing the deployment file.
+
 - [`includes`](#includes) (array, optional)
 - [`packages`](#packages) (object, optional)
 - [`actions`](#actions) (object, optional)
@@ -42,11 +47,13 @@ A *deployment* is an *object* representing a collection of OpenWhisk entities (a
 ```yaml
 name: example
 
+basePath: .
+
 includes:  # includes other deployment
 actions:   # actions in the default package
 packages:  # actions in packages and package bindings
 triggers:  
-rules:
+rules:mais
 apis:
 ```
 

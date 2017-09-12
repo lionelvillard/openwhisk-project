@@ -15,27 +15,37 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const deployer = require('..');
+const wskd = require('..');
 
 describe('basic yaml handling tests', function () {
-    this.timeout(10000);
     const ctx = {};
-    
+
     before(utils.before(ctx));
     after(utils.after(ctx));
 
-    it('empty manifest', async function() {
-        await deployer.deploy({ cache: ctx.cacheDir, manifest: '' });
+    it('empty manifest', async function () {
+        await wskd.deploy({ cache: ctx.cacheDir, manifest: '' });
         assert.ok(true);
     });
 
     it('no manifest', async function () {
         try {
-            await deployer.deploy({ cache: ctx.cacheDir, location: 'donotexist.yaml' });
+            await wskd.deploy({ cache: ctx.cacheDir, location: 'donotexist.yaml' });
             assert.fail('should not be here');
         } catch (e) {
             assert.ok(true);
         }
-    })
+    });
+
+    it('base path, relative', async function () {
+        await wskd.deploy({ ow: ctx.ow, location: 'test/fixtures/basepath/relative.yaml' });
+
+        const cat = await ctx.ow.actions.invoke({
+            actionName: 'basepath/cat',
+            params: { lines: ['first', 'second'] },
+            blocking: true
+        });
+        assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' });
+    });
 
 });

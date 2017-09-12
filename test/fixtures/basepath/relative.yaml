@@ -1,0 +1,7 @@
+basePath: ../nodejs
+
+packages:
+  basepath:
+    actions:
+      cat:
+        location: cat.js

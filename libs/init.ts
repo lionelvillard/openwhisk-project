@@ -101,6 +101,10 @@ async function resolveManifest(config: Config) {
         await loadManifest(config);
     }
 
+    if (config.manifest && config.manifest.basePath) {
+        config.basePath = path.resolve(config.basePath, config.manifest.basePath);
+    }
+
     // ok no manifest, fine.
 }
 
