@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { getLogger } from 'log4js';
+import { getLogger, configure } from 'log4js';
 import * as fs from 'fs-extra';
 import * as yaml from 'yamljs';
 import * as path from 'path';
@@ -21,8 +21,7 @@ import * as types from './types';
 import * as plugins from './pluginmgr';
 
 const utils = require('./utils');
-const fakeow = require('./fakeow');
-
+ 
 export async function init(config: types.Config) {
     if (!config.logger)
         config.logger = getLogger();
@@ -33,7 +32,7 @@ export async function init(config: types.Config) {
     if (!config.ow) {
         config.ow = fakeow;
         config.dryrun = true;
-        config.logger.info('perform a dryrun');
+        config.logger.debug('perform a dryrun');
     }
 
     async function load(location: string) {
@@ -87,14 +86,14 @@ async function resolveManifest(config: types.Config) {
 
         await loadManifest(config);
     } else {
-        config.logger.info('no configuration found');
+        config.logger.debug('no configuration found');
     }
 
     if (config.manifest && config.manifest.basePath) {
         config.basePath = path.resolve(config.basePath, config.manifest.basePath);
     }
 
-    config.logger.info(`base path set to ${config.basePath}`);
+    config.logger.debug(`base path set to ${config.basePath}`);
     // ok no manifest, fine.
 }
 
@@ -111,9 +110,9 @@ async function configCache(config: types.Config) {
     }
 
     if (config.cache) {
-        config.logger.info(`caching directory set to ${config.cache}`);
+        config.logger.debug(`caching directory set to ${config.cache}`);
     } else {
-        config.logger.info(`caching disabled`);
+        config.logger.debug(`caching disabled`);
     }
 }
 
@@ -124,7 +123,7 @@ function check(config: types.Config) {
     if (!manifest)
         return
 
-    config.logger.info('validating and normalizing the deployment configuration');
+    config.logger.debug('validating and normalizing the deployment configuration');
 
     checkPackages(config, manifest);
 
@@ -170,15 +169,15 @@ function checkAction(config: types.Config, manifest, pkgName: string, actions, a
         // TODO
     } else {
         delete actions[actionName];
-      
-        const plugin : any = plugins.getActionPlugin(action);
+
+        const plugin: any = plugins.getActionPlugin(action);
         if (!plugin) {
             config.logger.warn(`no plugin found for action ${actionName}. Ignored`);
             return;
         }
 
         const contributions = plugin.actionContributor(config, manifest, pkgName, actionName, action);
-        
+
         for (const contrib of contributions) {
             switch (contrib.kind) {
                 case "action":
@@ -187,13 +186,73 @@ function checkAction(config: types.Config, manifest, pkgName: string, actions, a
                         pkg.actions = {};
 
                     if (pkg.actions[contrib.name]) {
-                        throw `plugin ${plugin.__pluginName} overrides action ${contrib.name}`; 
+                        throw `plugin ${plugin.__pluginName} overrides action ${contrib.name}`;
                     }
-                    
+
                     pkg.actions[contrib.name] = contrib.body;
                     checkAction(config, manifest, contrib.pkgName, pkg.actions, contrib.name, contrib.body);
                     break;
             }
         }
+    }
+}
+
+// Mockup OpenWhisk client.
+const fakeow = {
+    actions: {
+        create: () => Promise.resolve(true),
+        list: () => Promise.resolve(true),
+        get: () => Promise.resolve(true),
+        invoke: () => Promise.resolve(true),
+        delete: () => Promise.resolve(true),
+        update: () => Promise.resolve(true)
+    },
+    feeds: {
+        create: () => Promise.resolve(true),
+        list: () => Promise.resolve(true),
+        get: () => Promise.resolve(true),
+        invoke: () => Promise.resolve(true),
+        delete: () => Promise.resolve(true),
+        update: () => Promise.resolve(true)
+    },
+    namepaces: {
+        create: () => Promise.resolve(true),
+        list: () => Promise.resolve(true),
+        get: () => Promise.resolve(true),
+        invoke: () => Promise.resolve(true),
+        delete: () => Promise.resolve(true),
+        update: () => Promise.resolve(true)
+    },
+    packages: {
+        create: () => Promise.resolve(true),
+        list: () => Promise.resolve(true),
+        get: () => Promise.resolve(true),
+        invoke: () => Promise.resolve(true),
+        delete: () => Promise.resolve(true),
+        update: () => Promise.resolve(true)
+    },
+    rules: {
+        create: () => Promise.resolve(true),
+        list: () => Promise.resolve(true),
+        get: () => Promise.resolve(true),
+        invoke: () => Promise.resolve(true),
+        delete: () => Promise.resolve(true),
+        update: () => Promise.resolve(true)
+    },
+    routes: {
+        create: () => Promise.resolve(true),
+        list: () => Promise.resolve(true),
+        get: () => Promise.resolve(true),
+        invoke: () => Promise.resolve(true),
+        delete: () => Promise.resolve(true),
+        update: () => Promise.resolve(true)
+    },
+    triggers: {
+        create: () => Promise.resolve(true),
+        list: () => Promise.resolve(true),
+        get: () => Promise.resolve(true),
+        invoke: () => Promise.resolve(true),
+        delete: () => Promise.resolve(true),
+        update: () => Promise.resolve(true)
     }
 }
