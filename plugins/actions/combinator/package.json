@@ -7,12 +7,14 @@
   "scripts": {
     "pretest": "tsc",
     "test": "mocha dist/test",
-    "compile": "tsc -watch -p ./"
+    "compile": "tsc -watch -p ./",
+    "tsc": "tsc"
   },
   "author": "Lionel Villard",
   "license": "Apache-2.0",
   "devDependencies": {
-    "mocha-typescript": "^1.1.8"
+    "mocha-typescript": "^1.1.8",
+    "typescript": "^2.5.2"
   },
   "dependencies": {
     "openwhisk-deploy": "^0.4.1"

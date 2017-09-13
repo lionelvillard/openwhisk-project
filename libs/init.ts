@@ -169,8 +169,8 @@ function checkAction(config: types.Config, manifest, pkgName: string, actions, a
 
         // TODO
     } else {
-        delete actions.actionName;
-
+        delete actions[actionName];
+      
         const plugin : any = plugins.getActionPlugin(action);
         if (!plugin) {
             config.logger.warn(`no plugin found for action ${actionName}. Ignored`);
@@ -178,7 +178,7 @@ function checkAction(config: types.Config, manifest, pkgName: string, actions, a
         }
 
         const contributions = plugin.actionContributor(config, manifest, pkgName, actionName, action);
-
+        
         for (const contrib of contributions) {
             switch (contrib.kind) {
                 case "action":

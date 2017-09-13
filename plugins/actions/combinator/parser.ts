@@ -32,12 +32,12 @@ export function actionContributor(config, deployment, pkgName: string, actionNam
         throw parser.errors;
 
     newaction.actionName = actionName
-    return {
+    return [{
         kind: "action",
         pkgName,
-        actionName,
+        name: actionName,
         body: newaction
-    };
+    }];
 }
 
 
