@@ -17,23 +17,28 @@
 // Simple plugins manager
 import * as fs from 'fs-extra';
 import * as path from 'path';
+import * as types from './types';
 
 const actionPlugins = {}
 const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'zip', 'annotations', 'sequence', 'extra', 'actionName', 'packageName', 'docker']
 
 // Build plugin index.
-export async function init(config) {
+export async function init(config: types.Config) {
+    config.logger.info('initializing plugins');
+
     return loadDescs(config, './plugins/actions');
 }
 
-async function loadDescs(config, dir) {
+async function loadDescs(config: types.Config, dir: string) {
     const root = path.join(__dirname, '..', dir);
     try {
         const files = await fs.readdir(root);
 
         for (const file of files) {
-            if (!RESERVED_ACTION_KEYWORDS.includes(file))
+            if (!RESERVED_ACTION_KEYWORDS.includes(file)) {
+                config.logger.info(`registering plugin ${file}`);
                 actionPlugins[file] = path.join(root, file);
+            }
             else
                 config.logger.warn(`Skipping ${file}: it is a reserved plugin name`);
         }
@@ -43,7 +48,7 @@ async function loadDescs(config, dir) {
     }
 }
 
-export function getActionPlugin(action) {
+export function getActionPlugin(action) : types.Plugin | null {
     for (const name in actionPlugins) {
         if (action.hasOwnProperty(name)) {
             const plugin = require(actionPlugins[name]);

@@ -13,18 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import * as cfg from './init';
+import * as types from './types';
+import { init } from './init';
 
 const names = require('./names');
 
 enum Targets { JSON = 1, BASH, YAML };
 
-export interface Config extends cfg.Config {
+export interface Config extends types.Config {
     target?: Targets;
 }
 
 export async function apply(config: Config) {
-    await cfg.init(config);
+    await init(config);
 
     config.target = config.target || Targets.JSON;
 

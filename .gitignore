@@ -16,3 +16,4 @@ libs/deploy.js
 libs/refresh.js
 libs/sync.js
 libs/pluginmgr.js
+libs/types.js
