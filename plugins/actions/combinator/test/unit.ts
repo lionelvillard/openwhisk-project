@@ -25,10 +25,10 @@ class parsing {
         const result = combinators.actionContributor(null, null, 'pkg', 'eca', { combinator: 'if testAction then action' });
         assert.ok(result)
         
-        assert.deepStrictEqual(result, {
+        assert.deepStrictEqual(result[0], {
             kind: 'action',
             pkgName: 'pkg',
-            actionName: 'eca',
+            name: 'eca',
             body:
             {
                 copy: '/whisk.system/combinators/eca',

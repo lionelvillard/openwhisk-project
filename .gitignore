@@ -2,6 +2,7 @@
 deploy*.sh
 build
 admin
+dist
 node_modules
 test-results 
 .wskd
