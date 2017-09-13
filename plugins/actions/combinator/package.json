@@ -1,15 +1,20 @@
 {
-  "name": "@openwhisk-deploy/combinator",
-  "version": "0.0.1",
-  "description": "Combinator extersion for OpenWhisk deploy",
-  "main": "parser.js",
+  "name": "openwhisk-deploy-combinator",
+  "version": "0.1.0",
+  "description": "Combinator extension for OpenWhisk Deploy",
+  "main": "dist/parser.js",
+  "types": "parser.ts",
   "scripts": {
-    "test": "ava"
+    "pretest": "tsc",
+    "test": "mocha dist/test",
+    "compile": "tsc -watch -p ./"
   },
   "author": "Lionel Villard",
   "license": "Apache-2.0",
-  "false": {},
   "devDependencies": {
-    "ava": "^0.20.0"
+    "mocha-typescript": "^1.1.8"
+  },
+  "dependencies": {
+    "openwhisk-deploy": "^0.4.1"
   }
 }

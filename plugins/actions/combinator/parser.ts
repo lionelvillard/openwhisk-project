@@ -13,9 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const chevrotain = require('chevrotain')
-const utils = require('../../../libs/utils')
-const names = require('../../../libs/names')
+const chevrotain = require('chevrotain');
+const wskd = require('openwhisk-deploy');
+
+// --- Plugin export
+
+export function actionContributor(config, deployment, pkgName: string, actionName: string, action) {
+    // 1. Tokenize the input.
+    const lexResult = DeployLexer.tokenize(action.combinator);
+    if (lexResult.errors.length > 0)
+        throw lexResult.errors;
+
+    // 2. Parse the Tokens vector.
+
+    const parser = new DeployParser(lexResult.tokens, pkgName, initFromBaseAction(action));
+    const newaction = parser.combinators()
+    if (parser.errors.length > 0)
+        throw parser.errors;
+
+    newaction.actionName = actionName
+    return {
+        kind: "action",
+        pkgName,
+        actionName,
+        body: newaction
+    };
+}
+
 
 // ----------------- lexer -----------------
 
@@ -23,20 +47,20 @@ const createToken = chevrotain.createToken
 const Lexer = chevrotain.Lexer
 const Parser = chevrotain.Parser
 
-const ActionLiteral = createToken({name: 'ActionLiteral', pattern: /[\w@.-]+/})
-const IfToken = createToken({name: 'IfToken', pattern: /if/})
-const ThenToken = createToken({name: 'ThenToken', pattern: /then/})
-const TryToken = createToken({name: 'TryToken', pattern: /try/, longer_alt: ActionLiteral})
-const CatchToken = createToken({name: 'CatchToken', pattern: /catch/})
-const RetryToken = createToken({name: 'RetryToken', pattern: /retry/})
-const ForwardToken = createToken({name: 'ForwardToken', pattern: /forward/})
-const AfterToken = createToken({name: 'AfterToken', pattern: /after/})
-const WithToken = createToken({name: 'WithToken', pattern: /with/})
-const TimesToken = createToken({name: 'TimesToken', pattern: /times/})
-const LSquare = createToken({name: 'LSquare', pattern: /\[/})
-const RSquare = createToken({name: 'RSquare', pattern: /]/})
-const Comma = createToken({name: 'Comma', pattern: /,/})
-const IntegerLiteral = createToken({name: 'IntegerLiteral', pattern: /\d+/})
+const ActionLiteral = createToken({ name: 'ActionLiteral', pattern: /[\w@.-]+/ })
+const IfToken = createToken({ name: 'IfToken', pattern: /if/ })
+const ThenToken = createToken({ name: 'ThenToken', pattern: /then/ })
+const TryToken = createToken({ name: 'TryToken', pattern: /try/, longer_alt: ActionLiteral })
+const CatchToken = createToken({ name: 'CatchToken', pattern: /catch/ })
+const RetryToken = createToken({ name: 'RetryToken', pattern: /retry/ })
+const ForwardToken = createToken({ name: 'ForwardToken', pattern: /forward/ })
+const AfterToken = createToken({ name: 'AfterToken', pattern: /after/ })
+const WithToken = createToken({ name: 'WithToken', pattern: /with/ })
+const TimesToken = createToken({ name: 'TimesToken', pattern: /times/ })
+const LSquare = createToken({ name: 'LSquare', pattern: /\[/ })
+const RSquare = createToken({ name: 'RSquare', pattern: /]/ })
+const Comma = createToken({ name: 'Comma', pattern: /,/ })
+const IntegerLiteral = createToken({ name: 'IntegerLiteral', pattern: /\d+/ })
 
 const QuotedActionLiteral = createToken({
     name: 'QuotedActionLiteral',
@@ -114,12 +138,12 @@ function DeployParser(input, pkgName, action) {
 
     $.RULE('eca', () => {
         $.CONSUME(IfToken)
-        const $conditionName = names.resolveQName($.CONSUME1(ActionLiteral).image, '_', pkgName)
+        const $conditionName = wskd.names.resolveQName($.CONSUME1(ActionLiteral).image, '_', pkgName)
         $.CONSUME(ThenToken)
-        const $actionName = names.resolveQName($.CONSUME2(ActionLiteral).image, '_', pkgName)
+        const $actionName = wskd.names.resolveQName($.CONSUME2(ActionLiteral).image, '_', pkgName)
 
         action.copy = '/whisk.system/combinators/eca'
-        action.inputs = utils.mergeObjects({
+        action.inputs = mergeObjects({
             $conditionName,
             $actionName
         }, action.inputs)
@@ -129,12 +153,12 @@ function DeployParser(input, pkgName, action) {
 
     $.RULE('trycatch', () => {
         $.CONSUME(TryToken)
-        const $tryName = names.resolveQName($.CONSUME1(ActionLiteral).image, '_', pkgName)
+        const $tryName = wskd.names.resolveQName($.CONSUME1(ActionLiteral).image, '_', pkgName)
         $.CONSUME(CatchToken)
-        const $catchName = names.resolveQName($.CONSUME2(ActionLiteral).image, '_', pkgName)
+        const $catchName = wskd.names.resolveQName($.CONSUME2(ActionLiteral).image, '_', pkgName)
 
         action.copy = '/whisk.system/combinators/trycatch'
-        action.inputs = utils.mergeObjects({
+        action.inputs = mergeObjects({
             $tryName,
             $catchName
         }, action.inputs)
@@ -146,16 +170,16 @@ function DeployParser(input, pkgName, action) {
         $.CONSUME(ForwardToken)
         const $forward = $.SUBRULE($.arrayofstrings)
         $.CONSUME(AfterToken)
-        const $actionName = names.resolveQName($.CONSUME(ActionLiteral).image, '_', pkgName)
+        const $actionName = wskd.names.resolveQName($.CONSUME(ActionLiteral).image, '_', pkgName)
         $.CONSUME(WithToken)
         const $actionArgs = $.SUBRULE2($.arrayofstrings)
 
         action.copy = '/whisk.system/combinators/forwarder'
-        action.inputs = utils.mergeObjects({
-                $forward,
-                $actionName,
-                $actionArgs
-            },
+        action.inputs = mergeObjects({
+            $forward,
+            $actionName,
+            $actionArgs
+        },
             action.inputs)
         return action
 
@@ -163,17 +187,17 @@ function DeployParser(input, pkgName, action) {
 
     $.RULE('retry', () => {
         $.CONSUME(RetryToken)
-        const $actionName = names.resolveQName($.CONSUME(ActionLiteral).image, '_', pkgName)
+        const $actionName = wskd.names.resolveQName($.CONSUME(ActionLiteral).image, '_', pkgName)
         const $attempts = parseInt($.CONSUME(IntegerLiteral).image)
         $.OPTION(() => {
             $.CONSUME(TimesToken)
         })
 
         action.copy = '/whisk.system/combinators/retry'
-        action.inputs = utils.mergeObjects({
-                $actionName,
-                $attempts
-            },
+        action.inputs = mergeObjects({
+            $actionName,
+            $attempts
+        },
             action.inputs)
         return action
     })
@@ -199,24 +223,30 @@ function DeployParser(input, pkgName, action) {
 DeployParser.prototype = Object.create(Parser.prototype)
 DeployParser.prototype.constructor = DeployParser
 
-// --- Plugin export
+// --- utils
 
-module.exports = {
-
-    getEntities: context => {
-        // 1. Tokenize the input.
-        const lexResult = DeployLexer.tokenize(context.action.combinator)
-        if (lexResult.errors.length > 0)
-            throw lexResult.errors
-
-        // 2. Parse the Tokens vector.
-
-        const parser = new DeployParser(lexResult.tokens, context.pkgName, utils.initFromBaseAction(context.action))
-        const action = parser.combinators()
-        if (parser.errors.length > 0)
-            throw parser.errors
-
-        action.actionName  = context.actionName
-        return action
+// Assign the source properties to target. Throw an exception when a conflict occurs.
+const mergeObjects = (target, source) => {
+    if (source) {
+        for (const key of Object.keys(source)) {
+            if (target.hasOwnProperty(key))
+                throw new Error(`Duplicate key ${key}`)
+            target[key] = source[key]
+        }
     }
+    return target
+}
+
+
+// Initialize action with the `baseAction` properties
+const initFromBaseAction = baseAction => {
+    const action: any = {}
+    if (baseAction.limits)
+        action.limits = baseAction.limits
+    if (baseAction.annotations)
+        action.annotations = baseAction.annotations
+    if (baseAction.inputs)
+        action.inputs = baseAction.inputs
+
+    return action
 }

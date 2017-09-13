@@ -23,3 +23,11 @@ exports.refresh = require('./libs/refresh.js');
 exports.sync = require('./libs/sync.js');
 exports.env = require('./libs/env.js');
 exports.yo = require('./libs/yo.js');
+
+// Types support
+
+exports.types = require('./libs/types');
+
+// Basic utilities
+
+exports.names = require('./libs/names')
