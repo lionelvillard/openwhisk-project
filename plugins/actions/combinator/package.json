@@ -18,6 +18,7 @@
     "typescript": "^2.5.2"
   },
   "dependencies": {
+    "chevrotain": "^0.32.1",
     "openwhisk-deploy": "^0.4.1"
   }
 }
