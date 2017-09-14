@@ -1,18 +1,31 @@
-This is an OpenWhisk Deploy plugin adding swagger support
+This plugin extends OpenWhisk Deploy with swagger support.
 
-# Usage
+# Deployment configuration extension
 
-This plugin is triggered when the api definition contains the `swagger` property. For instance:
+Contribution point: [api](https://github.com/lionelvillard/openwhisk-deploy/blob/master/docs/format.md#api)
+
+## Additional properties to [api](https://github.com/lionelvillard/openwhisk-deploy/blob/master/docs/format.md#api)
+
+- swagger: (string, optional): a path to a swagger file. Support `.json`, `.yml` and `.yaml` file extensions
+
+## Example
 
 ```yaml
 apis:
   myapi:
     swagger: path/to/swagger.json
+
+  myyamlapi:
+    swagger: path/to/swagger.yml
 ```
 
-This plugin also support Swagger specification written in YAML. It supports both extensions `.yaml` and `.yml`.
+# Swagger file vendor extension
 
-The mapping between a swagger path to an OpenWhisk action is done by adding the vendor specific property named `x-openwhisk-action` in [`operationObject`](https://github.com/OAI/OpenAPI-Specification/blob/v3.0.1/versions/3.0.1.md#operationObject). For instance:
+## `x-openwhisk-action`
+
+Specify the action to associate with an [`operation`](https://github.com/OAI/OpenAPI-Specification/blob/v3.0.1/versions/3.0.1.md#operationObject)
+
+### Example 
 
 ```json
 "paths": {

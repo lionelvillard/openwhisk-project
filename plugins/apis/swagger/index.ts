@@ -29,14 +29,14 @@ export function apiContributor(config, deployment, apiname: string, api: wskd.ty
     const content = fs.readFileSync(file).toString();
     let swagger = (parts.ext === '.json') ? JSON.parse(content) : yaml.parse(content);
 
-    return [ cleanup({
-        kind : "api",
+    return [cleanup({
+        kind: "api",
         name: apiname,
         body: {
             basePath: swagger.basePath,
             paths: getPaths(swagger.paths)
         }
-    }) ];
+    })];
 }
 
 function getPaths(paths) {
@@ -56,7 +56,7 @@ function getPath(path) {
 }
 
 function getOperation(operation) {
-    return operation['x-action'];
+    return operation['x-openwhisk-action'];
 }
 
 function cleanup(obj) {
