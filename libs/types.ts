@@ -45,12 +45,18 @@ export interface Plugin {
  
     // Action contributor returning a list of contributions to apply to the deployment configuration
     actionContributor: ActionContributor;
+
+    // API contributor returning a list of contributions to apply to the deployment configuration
+    apiContributor: ApiContributor;
 }
 
 export type ActionContributor = (Config, Deployment, pkgName: string, actionName: string, Action) => Contribution[]
 
+export type ApiContributor = (Config, Deployment, apiname: string, Api) => Contribution[]
+
+
 // A contribution to the deployment configuration 
-export type Contribution = ActionContribution;
+export type Contribution = ActionContribution | ApiContribution;
 
 // An action contribution
 export interface ActionContribution {
@@ -65,11 +71,26 @@ export interface ActionContribution {
 
     // action configuration
     body : Action;
-
 }
+
+// An api contribution
+export interface ApiContribution {
+    // kind of contribution
+    kind : "api";
+
+    // api name
+    name : string;
+
+    // api configuration
+    body : Api;
+}
+
 // --- Configuration format
+
+// TODO!
 
 export type Deployment = any
 export type Action = any
+export type Api = any
 
 export enum deploymentProperties { NAME = 'name', BASEPATH = 'basePath' }

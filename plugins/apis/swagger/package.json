@@ -1,0 +1,27 @@
+{
+  "name": "openwhisk-deploy-swagger",
+  "version": "0.1.0",
+  "description": "Swagger extension for OpenWhisk Deploy",
+  "main": "dist/index.js",
+  "types": "index.ts",
+  "scripts": {
+    "pretest": "tsc",
+    "test": "mocha dist/test",
+    "compile": "tsc -watch -p ./",
+    "tsc": "tsc"
+  },
+  "author": "Lionel Villard",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/fs-extra": "^4.0.2",
+    "@types/yamljs": "^0.2.30",
+    "mocha": "^3.5.3",
+    "mocha-typescript": "^1.1.8",
+    "typescript": "^2.5.2"
+  },
+  "dependencies": {
+    "fs-extra": "^4.0.2",
+    "openwhisk-deploy": "^0.4.1",
+    "yamljs": "^0.3.0"
+  }
+}

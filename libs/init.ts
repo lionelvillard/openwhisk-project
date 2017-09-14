@@ -21,7 +21,7 @@ import * as types from './types';
 import * as plugins from './pluginmgr';
 
 const utils = require('./utils');
- 
+
 export async function init(config: types.Config) {
     if (!config.logger)
         config.logger = getLogger();
@@ -126,6 +126,7 @@ function check(config: types.Config) {
     config.logger.debug('validating and normalizing the deployment configuration');
 
     checkPackages(config, manifest);
+    checkApis(config, manifest);
 
     // check for invalid additional properties
     for (const key in manifest) {
@@ -170,29 +171,70 @@ function checkAction(config: types.Config, manifest, pkgName: string, actions, a
     } else {
         delete actions[actionName];
 
-        const plugin: any = plugins.getActionPlugin(action);
+        const plugin = plugins.getActionPlugin(action);
         if (!plugin) {
             config.logger.warn(`no plugin found for action ${actionName}. Ignored`);
             return;
         }
 
         const contributions = plugin.actionContributor(config, manifest, pkgName, actionName, action);
+        applyConstributions(config, manifest, contributions, plugin);
+    }
+}
 
-        for (const contrib of contributions) {
-            switch (contrib.kind) {
-                case "action":
-                    const pkg = utils.getPackage(manifest, contrib.pkgName, true);
-                    if (!pkg.actions)
-                        pkg.actions = {};
+function checkApis(config: types.Config, manifest) {
+    const apis = manifest.apis;
 
-                    if (pkg.actions[contrib.name]) {
-                        throw `plugin ${plugin.__pluginName} overrides action ${contrib.name}`;
-                    }
+    for (const apiname in apis) {
+        const api = apis[apiname];
+        checkApi(config, manifest, apis, apiname, api);
+    }
+}
 
-                    pkg.actions[contrib.name] = contrib.body;
-                    checkAction(config, manifest, contrib.pkgName, pkg.actions, contrib.name, contrib.body);
-                    break;
-            }
+function checkApi(config: types.Config, manifest, apis, apiname: string, api: types.Api) {
+    if (api.paths) { // builtin api
+    } else {
+        delete apis[apiname];
+
+        const plugin = plugins.getApiPlugin(api);
+        if (!plugin) {
+            config.logger.warn(`no plugin found for api ${apiname}. Ignored`);
+            return;
+        }
+
+        const contributions = plugin.apiContributor(config, manifest, apiname, api);
+        applyConstributions(config, manifest, contributions, plugin);
+    }
+
+}
+
+function applyConstributions(config: types.Config, manifest: types.Deployment, contributions: types.Contribution[], plugin) {
+    for (const contrib of contributions) {
+        switch (contrib.kind) {
+            case 'action':
+                const pkg = utils.getPackage(manifest, contrib.pkgName, true);
+                if (!pkg.actions)
+                    pkg.actions = {};
+
+                if (pkg.actions[contrib.name]) {
+                    throw `plugin ${plugin.__pluginName} overrides ${contrib.name}`;
+                }
+
+                pkg.actions[contrib.name] = contrib.body;
+                checkAction(config, manifest, contrib.pkgName, pkg.actions, contrib.name, contrib.body);
+                break;
+            case 'api':
+                if (!manifest.apis)
+                    manifest.apis = {};
+                const apis = manifest.apis;
+                
+                if (apis[contrib.name]) {
+                    throw `plugin ${plugin.__pluginName} overrides ${contrib.name}`;
+                }
+                
+                apis[contrib.name] = contrib.body;
+                checkApi(config, manifest, apis, contrib.name, contrib.body);
+                break;
         }
     }
 }

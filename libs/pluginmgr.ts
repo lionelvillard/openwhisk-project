@@ -19,17 +19,20 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as types from './types';
 
-const actionPlugins = {}
+const actionPlugins = {};
+const apiPlugins = {};
+
 const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'zip', 'annotations', 'sequence', 'extra', 'actionName', 'packageName', 'docker']
 
 // Build plugin index.
 export async function init(config: types.Config) {
     config.logger.info('initializing plugins');
 
-    return loadDescs(config, './plugins/actions');
+    await loadDescs(config, './plugins/actions', actionPlugins);
+    await loadDescs(config, './plugins/apis', apiPlugins);
 }
 
-async function loadDescs(config: types.Config, dir: string) {
+async function loadDescs(config: types.Config, dir: string, index) {
     const root = path.join(__dirname, '..', dir);
     try {
         const files = await fs.readdir(root);
@@ -37,7 +40,7 @@ async function loadDescs(config: types.Config, dir: string) {
         for (const file of files) {
             if (!RESERVED_ACTION_KEYWORDS.includes(file)) {
                 config.logger.info(`registering plugin ${file}`);
-                actionPlugins[file] = path.join(root, file);
+                index[file] = path.join(root, file);
             }
             else
                 config.logger.warn(`Skipping ${file}: it is a reserved plugin name`);
@@ -49,9 +52,17 @@ async function loadDescs(config: types.Config, dir: string) {
 }
 
 export function getActionPlugin(action) : types.Plugin | null {
-    for (const name in actionPlugins) {
-        if (action.hasOwnProperty(name)) {
-            const plugin = require(actionPlugins[name]);
+    return getPlugin(actionPlugins, action);
+}
+
+export function getApiPlugin(api) : types.Plugin | null {
+    return getPlugin(apiPlugins, api);
+}
+
+function getPlugin(index, obj) : types.Plugin | null {
+    for (const name in index) {
+        if (obj.hasOwnProperty(name)) {
+            const plugin = require(index[name]);
             plugin.__pluginName = name;
             return plugin;
         }
