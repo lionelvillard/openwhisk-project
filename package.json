@@ -17,7 +17,6 @@
   "license": "Apache-2.0",
   "dependencies": {
     "archiver": "^2.0.3",
-    "chevrotain": "^0.29.0",
     "child-process-promise": "^2.2.1",
     "expand-home-dir": "0.0.3",
     "fs-extra": "^3.0.1",
