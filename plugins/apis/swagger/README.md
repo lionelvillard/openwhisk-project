@@ -29,12 +29,12 @@ Specify the action to associate with an [`operation`](https://github.com/OAI/Ope
 
 ```json
 "paths": {
-    "/v1/skills": {
-      "get": {
-        "summary": "List the skills",
-        "description": "Returns a list of the currently known skills",
-        "x-openwhisk-action": "skills/list"
-      }
+  "/v1/skills": {
+    "get": {
+      "summary": "List the skills",
+      "description": "Returns a list of the currently known skills",
+      "x-openwhisk-action": "skills/list"
     }
+  }
 }
 ```

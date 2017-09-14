@@ -5,20 +5,26 @@ packages:
       safeToDelete:
         kind: nodejs
         code: |
-          if (params.delete)
-            return {}
-          throw new Error('Oh Crap')
+          function main(params) {
+            if (params.delete)
+              return {}
+            throw new Error('Oh Crap')
+          }
 
       delete:
         kind: nodejs
         code: |
-          delete params[params.delete]
-          return params
+          function main(params) {
+            delete params[params.delete]
+            return params
+          }
 
       handleError:
         kind: nodejs
         code: |
-          return {status: 'Um a very bad thing just happened - sorry?'}
+          function main(params) {
+            return {status: 'Um a very bad thing just happened - sorry?'}
+          }
 
       trycatch:
         combinator: try safeToDelete catch handleError

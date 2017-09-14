@@ -4,5 +4,7 @@ packages:
       echo:
         kind: nodejs
         code: |
-          console.log(params)
-          return params || {}
+          function main(params) {
+            console.log(params);
+            return params || {};
+          }

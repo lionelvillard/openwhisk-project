@@ -68,9 +68,11 @@ const kindsForExt = {
 }
 
 const getKind = action => {
-    if (action.hasOwnProperty('kind'))
+    if (action.kind) {
+        if (action.kind === 'nodejs')
+            action.kind = 'nodejs:default';
         return action.kind
-
+    }
     const p = path.parse(action.location)
     if (p.base === 'package.json')
         return 'nodejs:default'
@@ -106,107 +108,3 @@ const getDockerImage = (manifest, action) => {
     return { image: `${username}/${escape(action.packageName)}/${escape(action.actionName)}` }
 }
 exports.getDockerImage = getDockerImage
-
-// Add action to graph.
-function extendGraph(graph, ns, pkgName, actionName, action) {
-    action.actionName = actionName
-    action.packageName = pkgName
-
-    const dependencies = handlers.lookupActionHandler(action).dependsOn(ns, action)
-    const qname = `${pkgName}/${actionName}`
-    if (graph[qname])
-        throw new Error(`Duplicate action ${qname}`)
-
-    graph[`${pkgName}/${actionName}`] = {
-        action,
-        deployed: false,
-        dependencies
-    }
-}
-
-/* Compute a dependency graph of the form
-   
-   {
-       "pkgname/actionname": { 
-           action,
-           deployed: false|true,
-           dependencies: [ actionname ]
-       }
-       ...
-   } 
-
-   pkgname/actionname can be deployed when all its dependencies have been marked as deployed
-*/
-const dependenciesGraph = manifest => {
-    const graph = {}
-
-    // Process default package
-    let actions = manifest.actions || {}
-    for (const actionName in actions) {
-        extendGraph(graph, manifest.namespace, '', actionName, actions[actionName])
-    }
-
-    // Process named-packages
-    const packages = manifest.packages || {}
-
-    for (const pkgName in packages) {
-        const pkg = packages[pkgName] || {}
-
-        actions = pkg.actions || {}
-        for (const actionName in actions) {
-            extendGraph(graph, manifest.namespace, pkgName, actionName, actions[actionName])
-        }
-    }
-
-    return graph
-}
-exports.dependenciesGraph = dependenciesGraph
-
-const nodependencies = (graph, entry) => {
-    for (const qname of entry.dependencies) {
-        const parts = names.parseQName(qname)
-        const dependency = graph[`${parts.pkg}/${parts.name}`]
-        if (dependency && !dependency.deployed)
-            return false
-    }
-    return true
-}
-
-// Get the list of actions that can be deployed
-const pendingActions = graph => {
-    const actions = {}
-    let hasActions = false
-    for (const qname in graph) {
-        const entry = graph[qname]
-        if (!entry.deployed && nodependencies(graph, entry)) {
-            actions[qname] = entry
-            hasActions = true
-        }
-    }
-    return hasActions ? actions : null
-}
-exports.pendingActions = pendingActions
-
-// Mark actions as deployed
-const commitActions = actions => {
-    for (const qname in actions) {
-        const entry = actions[qname]
-        entry.deployed = true
-    }
-}
-exports.commitActions = commitActions
-
-// Gets the remaining action to deploy, independently of their dependencies
-const remainingActions = graph => {
-    const actions = {}
-    let hasActions = false
-    for (const qname in graph) {
-        const entry = graph[qname]
-        if (!entry.deployed) {
-            actions[qname] = entry
-            hasActions = true
-        }
-    }
-    return hasActions ? actions : null
-}
-exports.remainingActions = remainingActions

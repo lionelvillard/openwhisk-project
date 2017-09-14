@@ -1,0 +1,23 @@
+{
+  "name": "openwhisk-deploy-expr",
+  "version": "0.1.0",
+  "description": "Inlined expression extension for OpenWhisk Deploy",
+  "main": "dist/index.js",
+  "types": "index.ts",
+  "scripts": {
+    "pretest": "tsc",
+    "test": "mocha dist/test",
+    "compile": "tsc -watch -p ./",
+    "tsc": "tsc"
+  },
+  "author": "Lionel Villard",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "mocha": "^3.5.3",
+    "mocha-typescript": "^1.1.8",
+    "typescript": "^2.5.2"
+  },
+  "dependencies": {
+    "openwhisk-deploy": "^0.4.1"
+  }
+}

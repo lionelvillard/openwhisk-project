@@ -148,7 +148,7 @@ function deployPackage(ow, name, parameters, annotations, binding, publish) {
 }
 
 const deployPendingActions = (ctx, graph) => {
-    const actions = helpers.pendingActions(graph)
+    const actions = pendingActions(graph)
     if (actions) {
         const promises = []
 
@@ -159,13 +159,13 @@ const deployPendingActions = (ctx, graph) => {
             promises.push(promise)
         }
 
-        helpers.commitActions(actions)
+        commitActions(actions)
 
         return Promise.all(promises)
             .then(reportAction1 => deployPendingActions(ctx, graph).then(reportAction2 => [...reportAction1, ...reportAction2]))
     }
 
-    const remaining = helpers.remainingActions(graph)
+    const remaining = remainingActions(graph)
     if (remaining) {
         const keys = Object.keys(remaining).join(', ')
         return Promise.reject(`Error: cyclic dependencies detected (${keys})`)
@@ -176,7 +176,7 @@ const deployPendingActions = (ctx, graph) => {
 
 function deployActions(ctx) {
     const manifest = ctx.manifest
-    const graph = helpers.dependenciesGraph(manifest)
+    const graph = dependenciesGraph(manifest)
     return deployPendingActions(ctx, graph);
 }
 
@@ -309,4 +309,108 @@ function checkFileExists(file) {
     return new Promise(resolve => {
         fs.exists(file, result => resolve(result))
     })
+}
+
+
+// -- Dependency graph
+
+
+// Add action to graph.
+function extendGraph(graph, ns, pkgName, actionName, action) {
+    action.actionName = actionName;
+    action.packageName = pkgName;
+
+    const dependencies = handlers.lookupActionHandler(action).dependsOn(ns, action);
+    const qname = `${pkgName}/${actionName}`;
+    if (graph[qname])
+        throw new Error(`Duplicate action ${qname}`);
+
+    graph[`${pkgName}/${actionName}`] = {
+        action,
+        deployed: false,
+        dependencies
+    };
+}
+
+/* Compute a dependency graph of the form
+   
+   {
+       "pkgname/actionname": { 
+           action,
+           deployed: false|true,
+           dependencies: [ actionname ]
+       }
+       ...
+   } 
+
+   pkgname/actionname can be deployed when all its dependencies have been marked as deployed
+*/
+function dependenciesGraph(manifest) {
+    const graph = {};
+
+    // Process default package
+    let actions = manifest.actions || {};
+    for (const actionName in actions) {
+        extendGraph(graph, manifest.namespace, '', actionName, actions[actionName]);
+    }
+
+    // Process named-packages
+    const packages = manifest.packages || {};
+
+    for (const pkgName in packages) {
+        const pkg = packages[pkgName] || {};
+
+        actions = pkg.actions || {};
+        for (const actionName in actions) {
+            extendGraph(graph, manifest.namespace, pkgName, actionName, actions[actionName]);
+        }
+    }
+
+    return graph;
+}
+
+function nodependencies(graph, entry) {
+    for (const qname of entry.dependencies) {
+        const parts = names.parseQName(qname);
+        const dependency = graph[`${parts.pkg}/${parts.name}`];
+        if (dependency && !dependency.deployed)
+            return false;
+    }
+    return true;
+}
+
+// Get the list of actions that can be deployed
+function pendingActions(graph) {
+    const actions = {};
+    let hasActions = false;
+    for (const qname in graph) {
+        const entry = graph[qname];
+        if (!entry.deployed && nodependencies(graph, entry)) {
+            actions[qname] = entry;
+            hasActions = true;
+        }
+    }
+    return hasActions ? actions : null;
+}
+
+// Mark actions as deployed
+function commitActions(actions) {
+    for (const qname in actions) {
+        const entry = actions[qname];
+        entry.deployed = true;
+    }
+}
+
+// Gets the remaining action to deploy, independently of their dependencies
+function remainingActions(graph) {
+    const actions = {};
+    let hasActions = false;
+    for (const qname in graph) {
+        const entry = graph[qname]
+        if (!entry.deployed) {
+            actions[qname] = entry;
+            hasActions = true;
+        }
+    }
+    return hasActions ? actions : null;
 }

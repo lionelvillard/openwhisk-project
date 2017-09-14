@@ -155,22 +155,8 @@ const handleCode = (ctx, action) => {
     if (!action.hasOwnProperty('kind'))
         throw new Error(`Missing property 'kind' in packages/actions/${action.actionName}`)
 
-    let kind = action.kind
-    let code = action.code
-
-    switch (kind) {
-        case 'nodejs':
-            kind = 'nodejs:default'
-        // fallthrough
-        case 'nodejs:default':
-        case 'nodejs:6':
-            code = `function main(params) { ${code} }`
-            break
-        case 'nodejs:6':
-        default:
-            throw new Error(`Unsupported action kind ${kind}`)
-    }
-
+    const kind = helpers.getKind(action);
+    const code = action.code;
     const parameters = helpers.getKeyValues(action.inputs, ctx)
     const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}

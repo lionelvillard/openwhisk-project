@@ -1,10 +1,10 @@
-# Deployment Format Specification
+# Deployment Configuration Specification
 
-This document formally described the deployment format and semantic used by `OpenWhisk Deploy`. 
+This document formally described the deployment configuration format and semantic used by `OpenWhisk Deploy`. 
 
-The deployment configuration files are written in `YAML`. Since `JSON` and `YAML` are closely related, 
-we use JSON schema to define the constraints imposed on the deployment files. These constraints are presented below,
-along with some examples. 
+The deployment configuration are written in `YAML`. Since `JSON` and `YAML` are closely related, 
+we use JSON schema to define the constraints imposed on the deployment configurations. These constraints are presented below, along with some examples. 
+
 
 
 ## `deployment` (top-level schema)
@@ -137,6 +137,9 @@ An error is raised when a cyclic dependency is detected.
   `action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
   and must be unique among the list of action names.
 
+**Plugin extensions**:
+- [combinator](https://github.com/lionelvillard/openwhisk-deploy/blob/master/plugins/actions/combinator/README.md): syntactic sugar for the [combinator package](https://github.com/apache/incubator-openwhisk-catalog/tree/master/packages/combinators).
+
 ## `action`
 
 An *object* representing an action. Extends [`baseAction`](#baseaction)
@@ -148,7 +151,7 @@ An *object* representing an action. Extends [`baseAction`](#baseaction)
    Must be a path relative to the directory containing the deployment file.
 
 - `kind` (enum, optional): the action kind. Determined automatically (see below)  
-   - `nodejs`: node js (latest builtin version) action. This is the default kind when 
+   - `nodejs:default`: node js (latest builtin version) action. This is the default kind when 
        - the location points to a file with the extension `.js`
        - the location points to `package.json` 
        - the location points to a folder containing `package.json` 
@@ -205,14 +208,13 @@ packages:
 
 ## `inline` 
 
-An *object* representing an action with inlined code. 
+An *object* representing an action with inlined code.  
 
 Extends [`baseAction`](#baseaction)
 
 ### Properties
 
-- `code` (string, required): the action main function content.   
-- `extra` (string, optional): additional code   
+- `code` (string, required): the action textual code.       
 - `kind` ([`baseAction`](#baseaction) enum, required): the required action kind
    
 ### Example
@@ -222,9 +224,12 @@ packages:
   utils:
     actions:
       myecho:   
-        code: 
-          console.log(params)
-          return params || {}
+        kind: nodejs
+        code: |  
+          function main(params) {
+            console.log(params);
+            return params || {};
+          }
 ```
 ## `sequence`
 
@@ -232,7 +237,7 @@ An *object* representing a sequence action. Extends [`baseAction`](#baseaction)
 
 ### Properties
 
-- `sequence` (string, required): a comma-separated list of action names. White space characters are ignored.
+- `sequence` (string, required): a comma-separated list of action names. 
      
    Non-fully qualified action names are resolved as described [here](#entity-name-resolution)  
      
@@ -364,6 +369,9 @@ An `object` representing an api. The format loosely follows the [OpenAPI](https:
 - basePath (string, required): the API base path. LIMITATION: currently it **must** be the same as the api name
 - paths ([`apiPaths`](#apiPaths), optional): the list of relative paths   
      
+**Plugin extensions**:
+- [`swagger`](https://github.com/lionelvillard/openwhisk-deploy/blob/master/plugins/apis/swagger/README.md): describes routes in Swagger.
+
 ### Example
 
 ```yaml

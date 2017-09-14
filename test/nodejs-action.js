@@ -94,4 +94,20 @@ describe('nodejs action', function () {
         assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' })
     });
 
+    it('deploy nodejs action with explicit kind', async function () {
+        const result = await deployer.deploy({
+            ow: ctx.ow, 
+            basePath: 'test/fixtures/nodejs/',
+            cache: ctx.cacheDir,
+            location: 'cat-with-kind.yaml',
+            force: true
+        });
+
+        const cat = await ctx.ow.actions.invoke({
+            actionName: 'nodejs/cat-with-kind',
+            params: { lines: ['first', 'second'] },
+            blocking: true
+        })
+        assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' })
+    });
 });

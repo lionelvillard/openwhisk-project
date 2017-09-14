@@ -1,0 +1,6 @@
+packages:
+  nodejs:
+    actions:
+      cat-with-kind:
+        kind: nodejs
+        location: cat.js
