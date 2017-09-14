@@ -29,10 +29,14 @@ export function apiContributor(config, deployment, apiname: string, api: wskd.ty
     const content = fs.readFileSync(file).toString();
     let swagger = (parts.ext === '.json') ? JSON.parse(content) : yaml.parse(content);
 
-    return cleanup({
-        basePath: swagger.basePath,
-        paths: getPaths(swagger.paths)
-    });
+    return [ cleanup({
+        kind : "api",
+        name: apiname,
+        body: {
+            basePath: swagger.basePath,
+            paths: getPaths(swagger.paths)
+        }
+    }) ];
 }
 
 function getPaths(paths) {

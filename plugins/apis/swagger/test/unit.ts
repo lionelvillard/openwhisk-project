@@ -25,14 +25,17 @@ class parsing {
         const config = { basePath: '.' };
         const result = swagger.apiContributor(config, null, 'skills', { swagger: 'test/swagger.json' });
         assert.ok(result);
-        assert.deepStrictEqual(result, {
-            "basePath": "/cap",
-            "paths": {
-                "/v1/skills": {
-                    "get": "listSkills"
+        assert.deepStrictEqual(result, [{
+            "kind": "api",
+            "name": "skills",
+            "body": {
+                "basePath": "/cap",
+                "paths": {
+                    "/v1/skills": {
+                        "get": "listSkills"
+                    }
                 }
             }
-        });
-
+        }]);
     }
 }

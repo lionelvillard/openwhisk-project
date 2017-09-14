@@ -68,8 +68,8 @@ export async function init(config: types.Config) {
     await configCache(config);
 
     check(config);
-
-    config.logger.debug(JSON.stringify(config));
+    
+    config.logger.debug(JSON.stringify(config, null, 2)); 
 }
 
 async function resolveManifest(config: types.Config) {
@@ -201,7 +201,8 @@ function checkApi(config: types.Config, manifest, apis, apiname: string, api: ty
             config.logger.warn(`no plugin found for api ${apiname}. Ignored`);
             return;
         }
-
+        config.logger.debug(`getting contribution from plugin ${(<any>plugin).__pluginName}`);
+        
         const contributions = plugin.apiContributor(config, manifest, apiname, api);
         applyConstributions(config, manifest, contributions, plugin);
     }
@@ -232,7 +233,7 @@ function applyConstributions(config: types.Config, manifest: types.Deployment, c
                     throw `plugin ${plugin.__pluginName} overrides ${contrib.name}`;
                 }
                 
-                apis[contrib.name] = contrib.body;
+                apis[contrib.name] = contrib.body; 
                 checkApi(config, manifest, apis, contrib.name, contrib.body);
                 break;
         }

@@ -93,4 +93,4 @@ export type Deployment = any
 export type Action = any
 export type Api = any
 
-export enum deploymentProperties { NAME = 'name', BASEPATH = 'basePath' }
+export enum deploymentProperties { NAME = 'name', BASEPATH = 'basePath', ACTIONS = 'actions', APIS = 'apis' }
