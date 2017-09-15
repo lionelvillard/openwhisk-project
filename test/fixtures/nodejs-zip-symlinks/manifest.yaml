@@ -1,0 +1,6 @@
+packages:
+  nodejs-zip-symlinks:
+    actions:
+      cat:
+        location: cat.js
+        zip: true

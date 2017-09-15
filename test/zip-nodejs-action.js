@@ -15,9 +15,9 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const deployer = require('..');
+const wskd = require('..');
 
-describe('zip nodejs action', function () {
+describe('zip builder', function () {
     this.timeout(10000);
 
     const ctx = {};
@@ -25,8 +25,8 @@ describe('zip nodejs action', function () {
     before(utils.before(ctx));
     after(utils.after(ctx));
 
-    it('deploy zipped nodejs action', async function () {
-        const result = await deployer.deploy({
+    it('nodejs package', async function () {
+        await wskd.deploy({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs-zip',
             cache: ctx.cacheDir,
@@ -36,6 +36,23 @@ describe('zip nodejs action', function () {
     
         const cat = await ctx.ow.actions.invoke({
             actionName: 'nodejs-zip/cat',
+            params: { lines: ['first', 'second'] },
+            blocking: true
+        })
+        assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' })
+    });
+
+    it('nodejs package with symlinks', async function () {
+        await  wskd.deploy({
+            ow: ctx.ow, 
+            basePath: 'test/fixtures/nodejs-zip-symlinks',
+            cache: ctx.cacheDir,
+            location: 'manifest.yaml',
+            force: true
+        });
+    
+        const cat = await ctx.ow.actions.invoke({
+            actionName: 'nodejs-zip-symlinks/cat',
             params: { lines: ['first', 'second'] },
             blocking: true
         })
