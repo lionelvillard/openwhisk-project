@@ -159,7 +159,7 @@ An *object* representing an action. Extends [`baseAction`](#baseaction)
    
 - `zip` (boolean, optional, default: false): whether to zip the action. 
    
-   - For `nodejs` action, `npm install --production` is run before `zip` 
+   - For `nodejs` action, `npm install --production` is run before `zip`. symlinks are dereferenced. 
 
 ### Example
 
