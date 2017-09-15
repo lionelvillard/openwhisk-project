@@ -36,11 +36,15 @@ export async function apply(config: types.Config) {
     return;
 
     async function cleanAll() {
+        config.logger.debug('undeploying...');
+        
         await cleanActions();
         await cleanPackages();
         await cleanRules();
         await cleanTriggers();
         await cleanApis();
+        
+        config.logger.debug('undeploy completed');
     }
 
     async function cleanActions() {
@@ -48,7 +52,10 @@ export async function apply(config: types.Config) {
         const promises = [];
         for (const action of actions) {
             if (await mustUndeployAction(action)) {
-                promises.push(ow.actions.delete(action));
+                config.logger.debug(`[actions] [deleting] ${action.name}`);
+                promises.push(ow.actions.delete(action).then(()=> config.logger.debug(`[actions] [deleted] ${action.name}`)));
+            } else {
+                config.logger.debug(`[actions] [skipped] ${action.name}`);
             }
         }
         await Promise.all(promises);
@@ -59,7 +66,10 @@ export async function apply(config: types.Config) {
         const promises = [];
         for (const pkg of packages) {
             if (await mustUndeployPackage(pkg)) {
-                promises.push(ow.packages.delete(pkg));
+                config.logger.debug(`[packages] [deleting] ${pkg.name}`);
+                promises.push(ow.packages.delete(pkg).then(()=> config.logger.debug(`[packages] [deleted] ${pkg.name}`)));
+            } else {
+                config.logger.debug(`[packages] [skipped] ${pkg.name}`);
             }
         }
         await Promise.all(promises);
@@ -71,7 +81,10 @@ export async function apply(config: types.Config) {
         const promises = [];
         for (const rule of rules) {
             if (await mustUndeployRule(rule)) {
-                promises.push(ow.rules.delete(rule));
+                config.logger.debug(`[rules] [deleting] ${rule.name}`);
+                promises.push(ow.rules.delete(rule).then(()=> config.logger.debug(`[rules] [deleted] ${rule.name}`)));
+            } else {
+                config.logger.debug(`[rules] [skipped] ${rule.name}`);
             }
         }
         await Promise.all(promises);
@@ -82,9 +95,12 @@ export async function apply(config: types.Config) {
         const promises = [];
         for (const trigger of triggers) {
             if (await mustUndeployTrigger(trigger)) {
-                promises.push(ow.triggers.delete(trigger));
+                config.logger.debug(`[trigger] [deleting] ${trigger.name}`);
+                promises.push(ow.triggers.delete(trigger).then(()=> config.logger.debug(`[actions] [deleted] ${trigger.name}`)));
         
                 // TODO: feed issue #39
+            } else {
+                config.logger.debug(`[trigger] [skipped] ${trigger.name}`);
             }
         }
         await Promise.all(promises);
@@ -96,7 +112,10 @@ export async function apply(config: types.Config) {
         for (const api of apis) {
             const basepath =  api.value.apidoc.basePath;
             if (await mustUndeployApi(basepath)) {
+                config.logger.debug(`[apis] [deleting] ${basepath}`);
                 promises.push(ow.routes.delete({basepath})); 
+            } else {
+                config.logger.debug(`[apis] [skipped] ${basepath}`);
             }
         }
         await Promise.all(promises);

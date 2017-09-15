@@ -19,6 +19,7 @@ import * as yaml from 'yamljs';
 import * as path from 'path';
 import * as types from './types';
 import * as plugins from './pluginmgr';
+import * as expandHome from 'expand-home-dir';
 
 const utils = require('./utils');
 
@@ -68,8 +69,8 @@ export async function init(config: types.Config) {
     await configCache(config);
 
     check(config);
-    
-    config.logger.debug(JSON.stringify(config, null, 2)); 
+
+    config.logger.debug(JSON.stringify(config, null, 2));
 }
 
 async function resolveManifest(config: types.Config) {
@@ -103,17 +104,16 @@ async function loadManifest(config: types.Config) {
 }
 
 async function configCache(config: types.Config) {
-    if (!config.cache && config.basePath) {
-        config.cache = `${config.basePath}/.openwhisk`
+    if (!config.cache) {
+        if (config.basePath)
+            config.cache = `${config.basePath}/.openwhisk`
+        else
+            config.cache = expandHome('~/.openwhisk')
+
         await fs.mkdirs(config.cache) // async since using fs-extra
-
     }
 
-    if (config.cache) {
-        config.logger.debug(`caching directory set to ${config.cache}`);
-    } else {
-        config.logger.debug(`caching disabled`);
-    }
+    config.logger.debug(`caching directory set to ${config.cache}`);
 }
 
 // validate and transform the manifest to core representation.
@@ -202,7 +202,7 @@ function checkApi(config: types.Config, manifest, apis, apiname: string, api: ty
             return;
         }
         config.logger.debug(`getting contribution from plugin ${(<any>plugin).__pluginName}`);
-        
+
         const contributions = plugin.apiContributor(config, manifest, apiname, api);
         applyConstributions(config, manifest, contributions, plugin);
     }
@@ -228,12 +228,12 @@ function applyConstributions(config: types.Config, manifest: types.Deployment, c
                 if (!manifest.apis)
                     manifest.apis = {};
                 const apis = manifest.apis;
-                
+
                 if (apis[contrib.name]) {
                     throw `plugin ${plugin.__pluginName} overrides ${contrib.name}`;
                 }
-                
-                apis[contrib.name] = contrib.body; 
+
+                apis[contrib.name] = contrib.body;
                 checkApi(config, manifest, apis, contrib.name, contrib.body);
                 break;
         }

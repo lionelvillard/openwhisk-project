@@ -52,6 +52,7 @@ const buildNodeJS = args => {
 
     const copyOptions = {
         preserveTimestamps: true,
+        dereference: true,
         filter: src => {
             const basename = path.basename(src)
             //console.log(src)
