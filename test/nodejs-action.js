@@ -15,7 +15,7 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const deployer = require('..');
+const wskd = require('..');
 
 describe('nodejs action', function () {
     this.timeout(10000);
@@ -25,7 +25,7 @@ describe('nodejs action', function () {
     after(utils.after(ctx));
 
     it('deploy-nodejs-action', async function () {
-        const result = await deployer.deploy({
+        const result = await wskd.deploy({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -42,7 +42,7 @@ describe('nodejs action', function () {
     });
 
     it('deploy-nodejs-action-params', async function () {
-        const result = await deployer.deploy({
+        const result = await wskd.deploy({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -58,7 +58,7 @@ describe('nodejs action', function () {
     });
 
     it('deploy-nodejs-action-annotations', async function () {
-        const result = await deployer.deploy({
+        const result = await wskd.deploy({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -78,7 +78,7 @@ describe('nodejs action', function () {
     });
 
     it('deploy nodejs action in default package', async function () {
-        const result = await deployer.deploy({
+        const result = await wskd.deploy({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -95,7 +95,7 @@ describe('nodejs action', function () {
     });
 
     it('deploy nodejs action with explicit kind', async function () {
-        const result = await deployer.deploy({
+        const result = await wskd.deploy({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -109,5 +109,32 @@ describe('nodejs action', function () {
             blocking: true
         })
         assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' })
+    });
+
+    it('deploy web nodejs actions', async function () {
+        await wskd.deploy({
+            ow: ctx.ow, 
+            basePath: 'test/fixtures/nodejs/',
+            cache: ctx.cacheDir,
+            location: 'webactions.yaml',
+            force: true
+        });
+        const http = await utils.invokeWebAction(ctx, 'nodejs-webactions/http', { name: 'Jane'}, '.http');
+        assert.deepEqual(JSON.parse(http).name, 'Jane');
+
+        const json = await utils.invokeWebAction(ctx, 'nodejs-webactions/http', { name: 'Jane'}, '.json');
+        assert.deepEqual(JSON.parse(json).body.name, 'Jane');
+        
+        const html = await utils.invokeWebAction(ctx, 'nodejs-webactions/html', {}, '.html');
+        assert.deepEqual(html, '<body>Hello!</hello>');
+        
+        const svg = await utils.invokeWebAction(ctx, 'nodejs-webactions/svg', {}, '.svg');
+        assert.deepEqual(svg, `<svg width="32" height="32" xmlns="http://www.w3.org/2000/svg"><text fill="rgba(81, 92, 217, 0.91)" font-family="Roboto" font-size="20" y="24" x="8">A</text></svg>`)
+        
+        const text = await utils.invokeWebAction(ctx, 'nodejs-webactions/text', {}, '.text');
+        assert.deepEqual(text, 'A text');
+        
+        const png = await utils.invokeWebAction(ctx, 'nodejs-webactions/png', {}, '');
+        assert.deepEqual(png.substr(1, 3), 'PNG');
     });
 });
