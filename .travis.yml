@@ -4,7 +4,7 @@ sudo: required
 node_js: node
 
 env:
-  - LOGGER_LEVEL='INFO' NODE_TLS_REJECT_UNAUTHORIZED=0
+  - LOGGER_LEVEL='INFO'
 
 services:
   - docker
@@ -19,6 +19,6 @@ install:
   - cd $TRAVIS_BUILD_DIR/plugins/actions/combinator && npm install && npm link openwhisk-deploy  
  
 script:
-  - cd $TRAVIS_BUILD_DIR && npm test
-  - cd $TRAVIS_BUILD_DIR/plugins/actions/combinator && npm test
+  - cd $TRAVIS_BUILD_DIR &&  NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
+  - cd $TRAVIS_BUILD_DIR/plugins/actions/combinator && NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
   
