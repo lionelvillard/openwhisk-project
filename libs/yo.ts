@@ -34,8 +34,7 @@ function init() {
 }
 
 // Run the given generator.
-function run(namespace) {
+export function run(namespace) {
     return init()
         .then(() => env.run(namespace, () => true));
 }
-exports.run = run;

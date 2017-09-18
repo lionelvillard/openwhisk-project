@@ -24,7 +24,7 @@
  /ns/foo => {namespace: ns, name: "foo"}
  /ns/pkg/foo => {namespace: ns, package: pkg, pkg/foo}
  */
-function parseQName(qname) {
+export function parseQName(qname) {
     qname = qname.trim();
     let parts = qname.split('/');
     let hasns = parts[0] === '';
@@ -56,19 +56,17 @@ function parseQName(qname) {
 
     return { namespace, pkg, name };
 };
-exports.parseQName = parseQName;
 
 // Make sure name if fully qualified
-function resolveQName(qname, namespace, packageName) {
+export function resolveQName(qname, namespace, packageName) {
     let parts = parseQName(qname);
     parts.namespace = parts.namespace || namespace;
     parts.pkg = parts.pkg || packageName;
     return `/${parts.namespace}/${parts.pkg}/${parts.name}`;
 };
-exports.resolveQName = resolveQName;
 
 // Make qname from parts
-function makeQName(namespace, packageName, actionName) {
+export function makeQName(namespace, packageName, actionName) {
     let qname = ''
     if (namespace)
         qname += `/${namespace}/`
@@ -77,10 +75,9 @@ function makeQName(namespace, packageName, actionName) {
     qname += actionName
     return qname
 };
-exports.makeQName = makeQName;
 
 // Compute relative qname /_/ 
-function relativeQName(qname, namespace, packageName) {
+export function relativeQName(qname, namespace, packageName) {
     const parts = parseQName(qname);
     if (parts.namespace !== '_' && parts.namespace !== namespace) {
         return qname;
@@ -89,4 +86,3 @@ function relativeQName(qname, namespace, packageName) {
         return parts.name;
     return parts.pkg ? `${parts.pkg}/${parts.name}` : parts.name;
 }
-exports.relativeQName = relativeQName;

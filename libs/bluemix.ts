@@ -1,10 +1,25 @@
+/*
+ * Copyright 2017 IBM Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 const request = require('request-promise')
 const expandHomeDir = require('expand-home-dir')
 const fs = require('fs')
 const {exec} = require('child_process')
 
 // @return true if Bluemix is available on this system, false otherwise
-const isBluemixCapable = () => {
+export const isBluemixCapable = () => {
     if (process.env.BLUEMIX_API_KEY) {
         return new Promise((resolve) => {
             exec('bx help', err => {
@@ -15,13 +30,11 @@ const isBluemixCapable = () => {
 
     return Promise.resolve(false)
 }
-exports.isBluemixCapable = isBluemixCapable
 
 // Login to Bluemix
-const login = () => {
+export const login = () => {
     return target().then(maylogin)
 }
-exports.login = login
 
 const maylogin = target => {
     if (target.includes('bx login')) {
@@ -41,7 +54,7 @@ const target = () => new Promise((resolve, reject) => {
 })
 
 // Retrieve authentication tokens from local file system
-const getTokens = () => {
+export const getTokens = () => {
     let configFile = expandHomeDir('~/.bluemix/.cf/config.json')
     if (!fs.existsSync(configFile)) {
         configFile = expandHomeDir('~/.cf/config.json')
@@ -59,10 +72,9 @@ const getTokens = () => {
         refreshToken: config.RefreshToken
     }
 }
-exports.getTokens = getTokens
 
 // Send request to get all OpenWhisk keys for the given Bluemix authentication
-const getAuthKeys = (accessToken, refreshToken) => {
+export const getAuthKeys = (accessToken, refreshToken) => {
     return request({
         method: 'POST',
         uri: 'https://openwhisk.ng.bluemix.net/bluemix/v2/authenticate',
@@ -73,7 +85,6 @@ const getAuthKeys = (accessToken, refreshToken) => {
         json: true
     })
 }
-exports.getAuthKeys = getAuthKeys
 
 const delay = ms => new Promise(resolve => {
     setTimeout(resolve, ms)
@@ -84,7 +95,7 @@ const delay = ms => new Promise(resolve => {
 
  @return {Object[]} the list of keys for the given spaces
  */
-const waitForAuthKeys = (accessToken, refreshToken, spaces, timeout) => {
+export const waitForAuthKeys = (accessToken, refreshToken, spaces, timeout = 1000) => {
     if (spaces.length == 0)
         return Promise.resolve(true)
 
@@ -125,9 +136,8 @@ const waitForAuthKeys = (accessToken, refreshToken, spaces, timeout) => {
             return delay(1000).then(() => waitForAuthKeys(accessToken, refreshToken, spaces, timeout - 1000))
         })
 }
-exports.waitForAuthKeys = waitForAuthKeys
 
-const createSpace = space => {
+export const createSpace = space => {
     const tokens = getTokens()
     return new Promise((resolve, reject) => {
         exec(`bx iam space-create ${space}`, (err, stdout, stderr) => {
@@ -142,13 +152,11 @@ const createSpace = space => {
         .then(() => waitForAuthKeys(tokens.accessToken, tokens.refreshToken, [space]))
         .then(keys => (keys && keys.length > 0) ? keys[0] : null)
 }
-exports.createSpace = createSpace
 
-const deleteSpace = space => {
+export const deleteSpace = space => {
     return new Promise(resolve => {
         exec(`bx iam space-delete ${space} -f`, () => {
             return resolve(true)
         })
     })
 }
-exports.deleteSpace = deleteSpace

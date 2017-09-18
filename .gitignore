@@ -18,3 +18,8 @@ libs/refresh.js
 libs/sync.js
 libs/pluginmgr.js
 libs/types.js
+libs/auth.js
+libs/bluemix.js
+libs/yo.js
+libs/env.js
+libs/names.js

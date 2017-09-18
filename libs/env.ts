@@ -20,7 +20,7 @@ const bx = require('./bluemix')
 const propertiesParser = require('properties-parser')
 
 // Get all declared environments 
-const getEnvironments = () => new Promise(resolve => {
+export const getEnvironments = () => new Promise(resolve => {
     const ignore = (file, stats) => {
         if (stats.isDirectory())
             return true
@@ -38,10 +38,9 @@ const getEnvironments = () => new Promise(resolve => {
         resolve(result)
     })
 })
-exports.getEnvironments = getEnvironments
 
 // Set current environment 
-const setEnvironment = async envname => {
+export const setEnvironment = async envname => {
     const filename = `.${envname}.wskprops`
     let exists = await fs.exists(filename)
     if (!exists)
@@ -98,4 +97,3 @@ const setEnvironment = async envname => {
     }
     return true
 }
-exports.setEnvironment = setEnvironment

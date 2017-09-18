@@ -18,7 +18,7 @@ const openwhisk = require('openwhisk')
 const expandHomeDir = require('expand-home-dir')
 const path = require('path')
 
-const getWskPropsFile = () => {
+export const getWskPropsFile = () => {
     let wskprops = process.env.WSK_CONFIG_FILE
     if (!wskprops || !fs.existsSync(wskprops)) {
         const until = path.dirname(expandHomeDir('~'))
@@ -33,9 +33,8 @@ const getWskPropsFile = () => {
     }
     return wskprops
 }
-exports.getWskPropsFile = getWskPropsFile
 
-const readWskProps = () => {
+export const readWskProps = () => {
     const wskprops = getWskPropsFile()
     if (wskprops) {
         const propertiesParser = require('properties-parser')
@@ -47,10 +46,8 @@ const readWskProps = () => {
     }
     return null
 }
-exports.readWskProps = readWskProps
 
-// Resolve auth and api host, independently (TODO)
-const auth = (options = {}) => {
+export const auth = (options : any = {}) => {
     if (options.auth)
         return options
 
@@ -66,13 +63,12 @@ const auth = (options = {}) => {
     }
 
     return null
-}
-exports.auth = auth
+} 
 
 // Resolve variables by merging command line options with .wskprops content
-const resolveVariables = (options = {}) => {
+export const resolveVariables = (options: any = {}) => {
     const wskprops = readWskProps() || {}
-    const variables = {}
+    const variables: any = {}
 
     variables.auth = options.auth || process.env.WHISK_AUTH || wskprops.AUTH 
     variables.apihost = options.apihost || process.env.WHISK_APIHOST || wskprops.APIHOST 
@@ -81,10 +77,8 @@ const resolveVariables = (options = {}) => {
 
     return variables
 }
-exports.resolveVariables = resolveVariables
 
-const initWsk = (options = {}) => {
+export const initWsk = (options = {}) => {
     const vars = resolveVariables(options);
     return openwhisk({ api_key: vars.auth, apihost: vars.apihost, ignore_certs: vars.ignore_certs, apigw_token: vars.apigw_token })
 }
-exports.initWsk = initWsk
