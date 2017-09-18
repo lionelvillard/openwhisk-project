@@ -19,7 +19,6 @@ const deployer = require('..');
 
 
 describe('copy action', function () {
-    this.timeout(10000);
     const ctx = {};
 
     before(utils.before(ctx));

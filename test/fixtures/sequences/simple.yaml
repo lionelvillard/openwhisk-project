@@ -1,5 +1,5 @@
 packages:
-  sequence-test1:
+  sequences-simple:
     actions:
       mysequence:
         sequence: /whisk.system/utils/echo, /whisk.system/utils/cat

@@ -1,7 +1,7 @@
 packages:
-  sequence-test4:
+  sequence-cycle:
     actions:
       mysequence:
-        sequence: mysequence, sequence-test3-1/in-other-package
+        sequence: mysequence, sequence-cycle/in-same-package
       in-same-package:
         location: echo.js
