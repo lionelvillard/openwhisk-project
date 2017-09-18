@@ -20,7 +20,7 @@
     "child-process-promise": "^2.2.1",
     "expand-home-dir": "0.0.3",
     "fs-extra": "^3.0.1",
-    "generator-openwhisk": "^0.2.0",
+    "generator-openwhisk": "^0.3.0",
     "log4js": "^1.1.1",
     "openwhisk": "^3.7.0",
     "properties-parser": "^0.3.1",
