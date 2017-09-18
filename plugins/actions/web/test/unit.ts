@@ -22,8 +22,8 @@ class WebUnit {
 
     @test
     basicForm() {
-        const result = web.actionContributor(null, null, 'pkg', 'basic', { web: './test/icon.svg' });
+        const result = web.actionContributor({basePath: '.'}, null, 'pkg', 'basic', { web: './test/icon.svg' });
         assert.ok(result)
-        assert.deepStrictEqual(result[0].body.headers, { "Content-Type": "image/svg+xml" });
+        assert.deepStrictEqual(result[0].body.web.headers, { "Content-Type": "image/svg+xml" });
     }
 }
