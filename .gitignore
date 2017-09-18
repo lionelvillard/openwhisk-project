@@ -23,3 +23,4 @@ libs/bluemix.js
 libs/yo.js
 libs/env.js
 libs/names.js
+libs/utils.js

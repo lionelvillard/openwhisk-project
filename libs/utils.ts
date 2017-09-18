@@ -17,49 +17,7 @@ const request = require('request-promise')
 const archiver = require('archiver')
 const fs = require('fs')
 
-// Check manifest is present, otherwise fetch it.
-function assignManifest(args) {
-    if (args.hasOwnProperty('manifest')) {
-        return Promise.resolve(args)
-    }
-
-    // No manifest: need a repo.
-    if (!haveRepo(args))
-        return Promise.reject(`Missing repository properties ('owner', 'repo', and 'sha')`)
-
-    return fetchContent(args, 'manifest.yaml')
-        .then(manifest => {
-            args.manifest = manifest
-            return args
-        })
-}
-exports.assignManifest = assignManifest
-
-
-
-// Fetch file content in GitHubRepository
-function fetchContent(args, location) {
-    if (!haveRepo(args))
-        return Promise.reject(`Missing repository properties ('owner', 'repo', and 'sha') needed to get ${location}`)
-
-    return request({
-        uri: `https://raw.githubusercontent.com/${args.owner}/${args.repo}/${args.sha}/${location}`
-    }).then(result => {
-        console.log(`fetched ${location}`)
-        return result
-    })
-}
-exports.fetchContent = fetchContent
-
-//
-function haveRepo(args) {
-    return args.hasOwnProperty('assets') && args.assets.hasOwnProperty('conf') &&
-        args.assets.conf.hasOwnProperty('owner') && args.assets.conf.hasOwnProperty('repo') &&
-        args.assets.conf.hasOwnProperty('sha')
-}
-exports.haveRepo = haveRepo
-
-const makeZip = (targetZip, src) => new Promise((resolve, reject) => {
+export const makeZip = (targetZip, src) => new Promise((resolve, reject) => {
     const output = fs.createWriteStream(targetZip)
     const archive = archiver('zip', {
         zlib: { level: 9 }
@@ -82,10 +40,9 @@ const makeZip = (targetZip, src) => new Promise((resolve, reject) => {
     // finalize the archive (ie we are done appending files but streams have to finish yet)
     archive.finalize()
 })
-exports.zip = makeZip
 
 // Assign the source properties to target. Throw an exception when a conflict occurs.
-const mergeObjects = (target, source) => {
+export const mergeObjects = (target, source) => {
     if (source) {
         for (const key of Object.keys(source)) {
             if (target.hasOwnProperty(key))
@@ -95,11 +52,10 @@ const mergeObjects = (target, source) => {
     }
     return target
 }
-exports.mergeObjects = mergeObjects
 
 // Initialize action with the `baseAction` properties
-const initFromBaseAction = baseAction => {
-    const action = {}
+export const initFromBaseAction = baseAction => {
+    const action: any = {}
     if (baseAction.limits)
         action.limits = baseAction.limits
     if (baseAction.annotations)
@@ -109,35 +65,31 @@ const initFromBaseAction = baseAction => {
 
     return action
 }
-exports.initFromBaseAction = initFromBaseAction
 
 // --- Conversion functions from manifest format to rest params
 
-const getAnnotations = (config, annotations) => {
-    const converted = getKeyValues(annotations);
+export const getAnnotations = (config, annotations) => {
+    const converted = getKeyValues(annotations, config);
     if (config.manifest.name) {
         converted.push({ key: 'managed', value: config.manifest.name });
     }
     return converted;
 }
-exports.getAnnotations = getAnnotations;
 
-const getKeyValues = (inputs, args) => {
+export const getKeyValues = (inputs, args) => {
     if (inputs) {
         return Object.keys(inputs).map(key => ({ key, value: resolveValue(inputs[key], args) }))
     }
     return []
 }
-exports.getKeyValues = getKeyValues
 
-const indexKeyValues = kvs => {
+export const indexKeyValues = kvs => {
     const index = {}
     if (kvs) {
         kvs.forEach(kv => index[kv.key] = kv.value)
     }
     return index
 }
-exports.indexKeyValues = indexKeyValues
 
 // TODO: support ${} format 
 const resolveValue = (value, args) => {
@@ -154,7 +106,7 @@ const resolveValue = (value, args) => {
 
 // --- low level deployment functions
 
-const deployRawAction = (ctx, actionName, action) => {
+export const deployRawAction = (ctx, actionName, action) => {
     ctx.logger.info(`[ACTION] [DEPLOYING] ${actionName}`);
     ctx.logger.trace(`[ACTION] [DEPLOYING] ${JSON.stringify(action)}`);
     return ctx.ow.actions.change({
@@ -165,18 +117,16 @@ const deployRawAction = (ctx, actionName, action) => {
         ctx.logger.info(`[ACTION] [DEPLOYED] ${JSON.stringify(r)}`);
     });
 }
-exports.deployRawAction = deployRawAction;
 
-const deployActionWithContent = (ctx, actionName, action, binary) => content => {
+export const deployActionWithContent = (ctx, actionName, action, binary) => content => {
     action.exec.code = Buffer.from(content).toString(binary ? 'base64' : 'utf8');
     return deployRawAction(ctx, actionName, action);
 }
-exports.deployActionWithContent = deployActionWithContent;
 
 
 // Helper functions managing openwhisk configuration files
 
-const getPackage = (manifest, packageName, create = false) => {
+export const getPackage = (manifest, packageName, create = false) => {
     let pkgCfg;
     if (packageName) {
         let pkgsCfg = manifest.packages;
@@ -198,9 +148,8 @@ const getPackage = (manifest, packageName, create = false) => {
     }
     return pkgCfg;
 }
-exports.getPackage = getPackage
 
-const getAction = (manifest, packageName, actionName, create = false) => {
+export const getAction = (manifest, packageName, actionName, create = false) => {
     const pkgCfg = getPackage(manifest, packageName, create)
     if (!pkgCfg)
         return null;
@@ -220,9 +169,8 @@ const getAction = (manifest, packageName, actionName, create = false) => {
     }
     return actionCfg
 }
-exports.getAction = getAction
 
-const getTrigger = (manifest, triggerName, create = false) => {
+export const getTrigger = (manifest, triggerName, create = false) => {
     let triggersCfg = manifest.triggers;
     if (!triggersCfg) {
         if (!create)
@@ -238,9 +186,8 @@ const getTrigger = (manifest, triggerName, create = false) => {
     }
     return triggerCfg;
 }
-exports.getTrigger = getTrigger;
 
-const getRule = (manifest, ruleName, create = false) => {
+export const getRule = (manifest, ruleName, create = false) => {
     let rulesCfg = manifest.rules;
     if (!rulesCfg) {
         if (!create)
@@ -256,10 +203,8 @@ const getRule = (manifest, ruleName, create = false) => {
     }
     return ruleCfg;
 }
-exports.getRule = getRule;
 
-
-const getApi = (manifest, apiName, create = false) => {
+export const getApi = (manifest, apiName, create = false) => {
     // TODO: currently treat apiname as being basePath
     let apisCfg = manifest.apis;
     if (!apisCfg) {
@@ -276,5 +221,4 @@ const getApi = (manifest, apiName, create = false) => {
     }
     return apiCfg;
 }
-exports.getApi = getApi;
 

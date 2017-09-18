@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/lionelvillard/openwhisk-deploy.svg?branch=master)](https://travis-ci.org/lionelvillard/openwhisk-deploy)
+[![Build Status](https://travis-ci.org/lionelvillard/openwhisk-deploy.svg?branch=master)](https://travis-ci.org/lionelvillard/openwhisk-deploy) ![Dependencies](https://david-dm.org/lionelvillard/openwhisk-deploy.svg)
 
 This project provides a set of tools for managing a collection of OpenWhisk entities and related services (eg. Cloudant, Redis, etc...).      
  
