@@ -5,6 +5,7 @@ node_js: node
 
 env:
   - LOGGER_LEVEL='INFO'
+  - NODE_TLS_REJECT_UNAUTHORIZED=0
 
 services:
   - docker
