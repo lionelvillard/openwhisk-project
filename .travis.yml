@@ -16,9 +16,11 @@ before_install:
 
 install:
   - cd $TRAVIS_BUILD_DIR && npm install && npm link
-  - cd $TRAVIS_BUILD_DIR/plugins/actions/combinator && npm install && npm link openwhisk-deploy  
+  - cd $TRAVIS_BUILD_DIR/plugins/actions/combinator && npm install && npm link openwhisk-deploy
+  - cd $TRAVIS_BUILD_DIR/plugins/actions/web && npm install && npm link openwhisk-deploy  
  
 script:
   - cd $TRAVIS_BUILD_DIR &&  NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
   - cd $TRAVIS_BUILD_DIR/plugins/actions/combinator && NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
+  - cd $TRAVIS_BUILD_DIR/plugins/actions/web && NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
   

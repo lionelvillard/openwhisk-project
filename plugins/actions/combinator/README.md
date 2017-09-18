@@ -1,4 +1,4 @@
-This plugin adds some syntactic sugar construct to configure the deployment of [combinators](https://github.com/apache/incubator-openwhisk-catalog/tree/master/packages/combinators)
+This plugin adds some syntactic sugar constructs to configure the deployment of [combinators](https://github.com/apache/incubator-openwhisk-catalog/tree/master/packages/combinators)
 
 # Deployment configuration extension
 

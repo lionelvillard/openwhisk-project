@@ -138,7 +138,10 @@ An error is raised when a cyclic dependency is detected.
   and must be unique among the list of action names.
 
 **Plugin extensions**:
+- [web](https://github.com/lionelvillard/openwhisk-deploy/blob/master/plugins/actions/web/README.md): syntactic sugar for configurating Web actions.
+
 - [combinator](https://github.com/lionelvillard/openwhisk-deploy/blob/master/plugins/actions/combinator/README.md): syntactic sugar for the [combinator package](https://github.com/apache/incubator-openwhisk-catalog/tree/master/packages/combinators).
+
 
 ## `action`
 
