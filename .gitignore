@@ -24,3 +24,5 @@ libs/yo.js
 libs/env.js
 libs/names.js
 libs/utils.js
+libs/handler.js
+libs/build.js

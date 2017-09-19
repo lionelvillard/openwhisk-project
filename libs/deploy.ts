@@ -147,7 +147,7 @@ function deployPackage(ow, name, parameters, annotations, binding, publish) {
     })
 }
 
-const deployPendingActions = (ctx, graph) => {
+function deployPendingActions(ctx, graph) {
     const actions = pendingActions(graph)
     if (actions) {
         const promises = []
@@ -414,3 +414,5 @@ function remainingActions(graph) {
     }
     return hasActions ? actions : null;
 }
+
+// --- 

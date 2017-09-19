@@ -18,8 +18,6 @@ const utils = require('./helpers/utils');
 const wskd = require('..');
 
 describe('zip builder', function () {
-    this.timeout(10000);
-
     const ctx = {};
 
     before(utils.before(ctx));

@@ -36,15 +36,6 @@ export async function init(config: types.Config) {
         config.logger.debug('perform a dryrun');
     }
 
-    async function load(location: string) {
-        config.logger.debug(`read local file ${location}`);
-        const content = await fs.readFile(location);
-        return content;
-    };
-
-    if (!config.load)
-        config.load = load;
-
     const ow = config.ow;
     if (!config.force) {
         ow.packages.change = ow.packages.create;
@@ -99,7 +90,7 @@ async function resolveManifest(config: types.Config) {
 }
 
 async function loadManifest(config: types.Config) {
-    const content = await config.load(config.location);
+    const content = await fs.readFile(config.location);
     config.manifest = yaml.parse(Buffer.from(content).toString());
 }
 

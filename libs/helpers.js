@@ -84,13 +84,13 @@ const getKind = action => {
 }
 exports.getKind = getKind
 
-const getBinary = (action, kind) => {
-    if (kind.startsWith('java') || action.zip)
-        return true
+// const getBinary = (action, kind) => {
+//     if (kind.startsWith('java') || action.zip)
+//         return true
 
-    return false
-}
-exports.getBinary = getBinary
+//     return false
+// }
+// exports.getBinary = getBinary
 
 const getDockerImage = (manifest, action) => {
     const dockerhub = args.manifest.dockerhub

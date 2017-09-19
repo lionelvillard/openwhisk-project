@@ -285,6 +285,7 @@ A common set of action properties.
   - [`web-export`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md) (true|false): enable/disable web action
   - [`raw-http`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md#raw-http-handling) (true|false): enable/disable raw HTTP handling
 
+- `builder` ([`builder`](#builder), optional): the action builder. 
 
 ## `triggers`
 
@@ -447,6 +448,31 @@ An *object* representing action limits
 - `memory` (integer, optional, default: 256): the maximum memory limit in MB for the action
 - `logsize` (integer, optional, default:10): the maximum log size limit in MB for the action
 - `timeout` (integer, optional, default:60000): the timeout limit in milliseconds after which the action is terminated 
+
+### Properties
+
+- `plugin` (string, required): the name of the plugin 
+
+## `builder`
+
+An *object* representing the action builder.
+
+### Properties
+
+- `name`  (string, required): the name of the builder plugin
+- `{key}` (any): the plugin input parameters
+
+### Example
+
+```yaml
+actions:
+  zipaction:
+    builder:
+      name: zip
+      excludes:
+        - *.ts
+```
+
 
 ## Entity name resolution
 

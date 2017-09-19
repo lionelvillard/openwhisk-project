@@ -21,8 +21,9 @@ import * as types from './types';
 
 const actionPlugins = {};
 const apiPlugins = {};
+const actionBuilderPlugins = {};
 
-const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'zip', 'annotations', 'sequence', 'extra', 'actionName', 'packageName', 'docker']
+const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'annotations', 'sequence', 'extra', 'actionName', 'packageName', 'docker']
 
 // Build plugin index.
 export async function init(config: types.Config) {
@@ -30,6 +31,7 @@ export async function init(config: types.Config) {
 
     await loadDescs(config, './plugins/actions', actionPlugins);
     await loadDescs(config, './plugins/apis', apiPlugins);
+    await loadDescs(config, './plugins/builders', actionBuilderPlugins);
 }
 
 async function loadDescs(config: types.Config, dir: string, index) {
@@ -51,15 +53,24 @@ async function loadDescs(config: types.Config, dir: string, index) {
     }
 }
 
-export function getActionPlugin(action) : types.Plugin | null {
+export function getActionPlugin(action): types.Plugin | null {
     return getPlugin(actionPlugins, action);
 }
 
-export function getApiPlugin(api) : types.Plugin | null {
+export function getApiPlugin(api): types.Plugin | null {
     return getPlugin(apiPlugins, api);
 }
 
-function getPlugin(index, obj) : types.Plugin | null {
+export function getActionBuilderPlugin(name): types.Plugin | null {
+    if (actionBuilderPlugins[name]) {
+        const plugin = require(actionBuilderPlugins[name]);
+        plugin.__pluginName = name;
+        return plugin;
+    }
+    return null;
+}
+
+function getPlugin(index, obj): types.Plugin | null {
     for (const name in index) {
         if (obj.hasOwnProperty(name)) {
             const plugin = require(index[name]);

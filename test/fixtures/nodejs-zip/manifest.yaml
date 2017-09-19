@@ -3,4 +3,3 @@ packages:
     actions:
       cat:
         location: cat.js
-        zip: true

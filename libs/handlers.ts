@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-const builder = require('./builders')
-const utils = require('./utils')
+// Builtin deployment handlers.
+
+import * as utils from './utils';
+import * as names from './names';
+import * as path from 'path';
+import * as plugins from './pluginmgr';
+import * as fs from 'fs-extra';
+
 const helpers = require('./helpers')
-const names = require('./names')
-const path = require('path')
-const plugins = require('./pluginmgr')
 
 // --- Copy action
 
@@ -39,15 +42,15 @@ const handleCopy = (ctx, action) => {
 
     const qname = names.makeQName('_', action.packageName, action.actionName)
 
-    return ctx.ow.actions.get({name: sourceActionName})
-        .then(deployCopyAction(ctx, qname, params, annotations, limits)) 
+    return ctx.ow.actions.get({ name: sourceActionName })
+        .then(deployCopyAction(ctx, qname, params, annotations, limits))
 }
 
 const dependsOnCopy = (namespace, action) => {
     return [names.resolveQName(action.copy, namespace, action.packageName)]
 }
 
-const deployCopyAction = (ctx, actionName, params, annos, newlimits) => sourceAction => { 
+const deployCopyAction = (ctx, actionName, params, annos, newlimits) => sourceAction => {
     const actionParams = helpers.indexKeyValues(sourceAction.parameters)
     const actionAnnos = helpers.indexKeyValues(sourceAction.annotations)
 
@@ -127,7 +130,6 @@ const dependsOnSequence = (namespace, action) => {
     return getComponents(namespace, action.packageName, action.sequence)
 }
 
-
 // --- Docker action
 
 const handleImage = (ctx, action) => {
@@ -173,7 +175,9 @@ const handleCode = (ctx, action) => {
 
 // --- Fallback
 
-const handleDefaultAction = (ctx, action) => {
+// TODO: consider making this a plugin.
+
+async function handleDefaultAction(ctx, action) {
     const pkgName = action.packageName
     const actionName = action.actionName
     if (!action.hasOwnProperty('location')) {
@@ -191,34 +195,36 @@ const handleDefaultAction = (ctx, action) => {
     const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
 
-    const binary = helpers.getBinary(action, kind)
     const qname = names.makeQName('_', pkgName, actionName)
 
-    return buildAction(ctx, kind, action)
-        .then(ctx.load)
-        .then(utils.deployActionWithContent(ctx, qname, { exec: { kind }, parameters, annotations, limits }, binary))  
+    const artifact = await build(ctx, pkgName, actionName, action);
+    const content = await load(ctx, artifact.location);
+
+    const code = Buffer.from(content).toString(artifact.binary ? 'base64' : 'utf8');
+
+    return await utils.deployRawAction(ctx, qname, { exec: { kind, code }, parameters, annotations, limits });
 }
 
-// --- Plugin
+// // --- Plugin
 
-const handlePluginAction = plugin => (ctx, action) => {
-    const context = { pkgName: action.packageName, actionName: action.actionName, action }
-    let entities = plugin.getEntities(context)
-    if (!Array.isArray(entities))
-        entities = [entities]
+// const handlePluginAction = plugin => (ctx, action) => {
+//     const context = { pkgName: action.packageName, actionName: action.actionName, action }
+//     let entities = plugin.getEntities(context)
+//     if (!Array.isArray(entities))
+//         entities = [entities]
 
-    const promises = []
-    for (const newaction of entities) {
-        // handle only actions for now
-        if (!newaction.hasOwnProperty('actionName'))
-            throw new Error(`Plugin ${plugin.__pluginName} returned an invalid entity ${JSON.stringify(entity)}`)
+//     const promises = []
+//     for (const newaction of entities) {
+//         // handle only actions for now
+//         if (!newaction.hasOwnProperty('actionName'))
+//             throw new Error(`Plugin ${plugin.__pluginName} returned an invalid entity ${JSON.stringify(entity)}`)
 
-        newaction.packageName = action.packageName
-        const promise = lookupActionHandler(newaction).deploy(ow, ctx, newaction)
-        promises.push(promise)
-    }
-    return Promise.all(promises)
-}
+//         newaction.packageName = action.packageName
+//         const promise = lookupActionHandler(newaction).deploy(ow, ctx, newaction)
+//         promises.push(promise)
+//     }
+//     return Promise.all(promises)
+// }
 
 // --- Handlers manager
 
@@ -238,47 +244,60 @@ const actionsHandlers = {
     image: {
         deploy: handleImage,
         dependsOn: () => []
-    }
-}
-
-const lookupActionHandler = action => {
-    for (const name in actionsHandlers) {
-        if (action.hasOwnProperty(name))
-            return actionsHandlers[name]
-    }
-
-    const plugin = plugins.getActionPlugin(action)
-    if (plugin) {
-
-        return {
-            deploy: handlePluginAction(plugin),
-            dependsOn: () => [] // maybe not
-        }
-    }
-
-    return {
+    },
+    location: {
         deploy: handleDefaultAction,
         dependsOn: () => []
     }
 }
-exports.lookupActionHandler = lookupActionHandler
 
+export function lookupActionHandler(action) {
+    for (const name in actionsHandlers) {
+        if (action.hasOwnProperty(name))
+            return actionsHandlers[name]
+    }
+    throw `Internal Error: invalid action ${JSON.stringify(action, null, 2)}`;
+}
+
+async function load(config, location: string) {
+    config.logger.debug(`read local file ${location}`);
+    const content = await fs.readFile(location);
+    return content;
+};
+
+// Generate action artifact to deploy
+export async function build(config, pkgName, actionName, action) {
+    if (action.builder) {
+        // const isFile = fs.statSync(action.location).isFile();
+        // let builddir = isFile ? path.join(path.dirname(action.location), 'build') : path.join(action.location, 'build');
+        // //const builddir = isFile ? path.join(path.dirname(action.location), 'build') : path.join(action.location, 'build');
+        const builddir = path.join(config.cache, 'build', pkgName, actionName);
+
+        const name = action.builder.name;
+        const plugin = plugins.getActionBuilderPlugin(name);
+        return await plugin.build(config, pkgName, actionName, action, builddir);
+    }
+    return {
+        location: action.location,
+        binary: false
+    }
+}
 
 // --- Asset builders
 
-// TODO: deprecate
-const buildAction = (context, kind, action) => {
-    const baseLocInCache = path.dirname(path.join(context.cache, path.relative('test', action.location)))
-    const builderArgs = {
-        target: baseLocInCache,
-        action
-    }
+// // TODO: deprecate
+// const buildAction = (context, kind, action) => {
+//     const baseLocInCache = path.dirname(path.join(context.cache, path.relative('test', action.location)))
+//     const builderArgs = {
+//         target: baseLocInCache,
+//         action
+//     }
 
-    const basekind = kind.split(':')[0]
-    switch (basekind) {
-        case 'nodejs':
-            return builder.nodejs.build(builderArgs)
-        default:
-            throw `Unsupported action kind: ${kind}`
-    }
-}
+//     const basekind = kind.split(':')[0]
+//     switch (basekind) {
+//         case 'nodejs':
+//             return builder.nodejs.build(builderArgs)
+//         default:
+//             throw `Unsupported action kind: ${kind}`
+//     }
+// }
