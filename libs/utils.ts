@@ -17,7 +17,7 @@ const request = require('request-promise')
 const archiver = require('archiver')
 const fs = require('fs')
 
-export const makeZip = (targetZip, src) => new Promise((resolve, reject) => {
+export const zip = (targetZip, src) => new Promise((resolve, reject) => {
     const output = fs.createWriteStream(targetZip)
     const archive = archiver('zip', {
         zlib: { level: 9 }
