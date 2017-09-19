@@ -14,32 +14,7 @@
  * limitations under the License.
  */
 const request = require('request-promise')
-const archiver = require('archiver')
 const fs = require('fs')
-
-export const zip = (targetZip, src) => new Promise((resolve, reject) => {
-    const output = fs.createWriteStream(targetZip)
-    const archive = archiver('zip', {
-        zlib: { level: 9 }
-    })
-
-    output.on('close', () => {
-        resolve()
-    })
-
-    archive.on('error', err => {
-        reject(err)
-    })
-
-    // pipe archive data to the file
-    archive.pipe(output)
-
-    // append files from src directory
-    archive.directory(src, '.')
-
-    // finalize the archive (ie we are done appending files but streams have to finish yet)
-    archive.finalize()
-})
 
 // Assign the source properties to target. Throw an exception when a conflict occurs.
 export const mergeObjects = (target, source) => {
