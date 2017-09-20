@@ -14,20 +14,14 @@
  * limitations under the License.
  */
 
-exports.auth = require('./libs/auth');
-exports.deploy = require('./libs/deploy').default;
-exports.undeploy = require('./libs/undeploy');
-
-// Experimental
-exports.refresh = require('./libs/refresh.js'); 
-exports.sync = require('./libs/sync.js');
-exports.env = require('./libs/env.js');
-exports.yo = require('./libs/yo.js');
-
-// Types support
-
-exports.types = require('./libs/types');
-
-// Basic utilities
-
-exports.names = require('./libs/names')
+module.exports = {
+    auth: require('./libs/auth'),
+    deploy: require('./libs/deploy').default,
+    undeploy: require('./libs/undeploy'),
+    refresh: require('./libs/refresh.js'),
+    sync: require('./libs/sync.js'),
+    env: require('./libs/env.js'),
+    yo: require('./libs/yo.js'),
+    types: require('./libs/types'),
+    names: require('./libs/names')
+}

@@ -18,22 +18,20 @@ const handlers = require('./handlers')
 const names = require('./names')
 const fs = require('fs')
 
-const getKeyValues = (inputs, args) => {
+export const getKeyValues = (inputs, args) => {
     if (inputs) {
         return Object.keys(inputs).map(key => ({ key, value: resolveValue(inputs[key], args) }))
     }
     return []
 }
-exports.getKeyValues = getKeyValues
 
-const indexKeyValues = kvs => {
+export const indexKeyValues = kvs => {
     const index = {}
     if (kvs) {
         kvs.forEach(kv => index[kv.key] = kv.value)
     }
     return index
 }
-exports.indexKeyValues = indexKeyValues
 
 const resolveValue = (value, args) => {
     if (typeof value === 'string' && value.startsWith('$')) {
@@ -47,7 +45,7 @@ const resolveValue = (value, args) => {
 }
 
 // Normalize action location, e.g. /../myaction containing Dockerfile become /../myaction/Dockerfile
-const normalizeLocation = action => {
+export const normalizeLocation = action => {
     if (!action.location)
         return
 
@@ -58,7 +56,6 @@ const normalizeLocation = action => {
         action.location = path.join(action.location, 'package.json')
     }
 }
-exports.normalizeLocation = normalizeLocation
 
 const kindsForExt = {
     '.js': 'nodejs:default',
@@ -67,7 +64,7 @@ const kindsForExt = {
     '.jar': 'java:default'
 }
 
-const getKind = action => {
+export const getKind = action => {
     if (action.kind) {
         if (action.kind === 'nodejs')
             action.kind = 'nodejs:default';
@@ -82,7 +79,6 @@ const getKind = action => {
 
     return kindsForExt[p.ext]
 }
-exports.getKind = getKind
 
 // const getBinary = (action, kind) => {
 //     if (kind.startsWith('java') || action.zip)
@@ -92,19 +88,18 @@ exports.getKind = getKind
 // }
 // exports.getBinary = getBinary
 
-const getDockerImage = (manifest, action) => {
-    const dockerhub = args.manifest.dockerhub
-    if (!dockerhub)
-        return { error: 'Missing dockerhub configuration' }
+// export const getDockerImage = (manifest, action) => {
+//     const dockerhub = manifest.dockerhub
+//     if (!dockerhub)
+//         return { error: 'Missing dockerhub configuration' }
 
-    const username = dockerhub.username
-    if (!username)
-        return { error: 'Missing dockerhub.username' }
+//     const username = dockerhub.username
+//     if (!username)
+//         return { error: 'Missing dockerhub.username' }
 
-    function espace(wskname) {
-        return wskname ? wskname.replace(/[\s@_]/, '.') : ''
-    }
+//     function espace(wskname) {
+//         return wskname ? wskname.replace(/[\s@_]/, '.') : ''
+//     }
 
-    return { image: `${username}/${escape(action.packageName)}/${escape(action.actionName)}` }
-}
-exports.getDockerImage = getDockerImage
+//     return { image: `${username}/${escape(action.packageName)}/${escape(action.actionName)}` }
+// }
