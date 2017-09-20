@@ -1,4 +1,3 @@
-*.iml
 deploy*.sh
 build
 admin
@@ -11,5 +10,6 @@ docker/*
 examples/*
 .wskprops
 *.map
-libs/*.js
-index.js
+/libs/*.js
+/index.js
+.openwhisk

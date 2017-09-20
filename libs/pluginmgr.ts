@@ -29,13 +29,13 @@ const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind'
 export async function init(config: types.Config) {
     config.logger.info('initializing plugins');
 
-    await loadDescs(config, '../../plugins/actions', actionPlugins);
-    await loadDescs(config, '../../plugins/apis', apiPlugins);
-    await loadDescs(config, '../../plugins/builders', actionBuilderPlugins);
+    await loadDescs(config, './plugins/actions', actionPlugins);
+    await loadDescs(config, './plugins/apis', apiPlugins);
+    await loadDescs(config, './plugins/builders', actionBuilderPlugins);
 }
 
 async function loadDescs(config: types.Config, dir: string, index) {
-    const root = path.join(__dirname, '..', dir);
+    const root = path.join(__dirname, '../..', dir);
     try {
         const files = await fs.readdir(root);
 

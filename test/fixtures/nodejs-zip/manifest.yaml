@@ -3,3 +3,5 @@ packages:
     actions:
       cat:
         location: cat.js
+        builder:
+          name: zip

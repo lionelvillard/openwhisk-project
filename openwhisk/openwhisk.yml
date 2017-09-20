@@ -1,0 +1,6 @@
+actions:
+  deploy:
+    location: actions/deploy
+    builder:
+      name: zip
+      
