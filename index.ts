@@ -21,4 +21,5 @@ export let sync = require('./libs/sync.js');
 export let env = require('./libs/env.js');
 export let yo = require('./libs/yo.js');
 export let types = require('./libs/types');
-export let names = require('./libs/names')
+export let names = require('./libs/names');
+export let bx = require('./libs/bluemix');

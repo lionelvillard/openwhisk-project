@@ -13,45 +13,69 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const request = require('request-promise')
-const expandHomeDir = require('expand-home-dir')
-const fs = require('fs')
-const {exec} = require('child_process')
+import * as request from 'request-promise';
+import * as expandHomeDir from 'expand-home-dir';
+import * as fs from 'fs-extra';
+import * as path from 'path';
+import { exec } from 'child-process-promise';
+import * as types from './types';
 
 // @return true if Bluemix is available on this system, false otherwise
-export const isBluemixCapable = () => {
+export const isBluemixCapable = async () => {
     if (process.env.BLUEMIX_API_KEY) {
-        return new Promise((resolve) => {
-            exec('bx help', err => {
-                resolve(err ? false : true)
-            })
-        })
+        try {
+            exec('bx help');
+            return true;
+        } catch (e) {
+            return false;
+        }
     }
+    return false;
+}
 
-    return Promise.resolve(false)
+export interface Credential {
+    endpoint?: string,
+    key?: string,
+    org?: string,
+    space?: string,
+    home?: string
 }
 
 // Login to Bluemix
-export const login = () => {
-    return target().then(maylogin)
-}
-
-const maylogin = target => {
-    if (target.includes('bx login')) {
-        return new Promise((resolve, reject) => {
-            exec(`bx login -s dummy`, (err, stdout) => {
-                return resolve(true)
-            })
-        })
+export const login = async (config: types.Config, cred: Credential) => {
+    cred = fixupCredentials(config, cred);
+    try {
+        await exec(`BLUEMIX_HOME=${cred.home} bx login -a ${cred.endpoint} --apikey ${cred.key} -o ${cred.org} --s ${cred.space}`);
+        return true;
+    } catch (e) {
+        return false;
     }
-    return Promise.resolve(true)
 }
 
-const target = () => new Promise((resolve, reject) => {
-    exec(`bx target -s dummy`, (err, stdout, stderr) => {
-        return resolve(stdout)
-    })
-})
+// Run bluemix command
+export const run = async (config: types.Config, cred: Credential, cmd: string) => {
+    cred = fixupCredentials(config, cred);
+    return await exec(`BLUEMIX_HOME=${cred.home} bx ${cmd}`);
+}
+
+const fixupCredentials = (config: types.Config, cred: Credential) => {
+    cred = cred || {};
+    cred.endpoint = cred.endpoint || 'api.ng.bluemix.net';
+    cred.key = cred.key || process.env.BLUEMIX_API_KEY;
+    if (!cred.key) {
+        throw 'Cannot login to Bluemix: missing apikey';
+    }
+    if (!cred.org) {
+        throw 'Cannot login to Bluemix: missing org';
+    }
+    if (!cred.space) {
+        throw 'Cannot login to Bluemix: missing space';
+    }
+    if (!cred.home) {
+        cred.home = path.join(config.cache, 'bluemix', cred.endpoint, cred.org, cred.space);
+    }
+    return cred;
+}
 
 // Retrieve authentication tokens from local file system
 export const getTokens = () => {
@@ -102,31 +126,31 @@ export const waitForAuthKeys = (accessToken, refreshToken, spaces, timeout = 100
     if (timeout < 0)
         return Promise.reject(new Error('timeout'))
 
-    timeout = (timeout === undefined) ?  10000 : timeout
+    timeout = (timeout === undefined) ? 10000 : timeout
 
     return getAuthKeys(accessToken, refreshToken)
         .then(keys => {
-                const namespaces = keys.namespaces
-                let spacekeys = []
-                for (const ns of namespaces) {
+            const namespaces = keys.namespaces
+            let spacekeys = []
+            for (const ns of namespaces) {
 
-                    for (const s of spaces) {
+                for (const s of spaces) {
 
-                        if (ns.name.endsWith(`_${s}`)) {
-                            spacekeys.push(ns)
-                            break
-                        }
+                    if (ns.name.endsWith(`_${s}`)) {
+                        spacekeys.push(ns)
+                        break
                     }
                 }
-                
-                if (spacekeys.length == spaces.length) {
-                    // got all.
-                    return Promise.resolve(spacekeys)
-                } else {
-                    // Try again in a bit
-                    return delay(1000).then(() => waitForAuthKeys(accessToken, refreshToken, spaces, timeout - 1000))
-                }
             }
+
+            if (spacekeys.length == spaces.length) {
+                // got all.
+                return Promise.resolve(spacekeys)
+            } else {
+                // Try again in a bit
+                return delay(1000).then(() => waitForAuthKeys(accessToken, refreshToken, spaces, timeout - 1000))
+            }
+        }
         )
         .catch(e => {
             if ((e instanceof Error) && e.message === 'timeout')

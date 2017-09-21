@@ -18,6 +18,7 @@ const path = require('path')
 const fs = require('fs-extra')
 const bx = require('./bluemix')
 const propertiesParser = require('properties-parser')
+const expandHome = require('expand-home-dir')
 
 // Get all declared environments 
 export const getEnvironments = () => new Promise(resolve => {
@@ -61,11 +62,17 @@ export const setEnvironment = async envname => {
             bxspace = bxspace.trim()
         if (!props.get('AUTH')) {
             if (bxspace) {
-                if (!bx.isBluemixCapable) {
+                if (!bx.isBluemixCapable()) {
                     console.error('bx not installed.')
                     return false
                 }
-                await bx.login()
+                let bxorg = props.get('BLUEMIX_ORG')
+                if (!bxorg) {
+                    console.error('missing BLUEMIX_ORG.')
+                    return false
+                }
+
+                await bx.login(null, { org: bxorg, space: bxspace,  home: expandHome('~')});
                 const key = await bx.createSpace(bxspace)
                 console.log(key)
                 if (!key) {

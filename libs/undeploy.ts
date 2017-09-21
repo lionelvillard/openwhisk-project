@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {init} from './init';
+import { init } from './init';
 import * as types from './types';
 
 const names = require('./names');
@@ -37,13 +37,13 @@ export async function apply(config: types.Config) {
 
     async function cleanAll() {
         config.logger.debug('undeploying...');
-        
+
         await cleanActions();
         await cleanPackages();
         await cleanRules();
         await cleanTriggers();
         await cleanApis();
-        
+
         config.logger.debug('undeploy completed');
     }
 
@@ -53,7 +53,7 @@ export async function apply(config: types.Config) {
         for (const action of actions) {
             if (await mustUndeployAction(action)) {
                 config.logger.debug(`[actions] [deleting] ${action.name}`);
-                promises.push(ow.actions.delete(action).then(()=> config.logger.debug(`[actions] [deleted] ${action.name}`)));
+                promises.push(ow.actions.delete(action).then(() => config.logger.debug(`[actions] [deleted] ${action.name}`)));
             } else {
                 config.logger.debug(`[actions] [skipped] ${action.name}`);
             }
@@ -67,7 +67,7 @@ export async function apply(config: types.Config) {
         for (const pkg of packages) {
             if (await mustUndeployPackage(pkg)) {
                 config.logger.debug(`[packages] [deleting] ${pkg.name}`);
-                promises.push(ow.packages.delete(pkg).then(()=> config.logger.debug(`[packages] [deleted] ${pkg.name}`)));
+                promises.push(ow.packages.delete(pkg).then(() => config.logger.debug(`[packages] [deleted] ${pkg.name}`)));
             } else {
                 config.logger.debug(`[packages] [skipped] ${pkg.name}`);
             }
@@ -82,7 +82,7 @@ export async function apply(config: types.Config) {
         for (const rule of rules) {
             if (await mustUndeployRule(rule)) {
                 config.logger.debug(`[rules] [deleting] ${rule.name}`);
-                promises.push(ow.rules.delete(rule).then(()=> config.logger.debug(`[rules] [deleted] ${rule.name}`)));
+                promises.push(ow.rules.delete(rule).then(() => config.logger.debug(`[rules] [deleted] ${rule.name}`)));
             } else {
                 config.logger.debug(`[rules] [skipped] ${rule.name}`);
             }
@@ -96,8 +96,8 @@ export async function apply(config: types.Config) {
         for (const trigger of triggers) {
             if (await mustUndeployTrigger(trigger)) {
                 config.logger.debug(`[trigger] [deleting] ${trigger.name}`);
-                promises.push(ow.triggers.delete(trigger).then(()=> config.logger.debug(`[actions] [deleted] ${trigger.name}`)));
-        
+                promises.push(ow.triggers.delete(trigger).then(() => config.logger.debug(`[actions] [deleted] ${trigger.name}`)));
+
                 // TODO: feed issue #39
             } else {
                 config.logger.debug(`[trigger] [skipped] ${trigger.name}`);
@@ -107,18 +107,26 @@ export async function apply(config: types.Config) {
     }
 
     async function cleanApis() {
-        const apis = (await config.ow.routes.list()).apis;
-        const promises = [];
-        for (const api of apis) {
-            const basepath =  api.value.apidoc.basePath;
-            if (await mustUndeployApi(basepath)) {
-                config.logger.debug(`[apis] [deleting] ${basepath}`);
-                promises.push(ow.routes.delete({basepath})); 
-            } else {
-                config.logger.debug(`[apis] [skipped] ${basepath}`);
+        try {
+            const apis = (await config.ow.routes.list()).apis;
+            const promises = [];
+            for (const api of apis) {
+                const basepath = api.value.apidoc.basePath;
+                if (await mustUndeployApi(basepath)) {
+                    config.logger.debug(`[apis] [deleting] ${basepath}`);
+                    promises.push(ow.routes.delete({ basepath }));
+                } else {
+                    config.logger.debug(`[apis] [skipped] ${basepath}`);
+                }
             }
+            await Promise.all(promises);
+        } catch (e) {
+            if (e.statusCode === 502) {
+                config.logger.warn('Error while undeploying APIs (ignoring)');
+                config.logger.warn(e.message);
+            } else
+                throw e;
         }
-        await Promise.all(promises);
     }
 
     async function mustUndeployAction(action) {
@@ -148,7 +156,7 @@ export async function apply(config: types.Config) {
     async function mustUndeployPackage(pkg) {
         if (dryrun)
             return false;
-        
+
         let deployed
         try {
             deployed = await ow.packages.get(pkg);
@@ -172,14 +180,14 @@ export async function apply(config: types.Config) {
     async function mustUndeployRule(rule) {
         if (dryrun)
             return false;
-        
+
         let deployed
         try {
             deployed = await ow.rules.get(rule);
         } catch (e) {
             return false; // does not exist => don't deploy
         }
-        
+
         if (manifest) {
             const serviceAnnotation = getManagedAnnotation(deployed);
             const inmanifest = utils.getRule(manifest, rule.name);
@@ -194,14 +202,14 @@ export async function apply(config: types.Config) {
     async function mustUndeployTrigger(trigger) {
         if (dryrun)
             return false;
-        
+
         let deployed
         try {
             deployed = await ow.triggers.get(trigger);
         } catch (e) {
             return false; // does not exist => don't deploy
         }
-        
+
         if (manifest) {
             const serviceAnnotation = getManagedAnnotation(deployed);
             const inmanifest = utils.getTrigger(manifest, trigger.name);
@@ -215,7 +223,7 @@ export async function apply(config: types.Config) {
     async function mustUndeployApi(basepath) {
         if (dryrun)
             return false;
-        
+
         // TODO: routes.get
         // let deployed
         // try {
@@ -223,7 +231,7 @@ export async function apply(config: types.Config) {
         // } catch (e) {
         //     return false; // does not exist => don't deploy
         // }
-        
+
         if (manifest) {
             const serviceAnnotation = null; // = getManagedAnnotation(deployed);
             const inmanifest = utils.getApi(manifest, basepath);
@@ -235,7 +243,7 @@ export async function apply(config: types.Config) {
     }
 
     // utitites 
-    
+
     function getManagedAnnotation(entity) {
         if (service) {
             const managedList = entity.annotations.filter(anno => anno.key === 'managed').map(kv => kv.value);
@@ -247,7 +255,7 @@ export async function apply(config: types.Config) {
         }
         return null;
     }
- 
+
     function mustUndeploy(inmanifest, inservice, name) {
         if (inmanifest) {
             if (inservice && inservice !== service) {

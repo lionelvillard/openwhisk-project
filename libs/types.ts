@@ -78,6 +78,19 @@ export interface ActionContribution {
     body : Action;
 }
 
+
+// An package contribution
+export interface PackageContribution {
+    // kind of contribution
+    kind : "package";
+
+    // package name (or null-kind for default package)
+    name : string;
+
+    // package body
+    body : Package;
+}
+
 // An api contribution
 export interface ApiContribution {
     // kind of contribution
@@ -107,6 +120,7 @@ export interface Artifact {
 
 export type Deployment = any
 export type Action = any
+export type Package = any
 export type Api = any
 
 export enum deploymentProperties { NAME = 'name', BASEPATH = 'basePath', ACTIONS = 'actions', APIS = 'apis' }
