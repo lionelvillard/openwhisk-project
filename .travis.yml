@@ -16,12 +16,12 @@ before_install:
 
 install:
   - cd $TRAVIS_BUILD_DIR && npm install && npm link
-  - cd $TRAVIS_BUILD_DIR/plugins/actions/combinator && npm install && npm link openwhisk-deploy
-  - cd $TRAVIS_BUILD_DIR/plugins/actions/web && npm install && npm link openwhisk-deploy  
-  - cd $TRAVIS_BUILD_DIR/plugins/builders/zip && npm install && npm run tsc  
+  - cd $TRAVIS_BUILD_DIR/plugins/wskp-combinator-plugin && npm install && npm link openwhisk-deploy
+  - cd $TRAVIS_BUILD_DIR/plugins/wskp-web-plugin && npm install && npm link openwhisk-deploy  
+  - cd $TRAVIS_BUILD_DIR/plugins/wskp-zip-plugin && npm install && npm run tsc  
  
 script:
   - cd $TRAVIS_BUILD_DIR &&  NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
-  - cd $TRAVIS_BUILD_DIR/plugins/actions/combinator && NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
-  - cd $TRAVIS_BUILD_DIR/plugins/actions/web && NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
+  - cd $TRAVIS_BUILD_DIR/plugins/wskp-combinator-plugin && NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
+  - cd $TRAVIS_BUILD_DIR/plugins/wskp-zip-plugin && NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
   

@@ -1,8 +1,0 @@
-packages:
-  plugin-web:
-    actions:
-      icon:
-        web: ./icon.svg
-
-      world:
-        web: ./world.png

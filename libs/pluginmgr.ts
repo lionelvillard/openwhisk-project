@@ -19,33 +19,60 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as types from './types';
 
+const PLUGINS_ROOT = path.join(__dirname, '../../plugins/node_modules');
+
 const actionPlugins = {};
 const apiPlugins = {};
 const actionBuilderPlugins = {};
 
-const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'annotations', 'sequence', 'extra', 'actionName', 'packageName', 'docker']
+const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'annotations', 'sequence', 'extra', 'actionName', 'packageName', 'docker'];
+const RESERVED_API_KEYWORDS = [];
 
 // Build plugin index.
 export async function init(config: types.Config) {
     config.logger.info('initializing plugins');
-
-    await loadDescs(config, './plugins/actions', actionPlugins);
-    await loadDescs(config, './plugins/apis', apiPlugins);
-    await loadDescs(config, './plugins/builders', actionBuilderPlugins);
+    await registerAll(config);
 }
 
-async function loadDescs(config: types.Config, dir: string, index) {
-    const root = path.join(__dirname, '../..', dir);
+async function registerAll(config: types.Config) {
     try {
-        const files = await fs.readdir(root);
+        const files = await fs.readdir(PLUGINS_ROOT);
 
-        for (const file of files) {
-            if (!RESERVED_ACTION_KEYWORDS.includes(file)) {
-                config.logger.info(`registering plugin ${file}`);
-                index[file] = path.join(root, file);
+        for (const moduleid of files) {
+            if (moduleid.match(/wskp-\w*-plugin/)) {
+                const pkgPath = path.join(PLUGINS_ROOT, moduleid);
+                const plugininfo = await fs.readJSON(path.join(pkgPath, 'package.json'));
+
+                const contributions = plugininfo.wskp;
+                if (!contributions) {
+                    config.logger.warn(`Plugin ${moduleid} does not have any contributions`);
+                    return;
+                }
+
+                const action = contributions.action;
+                if (action) {
+                    if (!RESERVED_ACTION_KEYWORDS.includes(action)) {
+                        config.logger.info(`registering plugin ${moduleid} action contribution ${action}`);
+                        actionPlugins[action] = pkgPath;
+                    }
+                    else
+                        config.logger.warn(`Skipping ${action}: it is a reserved action name`);
+                }
+                const api = contributions.api;
+                if (api) {
+                    if (!RESERVED_API_KEYWORDS.includes(action)) {
+                        config.logger.info(`registering plugin ${moduleid} api contribution ${api}`);
+                        apiPlugins[api] = pkgPath;
+                    }
+                    else
+                        config.logger.warn(`Skipping ${api}: it is a reserved api name`);
+                }
+                const builder = contributions.builder;
+                if (builder) {
+                    config.logger.info(`registering plugin ${moduleid} builder contribution ${builder}`);
+                    actionBuilderPlugins[builder] = pkgPath;
+                }
             }
-            else
-                config.logger.warn(`Skipping ${file}: it is a reserved plugin name`);
         }
 
     } catch (e) {
