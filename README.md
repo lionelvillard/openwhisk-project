@@ -5,14 +5,14 @@ This project provides a set of tools for managing a collection of OpenWhisk enti
 # Getting started
 
 ```bash
-$ npm install @openwhisk/deploy --save
+$ npm install openwhisk-deploy --save
 ```
 
 # Main Features
 
-- deploy: deploy a set of OpenWhisk entities from description stored in [deployment configuration files](docs/format.md).
-- undeploy: undeploy a set of managed OpenWhisk entities.
-- clean: remove *all* deployed entities in a namespace.
+- deploy: deploy a set of OpenWhisk entities and services from description stored in [project configuration files](docs/format.md).
+- undeploy: undeploy a set of managed OpenWhisk entities and managed services.
+- clean: remove *all* deployed entities in a namespace. Services are left untouched.
 - refresh: update the local deployment configuration files against deployed entities.
 - sync: update the local deployment configuration files against files stored locally.
 
@@ -27,21 +27,26 @@ packages:
       safeToDelete:
         kind: nodejs
         code: |
-          if (params.delete)
-            return {}
-          throw new Error('Oh No!')
-
+          function main(params) {
+            if (params.delete)
+              return {}
+            throw new Error('Oh No!')
+          } 
       delete:
         kind: nodejs
         code: |
-          delete params[params.delete]
-          return params
+          function main(params) {
+            delete params[params.delete]
+            return params
+          }
 
       handleError:
         kind: nodejs
         code: |
-          return {status: 'Um a very bad thing just happened - sorry?'}
-
+          function main(params) {
+            return {status: 'Um a very bad thing just happened - sorry?'}
+          }
+          
       trycatch:
         combinator: try safeToDelete catch handleError
 
