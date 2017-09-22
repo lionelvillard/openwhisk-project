@@ -5,10 +5,10 @@
   "main": "dist/web.js",
   "types": "web.ts",
   "scripts": {
-    "pretest": "tsc",
+    "pretest": "../../../node_modules/.bin/tsc",
     "test": "mocha dist/test",
-    "compile": "tsc -watch -p ./",
-    "tsc": "tsc"
+    "compile": "../../../node_modules/.bin/tsc -watch -p ./",
+    "tsc": "../../../node_modules/.bin/tsc"
   },
   "author": "Lionel Villard",
   "license": "Apache-2.0",
