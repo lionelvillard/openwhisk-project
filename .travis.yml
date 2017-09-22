@@ -9,15 +9,12 @@ env:
 services:
   - docker
 
-before_install:
-  - $TRAVIS_BUILD_DIR/tools/travis/install-openwhisk.sh
-  - export OPENWHISK_HOME=$TRAVIS_BUILD_DIR/openwhisk
-# - $TRAVIS_BUILD_DIR/bin/bxsetup.sh
-
 install:
   - cd $TRAVIS_BUILD_DIR && npm install
   - cd $TRAVIS_BUILD_DIR/plugins && ./install.sh
-  
+  - $TRAVIS_BUILD_DIR/tools/travis/install-openwhisk.sh
+  - export OPENWHISK_HOME=$TRAVIS_BUILD_DIR/openwhisk
+
 script:
   - cd $TRAVIS_BUILD_DIR &&  NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
   - cd $TRAVIS_BUILD_DIR/plugins && ./test.sh
