@@ -1,0 +1,21 @@
+{
+  "name": "wskp-swagger-plugin",
+  "version": "0.1.0",
+  "description": "Swagger extension for OpenWhisk Deploy",
+  "main": "dist/index.js",
+  "scripts": {
+    "pretest": "tsc",
+    "test": "mocha dist/test",
+    "compile": "tsc -watch -p ./",
+    "tsc": "tsc"
+  },
+  "author": "Lionel Villard",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "openwhisk-deploy": "file:../../.."
+  },
+  "dependencies": {},
+  "wskp": {
+    "api": "swagger"
+  }
+}

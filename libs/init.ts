@@ -59,7 +59,7 @@ export async function init(config: types.Config) {
     await resolveManifest(config);
     await configCache(config);
 
-    check(config);
+    await check(config);
 
     config.logger.debug(JSON.stringify(config, null, 2));
 }
@@ -108,7 +108,7 @@ async function configCache(config: types.Config) {
 }
 
 // validate and transform the manifest to core representation.
-function check(config: types.Config) {
+async function check(config: types.Config) {
     const manifest = config.manifest;
 
     if (!manifest)
@@ -131,7 +131,28 @@ function checkPackages(config: types.Config, manifest) {
     const packages = manifest.packages;
 
     for (const pkgName in packages) {
-        const pkg = packages[pkgName];
+        checkPackage(config, manifest, pkgName, packages[pkgName]);
+    }
+}
+
+
+function checkPackage(config: types.Config, manifest, pkgName, pkg) {
+    const packages = manifest.packages;
+
+    if (pkg.bind) {
+        // TODO
+    } else if (pkg.service) {
+        delete packages[pkgName];
+
+        const plugin = plugins.getServicePlugin(pkg.service);
+        if (!plugin) {
+            config.logger.warn(`no plugin found for service ${pkg.service}. Ignored`);
+            return;
+        }
+
+        const contributions = plugin.serviceContributor(config, pkgName, pkg);
+        applyConstributions(config, manifest, contributions, plugin);
+    } else {
         checkActions(config, manifest, pkgName, pkg.actions);
     }
 }
@@ -201,32 +222,47 @@ function checkApi(config: types.Config, manifest, apis, apiname: string, api: ty
 }
 
 function applyConstributions(config: types.Config, manifest: types.Deployment, contributions: types.Contribution[], plugin) {
-    for (const contrib of contributions) {
-        switch (contrib.kind) {
-            case 'action':
-                const pkg = utils.getPackage(manifest, contrib.pkgName, true);
-                if (!pkg.actions)
-                    pkg.actions = {};
+    if (contributions) {
+        for (const contrib of contributions) {
+            switch (contrib.kind) {
+                case 'action':
+                    const pkg = utils.getPackage(manifest, contrib.pkgName, true);
+                    if (!pkg.actions)
+                        pkg.actions = {};
 
-                if (pkg.actions[contrib.name]) {
-                    throw `plugin ${plugin.__pluginName} overrides ${contrib.name}`;
-                }
+                    if (pkg.actions[contrib.name]) {
+                        throw `plugin ${plugin.__pluginName} overrides ${contrib.name}`;
+                    }
 
-                pkg.actions[contrib.name] = contrib.body;
-                checkAction(config, manifest, contrib.pkgName, pkg.actions, contrib.name, contrib.body);
-                break;
-            case 'api':
-                if (!manifest.apis)
-                    manifest.apis = {};
-                const apis = manifest.apis;
+                    pkg.actions[contrib.name] = contrib.body;
+                    checkAction(config, manifest, contrib.pkgName, pkg.actions, contrib.name, contrib.body);
+                    break;
+                case 'api':
+                    if (!manifest.apis)
+                        manifest.apis = {};
+                    const apis = manifest.apis;
 
-                if (apis[contrib.name]) {
-                    throw `plugin ${plugin.__pluginName} overrides ${contrib.name}`;
-                }
+                    if (apis[contrib.name]) {
+                        throw `plugin ${plugin.__pluginName} overrides ${contrib.name}`;
+                    }
 
-                apis[contrib.name] = contrib.body;
-                checkApi(config, manifest, apis, contrib.name, contrib.body);
-                break;
+                    apis[contrib.name] = contrib.body;
+                    checkApi(config, manifest, apis, contrib.name, contrib.body);
+                    break;
+                case 'package':
+                    if (!manifest.packages)
+                        manifest.packages = {};
+                    const pkgs = manifest.packages;
+
+                    if (pkgs[contrib.name]) {
+                        throw `plugin ${plugin.__pluginName} overrides ${contrib.name}`;
+                    }
+
+                    pkgs[contrib.name] = contrib.body;
+                    checkPackage(config, manifest, contrib.name, contrib.body);
+                    break;
+
+            }
         }
     }
 }

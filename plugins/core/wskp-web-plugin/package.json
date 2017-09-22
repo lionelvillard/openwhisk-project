@@ -1,0 +1,25 @@
+{
+  "name": "wskp-web-plugin",
+  "version": "0.1.0",
+  "description": "Web Action extension for OpenWhisk Deploy",
+  "main": "dist/web.js",
+  "types": "web.ts",
+  "scripts": {
+    "pretest": "tsc",
+    "test": "mocha dist/test",
+    "compile": "tsc -watch -p ./",
+    "tsc": "tsc"
+  },
+  "author": "Lionel Villard",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/mime": "^2.0.0",
+    "openwhisk-deploy": "file:../../.."
+  },
+  "dependencies": {
+    "mime": "^2.0.2"
+  },
+  "wskp": {
+    "action": "web"
+  }
+}

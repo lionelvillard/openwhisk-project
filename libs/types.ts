@@ -49,19 +49,22 @@ export interface Plugin {
     // API contributor returning a list of contributions to apply to the deployment configuration
     apiContributor: ApiContributor;
 
+
+    // service contributor returning a list of contributions to apply to the deployment configuration
+    serviceContributor: ServiceContributor;
+
     // Action builder contributor making the action artifacts to deploy.
     build: ActionBuilder;
     
 }
 
 export type ActionContributor = (Config, Deployment, pkgName: string, actionName: string, Action) => Contribution[]
-
+export type ServiceContributor = (Config, pkgName: string, Package) => Contribution[]
 export type ApiContributor = (Config, Deployment, apiname: string, Api) => Contribution[]
-
 export type ActionBuilder = (Config, pkgName: string, actionName: string, Action, buildir) => Artifact
 
 // A contribution to the deployment configuration 
-export type Contribution = ActionContribution | ApiContribution;
+export type Contribution = ActionContribution | ApiContribution | PackageContribution;
 
 // An action contribution
 export interface ActionContribution {

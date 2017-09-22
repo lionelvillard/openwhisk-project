@@ -118,7 +118,6 @@ An *object* representing the content of a package.
 ### Properties
 
 - [`actions`](#actions) (object, optional): a list of actions
-- [`sequences`](#sequences) (object, optional): a list of sequence actions
 - `inputs` ([`parameters`](#parameters), optional): package parameters
 - `annotations` ([`annotations`](#annotations), optional)
 - `publish` (boolean, optional, default: false): indicate whether the package is public or private

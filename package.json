@@ -3,7 +3,6 @@
   "version": "0.5.1",
   "description": "",
   "main": "dist/index.js",
-  "types": "index.ts",
   "scripts": {
     "pretest": "tsc",
     "compilenowatch": "tsc",
@@ -34,9 +33,9 @@
     "@types/log4js": "0.0.33",
     "@types/yamljs": "^0.2.30",
     "assert": "^1.4.1",
-    "chai": "^4.1.1",
     "deep-diff": "^0.3.8",
     "mocha": "^3.5.0",
-    "typescript": "^2.5.2"
+    "typescript": "^2.5.2",
+    "mocha-typescript": "^1.1.9"
   }
 }

@@ -15,13 +15,10 @@ before_install:
 # - $TRAVIS_BUILD_DIR/bin/bxsetup.sh
 
 install:
-  - cd $TRAVIS_BUILD_DIR && npm install && npm link
-  - cd $TRAVIS_BUILD_DIR/plugins/wskp-combinator-plugin && npm install && npm link openwhisk-deploy
-  - cd $TRAVIS_BUILD_DIR/plugins/wskp-web-plugin && npm install && npm link openwhisk-deploy  
-  - cd $TRAVIS_BUILD_DIR/plugins/wskp-zip-plugin && npm install && npm run tsc  
- 
+  - cd $TRAVIS_BUILD_DIR && npm install
+  - cd $TRAVIS_BUILD_DIR/plugins && ./install.sh
+  
 script:
   - cd $TRAVIS_BUILD_DIR &&  NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
-  - cd $TRAVIS_BUILD_DIR/plugins/wskp-combinator-plugin && NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
-  - cd $TRAVIS_BUILD_DIR/plugins/wskp-zip-plugin && NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
+  - cd $TRAVIS_BUILD_DIR/plugins && ./test.sh
   

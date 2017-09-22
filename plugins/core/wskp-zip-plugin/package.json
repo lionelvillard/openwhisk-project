@@ -1,0 +1,25 @@
+{
+  "name": "openwhisk-project-zip",
+  "version": "0.1.0",
+  "description": "Zip builder extension for OpenWhisk Project",
+  "main": "dist/zip.js",
+  "types": "zip.ts",
+  "scripts": {
+    "pretest": "tsc",
+    "test": "mocha dist/test",
+    "compile": "tsc -watch -p ./",
+    "tsc": "tsc"
+  },
+  "author": "Lionel Villard",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/archiver": "^2.0.0",
+    "openwhisk-deploy": "file:../../.."
+  },
+  "dependencies": {
+    "archiver": "^2.0.3"
+  },
+  "wskp": {
+    "builder": "zip"
+  }
+}

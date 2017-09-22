@@ -19,9 +19,11 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as types from './types';
 
-const PLUGINS_ROOT = path.join(__dirname, '../../plugins/node_modules');
+const PLUGINS_ROOT = path.join(__dirname, '../../plugins/core');
 
 const actionPlugins = {};
+const pkgPlugins = {};
+const servicePlugins = {};
 const apiPlugins = {};
 const actionBuilderPlugins = {};
 
@@ -58,6 +60,25 @@ async function registerAll(config: types.Config) {
                     else
                         config.logger.warn(`Skipping ${action}: it is a reserved action name`);
                 }
+
+                const pkg = contributions.package;
+                if (pkg) {
+                    const pkgs = (typeof pkg === 'string') ? [pkg] : pkg;
+                    for (const name of pkgs) {
+                        config.logger.info(`registering plugin ${moduleid} package contribution ${name}`);
+                        pkgPlugins[name] = pkgPath;
+                    }
+                }
+
+                const service = contributions.service;
+                if (service) {
+                    const names = (typeof pkg === 'string') ? [service] : service;
+                    for (const name of names) {
+                        config.logger.info(`registering plugin ${moduleid} service contribution ${name}`);
+                        servicePlugins[name] = pkgPath;
+                    }
+                }
+
                 const api = contributions.api;
                 if (api) {
                     if (!RESERVED_API_KEYWORDS.includes(action)) {
@@ -82,6 +103,19 @@ async function registerAll(config: types.Config) {
 
 export function getActionPlugin(action): types.Plugin | null {
     return getPlugin(actionPlugins, action);
+}
+
+export function getPackagePlugin(pkg): types.Plugin | null {
+    return getPlugin(pkgPlugins, pkg);
+}
+
+export function getServicePlugin(name): types.Plugin | null {
+    if (servicePlugins[name]) {
+        const plugin = require(servicePlugins[name]);
+        plugin.__pluginName = name;
+        return plugin;
+    }
+    return null;
 }
 
 export function getApiPlugin(api): types.Plugin | null {

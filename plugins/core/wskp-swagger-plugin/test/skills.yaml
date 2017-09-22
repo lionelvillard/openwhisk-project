@@ -1,0 +1,11 @@
+actions:
+  listSkills:
+    kind: nodejs
+    code: |
+      return { json: 'list of skills' }
+    annotations:
+      web-export: true
+
+apis:
+  skills:
+    swagger: ./swagger.json
