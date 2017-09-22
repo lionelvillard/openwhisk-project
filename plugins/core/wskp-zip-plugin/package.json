@@ -6,7 +6,7 @@
   "types": "zip.ts",
   "scripts": {
     "pretest": "../../../node_modules/.bin/tsc",
-    "test": "mocha dist/test",
+    "test": "../../../node_modules/.bin/mocha dist/test",
     "compile": "../../../node_modules/.bin/tsc -watch -p ./",
     "tsc": "../../../node_modules/.bin/tsc"
   },
