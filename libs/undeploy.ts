@@ -164,7 +164,7 @@ export async function apply(config: types.Config) {
             return false; // does not exist => don't deploy
         }
 
-        if (deployed.actions.length > 0)
+        if (!deployed.binding.name && deployed.actions.length > 0)
             return false;
 
         if (manifest) {
