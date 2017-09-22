@@ -23,3 +23,4 @@ export let yo = require('./libs/yo.js');
 export let types = require('./libs/types');
 export let names = require('./libs/names');
 export let bx = require('./libs/bluemix');
+export let plugins = require('./libs/pluginmgr');

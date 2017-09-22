@@ -45,7 +45,10 @@ export interface Credential {
 export const login = async (config: types.Config, cred: Credential) => {
     cred = fixupCredentials(config, cred);
     try {
-        await exec(`BLUEMIX_HOME=${cred.home} bx login -a ${cred.endpoint} --apikey ${cred.key} -o ${cred.org} --s ${cred.space}`);
+        const space = cred.space ? `-s ${cred.space}` : '';
+        const bx = `BLUEMIX_HOME=${cred.home} bx login -a ${cred.endpoint} --apikey ${cred.key} -o ${cred.org} ${space}`;
+        config.logger.debug(`exec ${bx}`);
+        await exec(bx);
         return true;
     } catch (e) {
         return false;
@@ -54,8 +57,10 @@ export const login = async (config: types.Config, cred: Credential) => {
 
 // Run bluemix command
 export const run = async (config: types.Config, cred: Credential, cmd: string) => {
+    const bx = `BLUEMIX_HOME=${cred.home} bx ${cmd}`;
     cred = fixupCredentials(config, cred);
-    return await exec(`BLUEMIX_HOME=${cred.home} bx ${cmd}`);
+    config.logger.debug(`exec ${bx}`);
+    return await exec(bx);
 }
 
 const fixupCredentials = (config: types.Config, cred: Credential) => {
@@ -68,8 +73,8 @@ const fixupCredentials = (config: types.Config, cred: Credential) => {
     if (!cred.org) {
         throw 'Cannot login to Bluemix: missing org';
     }
-    if (!cred.space) {
-        throw 'Cannot login to Bluemix: missing space';
+    if (!cred.space && !cred.home) {
+        throw 'Cannot login to Bluemix: missing either space or home';
     }
     if (!cred.home) {
         cred.home = path.join(config.cache, 'bluemix', cred.endpoint, cred.org, cred.space);

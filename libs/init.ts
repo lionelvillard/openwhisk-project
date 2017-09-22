@@ -116,8 +116,8 @@ async function check(config: types.Config) {
 
     config.logger.debug('validating and normalizing the deployment configuration');
 
-    checkPackages(config, manifest);
-    checkApis(config, manifest);
+    await checkPackages(config, manifest);
+    await checkApis(config, manifest);
 
     // check for invalid additional properties
     for (const key in manifest) {
@@ -127,16 +127,16 @@ async function check(config: types.Config) {
     }
 }
 
-function checkPackages(config: types.Config, manifest) {
+async function checkPackages(config: types.Config, manifest) {
     const packages = manifest.packages;
 
     for (const pkgName in packages) {
-        checkPackage(config, manifest, pkgName, packages[pkgName]);
+        await checkPackage(config, manifest, pkgName, packages[pkgName]);
     }
 }
 
 
-function checkPackage(config: types.Config, manifest, pkgName, pkg) {
+async function checkPackage(config: types.Config, manifest, pkgName, pkg) {
     const packages = manifest.packages;
 
     if (pkg.bind) {
@@ -150,21 +150,21 @@ function checkPackage(config: types.Config, manifest, pkgName, pkg) {
             return;
         }
 
-        const contributions = plugin.serviceContributor(config, pkgName, pkg);
-        applyConstributions(config, manifest, contributions, plugin);
+        const contributions = await plugin.serviceContributor(config, pkgName, pkg);
+        await applyConstributions(config, manifest, contributions, plugin);
     } else {
-        checkActions(config, manifest, pkgName, pkg.actions);
+        await checkActions(config, manifest, pkgName, pkg.actions);
     }
 }
 
-function checkActions(config: types.Config, manifest, pkgName: string, actions) {
+async function checkActions(config: types.Config, manifest, pkgName: string, actions) {
     for (const actionName in actions) {
         const action = actions[actionName];
-        checkAction(config, manifest, pkgName, actions, actionName, action);
+        await checkAction(config, manifest, pkgName, actions, actionName, action);
     }
 }
 
-function checkAction(config: types.Config, manifest, pkgName: string, actions, actionName: string, action: types.Action) {
+async function checkAction(config: types.Config, manifest, pkgName: string, actions, actionName: string, action: types.Action) {
     if (action.location) { // builtin basic action
 
         // TODO
@@ -189,21 +189,21 @@ function checkAction(config: types.Config, manifest, pkgName: string, actions, a
             return;
         }
 
-        const contributions = plugin.actionContributor(config, manifest, pkgName, actionName, action);
-        applyConstributions(config, manifest, contributions, plugin);
+        const contributions = await plugin.actionContributor(config, manifest, pkgName, actionName, action);
+        await applyConstributions(config, manifest, contributions, plugin);
     }
 }
 
-function checkApis(config: types.Config, manifest) {
+async function checkApis(config: types.Config, manifest) {
     const apis = manifest.apis;
 
     for (const apiname in apis) {
         const api = apis[apiname];
-        checkApi(config, manifest, apis, apiname, api);
+        await checkApi(config, manifest, apis, apiname, api);
     }
 }
 
-function checkApi(config: types.Config, manifest, apis, apiname: string, api: types.Api) {
+async function checkApi(config: types.Config, manifest, apis, apiname: string, api: types.Api) {
     if (api.paths) { // builtin api
     } else {
         delete apis[apiname];
@@ -215,13 +215,13 @@ function checkApi(config: types.Config, manifest, apis, apiname: string, api: ty
         }
         config.logger.debug(`getting contribution from plugin ${(<any>plugin).__pluginName}`);
 
-        const contributions = plugin.apiContributor(config, manifest, apiname, api);
-        applyConstributions(config, manifest, contributions, plugin);
+        const contributions = await plugin.apiContributor(config, manifest, apiname, api);
+        await applyConstributions(config, manifest, contributions, plugin);
     }
 
 }
 
-function applyConstributions(config: types.Config, manifest: types.Deployment, contributions: types.Contribution[], plugin) {
+async function applyConstributions(config: types.Config, manifest: types.Deployment, contributions: types.Contribution[], plugin) {
     if (contributions) {
         for (const contrib of contributions) {
             switch (contrib.kind) {
@@ -235,7 +235,7 @@ function applyConstributions(config: types.Config, manifest: types.Deployment, c
                     }
 
                     pkg.actions[contrib.name] = contrib.body;
-                    checkAction(config, manifest, contrib.pkgName, pkg.actions, contrib.name, contrib.body);
+                    await checkAction(config, manifest, contrib.pkgName, pkg.actions, contrib.name, contrib.body);
                     break;
                 case 'api':
                     if (!manifest.apis)
@@ -247,7 +247,7 @@ function applyConstributions(config: types.Config, manifest: types.Deployment, c
                     }
 
                     apis[contrib.name] = contrib.body;
-                    checkApi(config, manifest, apis, contrib.name, contrib.body);
+                    await checkApi(config, manifest, apis, contrib.name, contrib.body);
                     break;
                 case 'package':
                     if (!manifest.packages)
@@ -259,7 +259,7 @@ function applyConstributions(config: types.Config, manifest: types.Deployment, c
                     }
 
                     pkgs[contrib.name] = contrib.body;
-                    checkPackage(config, manifest, contrib.name, contrib.body);
+                    await checkPackage(config, manifest, contrib.name, contrib.body);
                     break;
 
             }

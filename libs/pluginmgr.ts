@@ -36,66 +36,70 @@ export async function init(config: types.Config) {
     await registerAll(config);
 }
 
+// Register plugin at given location 
+export async function registerFromPath(config: types.Config, modulepath: string) {
+    const plugininfo = await fs.readJSON(path.join(modulepath, 'package.json'));
+
+    const contributions = plugininfo.wskp;
+    if (!contributions) {
+        config.logger.warn(`Plugin ${plugininfo.name} does not have any contributions`);
+        return;
+    }
+
+    const action = contributions.action;
+    if (action) {
+        if (!RESERVED_ACTION_KEYWORDS.includes(action)) {
+            config.logger.info(`registering plugin ${plugininfo.name} action contribution ${action}`);
+            actionPlugins[action] = modulepath;
+        }
+        else
+            config.logger.warn(`Skipping ${action}: it is a reserved action name`);
+    }
+
+    const pkg = contributions.package;
+    if (pkg) {
+        const pkgs = (typeof pkg === 'string') ? [pkg] : pkg;
+        for (const name of pkgs) {
+            config.logger.info(`registering plugin ${plugininfo.name} package contribution ${name}`);
+            pkgPlugins[name] = modulepath;
+        }
+    }
+
+    const service = contributions.service;
+    if (service) {
+        const names = (typeof pkg === 'string') ? [service] : service;
+        for (const name of names) {
+            config.logger.info(`registering plugin ${plugininfo.name} service contribution ${name}`);
+            servicePlugins[name] = modulepath;
+        }
+    }
+
+    const api = contributions.api;
+    if (api) {
+        if (!RESERVED_API_KEYWORDS.includes(action)) {
+            config.logger.info(`registering plugin ${plugininfo.name} api contribution ${api}`);
+            apiPlugins[api] = modulepath;
+        }
+        else
+            config.logger.warn(`Skipping ${api}: it is a reserved api name`);
+    }
+    const builder = contributions.builder;
+    if (builder) {
+        config.logger.info(`registering plugin ${plugininfo.name} builder contribution ${builder}`);
+        actionBuilderPlugins[builder] = modulepath;
+    }
+}
+
 async function registerAll(config: types.Config) {
     try {
         const files = await fs.readdir(PLUGINS_ROOT);
 
         for (const moduleid of files) {
             if (moduleid.match(/wskp-\w*-plugin/)) {
-                const pkgPath = path.join(PLUGINS_ROOT, moduleid);
-                const plugininfo = await fs.readJSON(path.join(pkgPath, 'package.json'));
-
-                const contributions = plugininfo.wskp;
-                if (!contributions) {
-                    config.logger.warn(`Plugin ${moduleid} does not have any contributions`);
-                    return;
-                }
-
-                const action = contributions.action;
-                if (action) {
-                    if (!RESERVED_ACTION_KEYWORDS.includes(action)) {
-                        config.logger.info(`registering plugin ${moduleid} action contribution ${action}`);
-                        actionPlugins[action] = pkgPath;
-                    }
-                    else
-                        config.logger.warn(`Skipping ${action}: it is a reserved action name`);
-                }
-
-                const pkg = contributions.package;
-                if (pkg) {
-                    const pkgs = (typeof pkg === 'string') ? [pkg] : pkg;
-                    for (const name of pkgs) {
-                        config.logger.info(`registering plugin ${moduleid} package contribution ${name}`);
-                        pkgPlugins[name] = pkgPath;
-                    }
-                }
-
-                const service = contributions.service;
-                if (service) {
-                    const names = (typeof pkg === 'string') ? [service] : service;
-                    for (const name of names) {
-                        config.logger.info(`registering plugin ${moduleid} service contribution ${name}`);
-                        servicePlugins[name] = pkgPath;
-                    }
-                }
-
-                const api = contributions.api;
-                if (api) {
-                    if (!RESERVED_API_KEYWORDS.includes(action)) {
-                        config.logger.info(`registering plugin ${moduleid} api contribution ${api}`);
-                        apiPlugins[api] = pkgPath;
-                    }
-                    else
-                        config.logger.warn(`Skipping ${api}: it is a reserved api name`);
-                }
-                const builder = contributions.builder;
-                if (builder) {
-                    config.logger.info(`registering plugin ${moduleid} builder contribution ${builder}`);
-                    actionBuilderPlugins[builder] = pkgPath;
-                }
+                const modulepath = path.join(PLUGINS_ROOT, moduleid);
+                registerFromPath(config, modulepath);
             }
         }
-
     } catch (e) {
         config.logger.error(JSON.stringify(e, null, 2));
     }
