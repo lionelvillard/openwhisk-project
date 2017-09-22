@@ -35,7 +35,7 @@ export const isBluemixCapable = async () => {
 
 export interface Credential {
     endpoint?: string,
-    key?: string,
+    apikey?: string,
     org?: string,
     space?: string,
     home?: string
@@ -46,7 +46,7 @@ export const login = async (config: types.Config, cred: Credential) => {
     cred = fixupCredentials(config, cred);
     try {
         const space = cred.space ? `-s ${cred.space}` : '';
-        const bx = `BLUEMIX_HOME=${cred.home} bx login -a ${cred.endpoint} --apikey ${cred.key} -o ${cred.org} ${space}`;
+        const bx = `BLUEMIX_HOME=${cred.home} bx login -a ${cred.endpoint} --apikey ${cred.apikey} -o ${cred.org} ${space}`;
         config.logger.debug(`exec ${bx}`);
         await exec(bx);
         return true;
@@ -66,8 +66,8 @@ export const run = async (config: types.Config, cred: Credential, cmd: string) =
 const fixupCredentials = (config: types.Config, cred: Credential) => {
     cred = cred || {};
     cred.endpoint = cred.endpoint || 'api.ng.bluemix.net';
-    cred.key = cred.key || process.env.BLUEMIX_API_KEY;
-    if (!cred.key) {
+    cred.apikey = cred.apikey || process.env.BLUEMIX_API_KEY;
+    if (!cred.apikey) {
         throw 'Cannot login to Bluemix: missing apikey';
     }
     if (!cred.org) {
