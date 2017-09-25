@@ -20,10 +20,39 @@ const expr = require('../dist/libs/interpolation');
 
 describe('Interpolation', function () {
 
-    it('variable', function () {
-        const value = expr.evaluate({vars: {'env': 'dev'}}, '${vars}');
-        assert.deepStrictEqual(value, {'env': 'dev'});
+    it('variable - custom', function () {
+        const config = {
+            variableSources: [
+                name => ({ 'env': 'dev' }[name])
+            ]
+        };
+
+        const value = expr.evaluate(config, '${vars.env}');
+        assert.deepStrictEqual(value, 'dev');
     });
 
+    it('variable - env HOME', function () {
+        const config = {
+            variableSources: [
+                name => process.env[name]
+            ]
+        };
+
+        const value = expr.evaluate(config, '${vars.HOME}');
+        assert.ok(value);
+    });
+
+    it('variable - override HOME', function () {
+        const config = {
+            variableSources: [
+                name => ({ 'HOME': '/myhome' }[name]),
+                name => process.env[name]
+                
+            ]
+        };
+
+        const value = expr.evaluate(config, '${vars.HOME}');
+        assert.deepStrictEqual(value, '/myhome');
+    });
 
 });

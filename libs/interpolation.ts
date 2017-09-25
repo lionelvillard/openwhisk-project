@@ -14,18 +14,31 @@
  * limitations under the License.
  */
 import * as util from 'util';
-import * as vm  from 'vm';
+import * as vm from 'vm';
 
 export function evaluate(config, expr: string) {
     if (expr[0] !== '$' || expr[1] !== '{' || expr[expr.length - 1] !== '}')
-    throw `Invalid interpolation: ${expr}`;
-   
+        throw `Invalid interpolation: ${expr}`;
     expr = expr.substr(2, expr.length - 3);
 
+
+    const variableHandler = {
+        get: (target, name) => resolveVariable(config, name)
+    };
+
     const context = {
-        vars: config.vars
+        vars: new Proxy({}, variableHandler)
     }
 
     const sandbox = vm.createContext(context);
     return vm.runInContext(expr, sandbox);
+}
+
+function resolveVariable(config, name) {
+    for (const vs of config.variableSources) {
+        const value = vs(name);
+        if (value)
+            return value;
+    }
+    return undefined;
 }

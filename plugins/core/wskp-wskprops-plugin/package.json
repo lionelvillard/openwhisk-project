@@ -1,0 +1,21 @@
+{
+  "name": "wskp-wskprops-plugin",
+  "version": "0.1.0",
+  "description": "Variable resolver reading .wskprop",
+  "main": "dist/wskprops.js",
+  "types": "wskprops.ts",
+  "scripts": {
+    "pretest": "../../../node_modules/.bin/tsc",
+    "test": "../../../node_modules/.bin/mocha dist/test",
+    "compile": "../../../node_modules/.bin/tsc -watch -p ./",
+    "tsc": "../../../node_modules/.bin/tsc"
+  },
+  "author": "Lionel Villard",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "openwhisk-deploy": "file:../../.."
+  },
+  "wskp": {
+    "variableSource": "wskprops"
+  }
+}

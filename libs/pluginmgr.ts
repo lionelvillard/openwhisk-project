@@ -26,6 +26,7 @@ const pkgPlugins = {};
 const servicePlugins = {};
 const apiPlugins = {};
 const actionBuilderPlugins = {};
+const variableSourcePlugins = {};
 
 const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'annotations', 'sequence', 'extra', 'actionName', 'packageName', 'docker'];
 const RESERVED_API_KEYWORDS = [];
@@ -83,10 +84,17 @@ export async function registerFromPath(config: types.Config, modulepath: string)
         else
             config.logger.warn(`Skipping ${api}: it is a reserved api name`);
     }
+
     const builder = contributions.builder;
     if (builder) {
         config.logger.info(`registering plugin ${plugininfo.name} builder contribution ${builder}`);
         actionBuilderPlugins[builder] = modulepath;
+    }
+
+    const variableSource = contributions.variableSource;
+    if (variableSource) {
+        config.logger.info(`registering plugin ${plugininfo.name} variable source contribution ${variableSource}`);
+        actionBuilderPlugins[variableSource] = modulepath;
     }
 }
 
@@ -129,6 +137,15 @@ export function getApiPlugin(api): types.Plugin | null {
 export function getActionBuilderPlugin(name): types.Plugin | null {
     if (actionBuilderPlugins[name]) {
         const plugin = require(actionBuilderPlugins[name]);
+        plugin.__pluginName = name;
+        return plugin;
+    }
+    return null;
+}
+
+export function getVariableSourcePlugin(name): types.Plugin | null {
+    if (variableSourcePlugins[name]) {
+        const plugin = require(variableSourcePlugins[name]);
         plugin.__pluginName = name;
         return plugin;
     }

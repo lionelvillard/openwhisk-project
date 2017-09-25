@@ -31,6 +31,8 @@ export interface Config {
     cache?: string;                 // cache location
     force?: boolean;                // perform update operation when true. Default is 'false'
 
+    variableSources: [VariableResolver];  // A list of variable resolvers. 
+
     logger_level?: string;          // logger level ('ALL', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE', 'OFF')
     logger?: Logger;                // logger
 
@@ -55,13 +57,17 @@ export interface Plugin {
 
     // Action builder contributor making the action artifacts to deploy.
     build: ActionBuilder;
-    
+
+    // A variable resolver.
+    resolveVariable: VariableResolver;
+
 }
 
 export type ActionContributor = (Config, Deployment, pkgName: string, actionName: string, Action) => Contribution[]
 export type ServiceContributor = (Config, pkgName: string, Package) => Contribution[]
 export type ApiContributor = (Config, Deployment, apiname: string, Api) => Contribution[]
 export type ActionBuilder = (Config, pkgName: string, actionName: string, Action, buildir) => Artifact
+export type VariableResolver = (name: string) => any;
 
 // A contribution to the deployment configuration 
 export type Contribution = ActionContribution | ApiContribution | PackageContribution;
