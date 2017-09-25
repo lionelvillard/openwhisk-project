@@ -77,7 +77,7 @@ const fixupCredentials = (config: types.Config, cred: Credential) => {
         throw 'Cannot login to Bluemix: missing either space or home';
     }
     if (!cred.home) {
-        cred.home = path.join(config.cache, 'bluemix', cred.endpoint, cred.org, cred.space);
+        cred.home = path.join(config.cache, cred.endpoint, cred.org, cred.space);
     }
     return cred;
 }
