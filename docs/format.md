@@ -5,8 +5,6 @@ This document formally described the deployment configuration format and semanti
 The deployment configuration are written in `YAML`. Since `JSON` and `YAML` are closely related, 
 we use JSON schema to define the constraints imposed on the deployment configurations. These constraints are presented below, along with some examples. 
 
-
-
 ## `deployment` (top-level schema)
 
 A *deployment* is an *object* representing a collection of OpenWhisk entities (actions, packages, rules, triggers and apis) to be deployed.
@@ -91,7 +89,7 @@ An *object* representing a list of packages. Package name must be unique among t
  
 ### Properties
 
-- `{package-name}` ([`binding`](#binding) | [`packageContent`](#packageContent), optional)
+- `{package-name}` ([`binding`](#binding) | [`packageContent`](#packageContent) | [`interpolation`](#interpolation), optional)
 
 ## `binding`
 
@@ -324,7 +322,7 @@ triggers:
   image-uploaded:
     feed: openwhisk-cloudant/changes
     inputs:
-      dbname: $CLOUDANT_DATABASE
+      dbname: ${vars.CLOUDANT_DATABASE}
 ```
 
 ## `rules`
@@ -472,9 +470,15 @@ actions:
         - *.ts
 ```
 
+## `Interpolation`
+
+A *string* of the form `${ expr }` where `expr` is interpreted as a Javascript expression returning a JSON value. This expression is evaluated in a sandbox initialized to this object:
+
+- `vars`: an *object* containing *resolved* variable values.   
 
 ## Entity name resolution
 
 Non-fully qualified entity names are resolved as follows:
   - partially qualified names (`packageName/actionName`) are resolved using the enclosing namespace
   - unqualified names (`actionName`) are resolved using the enclosing package name (if any) and namespace. 
+

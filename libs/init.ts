@@ -20,6 +20,7 @@ import * as path from 'path';
 import * as types from './types';
 import * as plugins from './pluginmgr';
 import * as expandHome from 'expand-home-dir';
+import { evaluate } from './interpolation';
 
 const utils = require('./utils');
 
@@ -107,14 +108,17 @@ async function configCache(config: types.Config) {
     config.logger.debug(`caching directory set to ${config.cache}`);
 }
 
-// validate and transform the manifest to core representation.
+// perform:
+// - validation 
+// - normalization (remove syntax sugar)
+// - interpolation (evaluate ${..})
 async function check(config: types.Config) {
     const manifest = config.manifest;
 
     if (!manifest)
         return
 
-    config.logger.debug('validating and normalizing the deployment configuration');
+    config.logger.debug('normalizing project configuration');
 
     await checkPackages(config, manifest);
     await checkApis(config, manifest);
@@ -131,29 +135,41 @@ async function checkPackages(config: types.Config, manifest) {
     const packages = manifest.packages;
 
     for (const pkgName in packages) {
-        await checkPackage(config, manifest, pkgName, packages[pkgName]);
+        await checkPackage(config, manifest, packages, pkgName, packages[pkgName]);
     }
 }
 
+async function checkPackage(config: types.Config, manifest, packages, pkgName, pkg) {
+    switch (typeof pkg) {
+        case 'string':
+            packages[pkgName] = pkg = pkg.trim();
+            if (pkg.startsWith('$')) {
+                packages[pkgName] = pkg = evaluate(config, pkg);
+                await checkPackage(config, manifest, packages, pkgName, pkg);
+            } else if (pkg.length() !== 0) {
+                throw `${JSON.stringify(pkg)} is not a valid value`;
+            }
+            break;
+        case 'object':
+            if (pkg.bind) {
 
-async function checkPackage(config: types.Config, manifest, pkgName, pkg) {
-    const packages = manifest.packages;
+            } else if (pkg.service) {
+                delete packages[pkgName];
 
-    if (pkg.bind) {
-        // TODO
-    } else if (pkg.service) {
-        delete packages[pkgName];
+                const plugin = plugins.getServicePlugin(pkg.service);
+                if (!plugin) {
+                    config.logger.warn(`no plugin found for service ${pkg.service}. Ignored`);
+                    return;
+                }
 
-        const plugin = plugins.getServicePlugin(pkg.service);
-        if (!plugin) {
-            config.logger.warn(`no plugin found for service ${pkg.service}. Ignored`);
-            return;
-        }
-
-        const contributions = await plugin.serviceContributor(config, pkgName, pkg);
-        await applyConstributions(config, manifest, contributions, plugin);
-    } else {
-        await checkActions(config, manifest, pkgName, pkg.actions);
+                const contributions = await plugin.serviceContributor(config, pkgName, pkg);
+                await applyConstributions(config, manifest, contributions, plugin);
+            } else {
+                await checkActions(config, manifest, pkgName, pkg.actions);
+            }
+            break;
+        default:
+            throw `${JSON.stringify(pkg)} is not a valid value`;
     }
 }
 
@@ -218,7 +234,6 @@ async function checkApi(config: types.Config, manifest, apis, apiname: string, a
         const contributions = await plugin.apiContributor(config, manifest, apiname, api);
         await applyConstributions(config, manifest, contributions, plugin);
     }
-
 }
 
 async function applyConstributions(config: types.Config, manifest: types.Deployment, contributions: types.Contribution[], plugin) {
@@ -259,7 +274,7 @@ async function applyConstributions(config: types.Config, manifest: types.Deploym
                     }
 
                     pkgs[contrib.name] = contrib.body;
-                    await checkPackage(config, manifest, contrib.name, contrib.body);
+                    await checkPackage(config, manifest, pkgs, contrib.name, contrib.body);
                     break;
 
             }
