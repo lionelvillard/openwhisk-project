@@ -38,6 +38,7 @@ export interface Config {
 
     load?: Loader;
     basePath?: string;
+    env?: string;
 }
 
 // --- Plugins
@@ -67,7 +68,7 @@ export type ActionContributor = (Config, Deployment, pkgName: string, actionName
 export type ServiceContributor = (Config, pkgName: string, Package) => Contribution[]
 export type ApiContributor = (Config, Deployment, apiname: string, Api) => Contribution[]
 export type ActionBuilder = (Config, pkgName: string, actionName: string, Action, buildir) => Artifact
-export type VariableResolver = (name: string) => any;
+export type VariableResolver = (Config, name: string) => any;
 
 // A contribution to the deployment configuration 
 export type Contribution = ActionContribution | ApiContribution | PackageContribution;

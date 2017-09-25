@@ -112,7 +112,7 @@ function configVariableSources(config: types.Config) {
     // TODO: configurable
    
     config.variableSources = [
-        name => process.env[name],
+        (config, name) => process.env[name],
         plugins.getVariableSourcePlugin('wskprops').resolveVariable
     ];
 

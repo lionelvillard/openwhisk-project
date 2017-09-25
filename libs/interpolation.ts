@@ -36,7 +36,7 @@ export function evaluate(config, expr: string) {
 
 function resolveVariable(config, name) {
     for (const vs of config.variableSources) {
-        const value = vs(name);
+        const value = vs(config, name);
         if (value)
             return value;
     }

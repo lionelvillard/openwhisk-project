@@ -23,7 +23,7 @@ describe('Interpolation', function () {
     it('variable - custom', function () {
         const config = {
             variableSources: [
-                name => ({ 'env': 'dev' }[name])
+                (config, name) => ({ 'env': 'dev' }[name])
             ]
         };
 
@@ -34,7 +34,7 @@ describe('Interpolation', function () {
     it('variable - env HOME', function () {
         const config = {
             variableSources: [
-                name => process.env[name]
+                (config, name) => process.env[name]
             ]
         };
 
@@ -45,8 +45,8 @@ describe('Interpolation', function () {
     it('variable - override HOME', function () {
         const config = {
             variableSources: [
-                name => ({ 'HOME': '/myhome' }[name]),
-                name => process.env[name]
+                (config, name) => ({ 'HOME': '/myhome' }[name]),
+                (config, name) => process.env[name]
                 
             ]
         };
