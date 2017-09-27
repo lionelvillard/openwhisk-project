@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const chevrotain = require('chevrotain');
-const wskd = require('openwhisk-deploy');
+import { Lexer, Parser, Token, createToken } from "chevrotain";
+import * as wskd from 'openwhisk-deploy';
 
 // --- Plugin export
 
-export function actionContributor(config, deployment, pkgName: string, actionName: string, action) {
+export function actionContributor(config: wskd.IConfig, deployment, pkgName: string, actionName: string, action) {
     // 1. Tokenize the input.
     const lexResult = DeployLexer.tokenize(action.combinator);
     if (lexResult.errors.length > 0)
@@ -42,11 +42,7 @@ export function actionContributor(config, deployment, pkgName: string, actionNam
 
 
 // ----------------- lexer -----------------
-
-const createToken = chevrotain.createToken
-const Lexer = chevrotain.Lexer
-const Parser = chevrotain.Parser
-
+ 
 const ActionLiteral = createToken({ name: 'ActionLiteral', pattern: /[\w@.-]+/ })
 const IfToken = createToken({ name: 'IfToken', pattern: /if/ })
 const ThenToken = createToken({ name: 'ThenToken', pattern: /then/ })
@@ -107,122 +103,121 @@ const TrimQuotes = str => {
     return str.substr(1, str.length - 2)
 }
 
-function DeployParser(input, pkgName, action) {
-    Parser.call(this, input, allTokens)
+class DeployParser extends Parser {
 
-    const $ = this
+    constructor(input: Token[], readonly pkgName, private action) {
+        super(input, allTokens)
+        Parser.performSelfAnalysis(this)
+    }
+ 
 
-    $.RULE('combinators', () => {
-        return $.OR([
+    public combinators = this.RULE('combinators', () => {
+        return this.OR([
             {
                 ALT: () => {
-                    return $.SUBRULE($.eca)
+                    return this.SUBRULE(this.eca)
                 }
             },
             {
                 ALT: () => {
-                    return $.SUBRULE($.forwarder)
+                    return this.SUBRULE(this.forwarder)
                 }
             },
             {
                 ALT: () => {
-                    return $.SUBRULE($.retry)
+                    return this.SUBRULE(this.retry)
                 }
             },
             {
                 ALT: () => {
-                    return $.SUBRULE($.trycatch)
+                    return this.SUBRULE(this.trycatch)
                 }
             }
         ])
     })
 
-    $.RULE('eca', () => {
-        $.CONSUME(IfToken)
-        const $conditionName = wskd.names.resolveQName($.CONSUME1(ActionLiteral).image, '_', pkgName)
-        $.CONSUME(ThenToken)
-        const $actionName = wskd.names.resolveQName($.CONSUME2(ActionLiteral).image, '_', pkgName)
+    private eca = this.RULE('eca', () => {
+        this.CONSUME(IfToken)
+        const $conditionName = wskd.names.resolveQName(this.CONSUME1(ActionLiteral).image, '_', this.pkgName)
+        this.CONSUME(ThenToken)
+        const $actionName = wskd.names.resolveQName(this.CONSUME2(ActionLiteral).image, '_', this.pkgName)
 
-        action.copy = '/whisk.system/combinators/eca'
-        action.inputs = mergeObjects({
+        this.action.copy = '/whisk.system/combinators/eca'
+        this.action.inputs = mergeObjects({
             $conditionName,
             $actionName
-        }, action.inputs)
+        }, this.action.inputs)
 
-        return action
+        return this.action
     })
 
-    $.RULE('trycatch', () => {
-        $.CONSUME(TryToken)
-        const $tryName = wskd.names.resolveQName($.CONSUME1(ActionLiteral).image, '_', pkgName)
-        $.CONSUME(CatchToken)
-        const $catchName = wskd.names.resolveQName($.CONSUME2(ActionLiteral).image, '_', pkgName)
+    private trycatch = this.RULE('trycatch', () => {
+        this.CONSUME(TryToken)
+        const $tryName = wskd.names.resolveQName(this.CONSUME1(ActionLiteral).image, '_', this.pkgName)
+        this.CONSUME(CatchToken)
+        const $catchName = wskd.names.resolveQName(this.CONSUME2(ActionLiteral).image, '_', this.pkgName)
 
-        action.copy = '/whisk.system/combinators/trycatch'
-        action.inputs = mergeObjects({
+        this.action.copy = '/whisk.system/combinators/trycatch'
+        this.action.inputs = mergeObjects({
             $tryName,
             $catchName
-        }, action.inputs)
+        }, this.action.inputs)
 
-        return action
+        return this.action
     })
 
-    $.RULE('forwarder', () => {
-        $.CONSUME(ForwardToken)
-        const $forward = $.SUBRULE($.arrayofstrings)
-        $.CONSUME(AfterToken)
-        const $actionName = wskd.names.resolveQName($.CONSUME(ActionLiteral).image, '_', pkgName)
-        $.CONSUME(WithToken)
-        const $actionArgs = $.SUBRULE2($.arrayofstrings)
+    private forwarder = this.RULE('forwarder', () => {
+        this.CONSUME(ForwardToken)
+        const $forward = this.SUBRULE(this.arrayofstrings)
+        this.CONSUME(AfterToken)
+        const $actionName = wskd.names.resolveQName(this.CONSUME(ActionLiteral).image, '_', this.pkgName)
+        this.CONSUME(WithToken)
+        const $actionArgs = this.SUBRULE2(this.arrayofstrings)
 
-        action.copy = '/whisk.system/combinators/forwarder'
-        action.inputs = mergeObjects({
+        this.action.copy = '/whisk.system/combinators/forwarder'
+        this.action.inputs = mergeObjects({
             $forward,
             $actionName,
             $actionArgs
         },
-            action.inputs)
-        return action
+        this.action.inputs)
+        return this.action
 
     })
 
-    $.RULE('retry', () => {
-        $.CONSUME(RetryToken)
-        const $actionName = wskd.names.resolveQName($.CONSUME(ActionLiteral).image, '_', pkgName)
-        const $attempts = parseInt($.CONSUME(IntegerLiteral).image)
-        $.OPTION(() => {
-            $.CONSUME(TimesToken)
+    private retry = this.RULE('retry', () => {
+        this.CONSUME(RetryToken)
+        const $actionName = wskd.names.resolveQName(this.CONSUME(ActionLiteral).image, '_', this.pkgName)
+        const $attempts = parseInt(this.CONSUME(IntegerLiteral).image)
+        this.OPTION(() => {
+            this.CONSUME(TimesToken)
         })
 
-        action.copy = '/whisk.system/combinators/retry'
-        action.inputs = mergeObjects({
+        this.action.copy = '/whisk.system/combinators/retry'
+        this.action.inputs = mergeObjects({
             $actionName,
             $attempts
         },
-            action.inputs)
-        return action
+        this.action.inputs)
+        return this.action
     })
 
-    $.RULE('arrayofstrings', () => {
+    private arrayofstrings = this.RULE('arrayofstrings', () => {
         const strings = []
-        $.CONSUME(LSquare)
-        $.OPTION(() => {
-            strings.push(TrimQuotes($.CONSUME1(StringLiteral).image))
+        this.CONSUME(LSquare)
+        this.OPTION(() => {
+            strings.push(TrimQuotes(this.CONSUME1(StringLiteral).image))
 
-            $.MANY(() => {
-                $.CONSUME2(Comma)
-                strings.push(TrimQuotes($.CONSUME3(StringLiteral).image))
+            this.MANY(() => {
+                this.CONSUME2(Comma)
+                strings.push(TrimQuotes(this.CONSUME3(StringLiteral).image))
             })
         })
-        $.CONSUME4(RSquare)
+        this.CONSUME4(RSquare)
         return strings
     })
 
-    Parser.performSelfAnalysis(this)
 }
-
-DeployParser.prototype = Object.create(Parser.prototype)
-DeployParser.prototype.constructor = DeployParser
 
 // --- utils
 

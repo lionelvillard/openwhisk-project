@@ -26,7 +26,7 @@ describe('API gateway', function () {
 
 
     it('hello world', async function() {
-        await wskd.deploy({
+        await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/api',
             cache: ctx.cacheDir,

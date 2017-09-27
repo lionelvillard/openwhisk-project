@@ -21,7 +21,7 @@ const utils = require('./utils');
 
 // remove all entities
 export async function all(ow) {
-    return apply({ ow });
+    return apply({ ow } as types.Config);
 }
 
 export async function apply(config: types.Config) {

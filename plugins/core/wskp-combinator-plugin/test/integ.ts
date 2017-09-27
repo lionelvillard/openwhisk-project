@@ -33,7 +33,7 @@ class integration {
 
     @test
     async combinator() {
-        await wskd.deploy({
+        await wskd.deploy.apply({
             ow: this.ctx.ow,
             location: 'test/combinator.yaml'
         });

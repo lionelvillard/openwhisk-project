@@ -26,7 +26,7 @@ describe('docker', function () {
     after(utils.after(ctx));
 
     it('deploy docker skeleton', async function () {
-        const result = await deployer.deploy({
+        const result = await deployer.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/docker/',
             cache: ctx.cacheDir,

@@ -25,7 +25,7 @@ describe('testing rules', function () {
     after(utils.after(ctx));
 
     it('deploy a rule', async function () {
-        const result = await deployer.deploy({
+        const result = await deployer.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/rules/',
             cache: ctx.cacheDir,

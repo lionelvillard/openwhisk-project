@@ -59,7 +59,7 @@ export async function init(config: types.Config) {
     await resolveManifest(config);
     await configCache(config);
     configVariableSources(config);
-    
+
     await check(config);
 
     config.logger.debug(JSON.stringify(config, null, 2));
@@ -110,14 +110,13 @@ async function configCache(config: types.Config) {
 
 function configVariableSources(config: types.Config) {
     // TODO: configurable
-   
     config.variableSources = [
         (config, name) => process.env[name],
         plugins.getVariableSourcePlugin('wskprops').resolveVariable
     ];
 
 }
-    
+
 
 // perform:
 // - validation 

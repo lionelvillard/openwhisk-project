@@ -33,7 +33,7 @@ const RESERVED_API_KEYWORDS = [];
 
 // Build plugin index.
 export async function init(config: types.Config) {
-    config.logger.info('initializing plugins');
+    config.logger.info(`initializing plugins ${PLUGINS_ROOT}`);
     await registerAll(config);
 }
 
@@ -94,7 +94,7 @@ export async function registerFromPath(config: types.Config, modulepath: string)
     const variableSource = contributions.variableSource;
     if (variableSource) {
         config.logger.info(`registering plugin ${plugininfo.name} variable source contribution ${variableSource}`);
-        actionBuilderPlugins[variableSource] = modulepath;
+        variableSourcePlugins[variableSource] = modulepath;
     }
 }
 
@@ -105,7 +105,7 @@ async function registerAll(config: types.Config) {
         for (const moduleid of files) {
             if (moduleid.match(/wskp-\w*-plugin/)) {
                 const modulepath = path.join(PLUGINS_ROOT, moduleid);
-                registerFromPath(config, modulepath);
+                await registerFromPath(config, modulepath);
             }
         }
     } catch (e) {

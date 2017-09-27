@@ -25,7 +25,7 @@ describe('testing undeploy', function () {
     after(utils.after(ctx));
 
     it('undeploy unmanaged action in manifest', async function () {
-        const result = await wskd.deploy({
+        const result = await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -93,7 +93,7 @@ describe('testing undeploy', function () {
     });
 
     it('undeploy managed action, manifest without managed action', async function () {
-        await wskd.deploy({
+        await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -101,7 +101,7 @@ describe('testing undeploy', function () {
             force: true
         });
 
-        await wskd.deploy({
+        await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,

@@ -25,7 +25,7 @@ describe('nodejs action', function () {
     after(utils.after(ctx));
 
     it('deploy-nodejs-action', async function () {
-        const result = await wskd.deploy({
+        const result = await wskd.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -42,7 +42,7 @@ describe('nodejs action', function () {
     });
 
     it('deploy-nodejs-action-params', async function () {
-        const result = await wskd.deploy({
+        const result = await wskd.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -58,7 +58,7 @@ describe('nodejs action', function () {
     });
 
     it('deploy-nodejs-action-annotations', async function () {
-        const result = await wskd.deploy({
+        const result = await wskd.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -78,7 +78,7 @@ describe('nodejs action', function () {
     });
 
     it('deploy nodejs action in default package', async function () {
-        const result = await wskd.deploy({
+        const result = await wskd.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -95,7 +95,7 @@ describe('nodejs action', function () {
     });
 
     it('deploy nodejs action with explicit kind', async function () {
-        const result = await wskd.deploy({
+        const result = await wskd.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -112,7 +112,7 @@ describe('nodejs action', function () {
     });
 
     it('deploy web nodejs actions', async function () {
-        await wskd.deploy({
+        await wskd.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,

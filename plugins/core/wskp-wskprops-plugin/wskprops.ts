@@ -51,7 +51,7 @@ function getWskPropsFile(config) {
 
 
 function readWskProps(config) {
-    const wskprops = getWskPropsFile(config)''
+    const wskprops = getWskPropsFile(config);
     if (wskprops) {
         const propertiesParser = require('properties-parser')
         try {

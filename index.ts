@@ -13,14 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-export let auth = require('./libs/auth');
-export let deploy = require('./libs/deploy').default;
-export let undeploy = require('./libs/undeploy');
-export let refresh = require('./libs/refresh.js');
-export let sync = require('./libs/sync.js');
-export let env = require('./libs/env.js');
-export let yo = require('./libs/yo.js');
-export let types = require('./libs/types');
-export let names = require('./libs/names');
-export let bx = require('./libs/bluemix');
-export let plugins = require('./libs/pluginmgr');
+import * as auth from './libs/auth';
+import * as deploy from'./libs/deploy';
+import * as undeploy from'./libs/undeploy';
+import * as refresh from'./libs/refresh.js';
+import * as sync from'./libs/sync.js';
+import * as env from'./libs/env.js';
+import * as yo from'./libs/yo.js';
+import * as types from './libs/types';
+import * as names from'./libs/names';
+import * as bx from'./libs/bluemix';
+import * as plugins from'./libs/pluginmgr';
+
+type IConfig = types.Config;
+
+export { auth, deploy , undeploy, refresh, sync, env, yo, types, names, bx, plugins, IConfig };

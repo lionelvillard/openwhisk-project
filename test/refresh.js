@@ -44,7 +44,7 @@ describe('testing refresh', function () {
     it('data processing - bash', async function () {
         this.timeout(30000);
 
-        await wskd.deploy({
+        await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/dataprocessing/',
             cache: ctx.cacheDir,
@@ -96,7 +96,7 @@ describe('testing refresh', function () {
         
         await wskd.undeploy.all(ctx.ow);
         
-        await wskd.deploy({
+        await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/dataprocessing/',
             cache: ctx.cacheDir,

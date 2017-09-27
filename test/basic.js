@@ -24,13 +24,13 @@ describe('basic yaml handling tests', function () {
     after(utils.after(ctx));
 
     it('empty manifest', async function () {
-        await wskd.deploy({ cache: ctx.cacheDir, manifest: '' });
+        await wskd.deploy.apply({ cache: ctx.cacheDir, manifest: '' });
         assert.ok(true);
     });
 
     it('no manifest', async function () {
         try {
-            await wskd.deploy({ cache: ctx.cacheDir, location: 'donotexist.yaml' });
+            await wskd.deploy.apply({ cache: ctx.cacheDir, location: 'donotexist.yaml' });
             assert.fail('should not be here');
         } catch (e) {
             assert.ok(true);
@@ -38,7 +38,7 @@ describe('basic yaml handling tests', function () {
     });
 
     it('base path, relative', async function () {
-        await wskd.deploy({ ow: ctx.ow, location: 'test/fixtures/basepath/relative.yaml' });
+        await wskd.deploy.apply({ ow: ctx.ow, location: 'test/fixtures/basepath/relative.yaml' });
 
         const cat = await ctx.ow.actions.invoke({
             actionName: 'basepath/cat',

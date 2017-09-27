@@ -25,7 +25,7 @@ describe('sequence action', function () {
     after(utils.after(ctx));
 
     it('simple sequence', async function () {
-        const result = await wskd.deploy({
+        const result = await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/sequences/',
             cache: ctx.cacheDir,
@@ -41,7 +41,7 @@ describe('sequence action', function () {
     });
 
     it('simple unordered', async function () {
-        const result = await wskd.deploy({
+        const result = await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/sequences/',
             cache: ctx.cacheDir,
@@ -58,7 +58,7 @@ describe('sequence action', function () {
 
     it('simple cycle', async function () {
         try {
-            const result = await wskd.deploy({
+            const result = await wskd.deploy.apply({
                 ow: ctx.ow,
                 basePath: 'test/fixtures/sequences/',
                 cache: ctx.cacheDir,

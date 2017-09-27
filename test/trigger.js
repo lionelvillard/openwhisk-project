@@ -25,7 +25,7 @@ describe('testing trigger', function () {
     after(utils.after(ctx));
 
     it('deploy a trigger', async function () {
-        const result = await deployer.deploy({
+        const result = await deployer.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/triggers/',
             cache: ctx.cacheDir,
@@ -38,7 +38,7 @@ describe('testing trigger', function () {
     }); 
     
     it('deploy an alarm', async function () {
-        const result = await deployer.deploy({
+        const result = await deployer.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/triggers/',
             cache: ctx.cacheDir,

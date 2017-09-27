@@ -24,7 +24,7 @@ describe('zip builder', function () {
     after(utils.after(ctx));
 
     it('nodejs package', async function () {
-        await wskd.deploy({
+        await wskd.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs-zip',
             cache: ctx.cacheDir,
@@ -41,7 +41,7 @@ describe('zip builder', function () {
     });
 
     it('nodejs package with symlinks', async function () {
-        await  wskd.deploy({
+        await  wskd.deploy.apply({
             ow: ctx.ow, 
             basePath: 'test/fixtures/nodejs-zip-symlinks',
             cache: ctx.cacheDir,

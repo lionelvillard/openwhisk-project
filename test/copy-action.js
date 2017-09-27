@@ -25,7 +25,7 @@ describe('copy action', function () {
     after(utils.after(ctx));
 
     it('copy system cat action', async function () {
-        const result = await deployer.deploy({
+        const result = await deployer.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/copy/',
             cache: ctx.cacheDir,
@@ -42,7 +42,7 @@ describe('copy action', function () {
     });
 
     it('copy user action', async function () {
-        const result = await deployer.deploy({
+        const result = await deployer.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/copy/',
             cache: ctx.cacheDir,

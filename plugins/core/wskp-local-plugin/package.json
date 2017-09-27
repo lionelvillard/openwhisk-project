@@ -1,9 +1,9 @@
 {
-  "name": "wskp-zip-plugin",
+  "name": "wskp-local-plugin",
   "version": "0.1.0",
-  "description": "Zip builder extension for OpenWhisk Project",
-  "main": "dist/zip.js",
-  "types": "zip.ts",
+  "description": "Enable local deployment",
+  "main": "dist/local.js",
+  "types": "local.ts",
   "scripts": {
     "pretest": "../../../node_modules/.bin/tsc",
     "test": "../../../node_modules/.bin/mocha dist/test",
@@ -13,13 +13,9 @@
   "author": "Lionel Villard",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@types/archiver": "^2.0.0",
     "openwhisk-deploy": "file:../../.."
   },
-  "dependencies": {
-    "archiver": "^2.0.3"
-  },
   "wskp": {
-    "builder": "zip"
+    "project": "local"
   }
 }

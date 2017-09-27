@@ -31,7 +31,7 @@ export interface Config {
     cache?: string;                 // cache location
     force?: boolean;                // perform update operation when true. Default is 'false'
 
-    variableSources: [VariableResolver];  // A list of variable resolvers. 
+    variableSources?: [VariableResolver];  // A list of variable resolvers. 
 
     logger_level?: string;          // logger level ('ALL', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE', 'OFF')
     logger?: Logger;                // logger
@@ -41,30 +41,34 @@ export interface Config {
     env?: string;
 }
 
+export interface DeployConfig extends Config {
+}
+
 // --- Plugins
 
 // OpenWhisk Plugin Interface 
 export interface Plugin {
  
     // Action contributor returning a list of contributions to apply to the deployment configuration
-    actionContributor: ActionContributor;
+    actionContributor?: ActionContributor;
 
     // API contributor returning a list of contributions to apply to the deployment configuration
-    apiContributor: ApiContributor;
-
+    apiContributor?: ApiContributor;
 
     // service contributor returning a list of contributions to apply to the deployment configuration
-    serviceContributor: ServiceContributor;
+    serviceContributor?: ServiceContributor;
 
     // Action builder contributor making the action artifacts to deploy.
-    build: ActionBuilder;
+    build?: ActionBuilder;
 
     // A variable resolver.
-    resolveVariable: VariableResolver;
+    resolveVariable?: VariableResolver;
 
 }
 
 export type ActionContributor = (Config, Deployment, pkgName: string, actionName: string, Action) => Contribution[]
+
+
 export type ServiceContributor = (Config, pkgName: string, Package) => Contribution[]
 export type ApiContributor = (Config, Deployment, apiname: string, Api) => Contribution[]
 export type ActionBuilder = (Config, pkgName: string, actionName: string, Action, buildir) => Artifact
@@ -124,11 +128,12 @@ export interface Artifact {
 
 }
 
-// --- Configuration format
+// --- Project configuration format
 
 // TODO!
 
 export type Deployment = any
+export type Project = Deployment
 export type Action = any
 export type Package = any
 export type Api = any

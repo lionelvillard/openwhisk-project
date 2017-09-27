@@ -31,7 +31,7 @@ class integration {
     @test
     async skillsroute() {
         const config = { ow: this.ctx.ow, basePath: '.', location: 'test/skills.yaml' };
-        await wskd.deploy(config);
+        await wskd.deploy.apply(config);
 
         const routes = await this.ctx.ow.routes.list();
         assert(routes);

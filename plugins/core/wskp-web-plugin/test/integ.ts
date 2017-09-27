@@ -35,7 +35,7 @@ class WebIntegration {
 
     @test
     async basicForm() {
-        await wskd.deploy({
+        await wskd.deploy.apply({
             ow: this.ctx.ow,
             location: 'test/webactions.yaml'
         });

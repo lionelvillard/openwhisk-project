@@ -23,7 +23,7 @@ const handlers = require('./handlers')
 const helpers = require('./helpers')
 const init = require('./init')
 
-export default async function deploy(args) {
+export async function apply(args) {
     await init.init(args);
 
     try {
@@ -76,7 +76,7 @@ function deployIncludes(args) {
                 .then(cloneRepo(owner, repo, targetDir))
                 .then(() => {
                     logger.debug(`sub-deploy ${location}`)
-                    return deploy(subdeploy)
+                    return apply(subdeploy)
                 })
 
             promises.push(promise)
