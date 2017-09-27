@@ -87,7 +87,7 @@ async function resolveManifest(config: types.Config) {
         if (config.manifest.basePath)
             config.basePath = path.resolve(config.basePath, config.manifest.basePath);
 
-         config.manifest.namespace = '_'; // For now   
+        config.manifest.namespace = '_'; // For now   
     }
 
 
@@ -139,7 +139,12 @@ async function check(config: types.Config) {
 
     config.logger.debug('normalizing project configuration');
 
+
     await checkIncludes(config, manifest);
+
+    if (manifest.actions)
+        await checkActions(config, manifest, '', manifest.actions);
+
     await checkPackages(config, manifest);
     await checkApis(config, manifest);
 
@@ -331,83 +336,88 @@ async function applyConstributions(config: types.Config, manifest: types.Project
 // --- Project configuration merge
 
 function mergeProject(config: types.Config, basePath: string, project: types.Project) {
-    if (project.basePath)
-        basePath = path.resolve(basePath, project.basePath);
+    try {
+        if (project.basePath)
+            basePath = path.resolve(basePath, project.basePath);
 
-    config.logger.debug(`included project basePath ${basePath}`);
+        config.logger.debug(`included project basePath ${basePath}`);
 
-    const targetProject = config.manifest;
+        const targetProject = config.manifest;
 
-    // -- includes
+        // -- includes
 
-    if (project.includes) {
-        throw 'Nested inclusion not supported yet';
-    }
-
-    // -- actions in default packages
-
-    if (project.actions) {
-        mergeActions(basePath, '', targetProject, project.actions, true);
-    }
-
-    // -- packages
-
-    if (project.packages) {
-        if (!targetProject.hasOwnProperty('actions'))
-            targetProject.packages = {};
-
-        for (const pkgName in project.packages) {
-            // TODO: could support merging packages
-            if (targetProject.packages.hasOwnProperty(pkgName))
-                throw `A conflict occurred while attempting to include the package ${pkgName} from ${basePath}`;
-
-            const pkg = project.packages[pkgName];
-
-            if (pkg.actions)
-                mergeActions(basePath, pkgName, pkg, pkg.actions, false)
-
-            targetProject.packages[pkgName] = pkg;
+        if (project.includes) {
+            throw 'Nested inclusion not supported yet';
         }
-    }
 
-    // -- triggers
+        // -- actions in default packages
 
-    if (project.triggers) {
-        if (!targetProject.hasOwnProperty('triggers'))
-            targetProject.triggers = {};
-
-        for (const triggerName in project.triggers) {
-            if (targetProject.triggers.hasOwnProperty(triggerName))
-                throw `A conflict occurred while attempting to include the trigger ${triggerName} from ${basePath}`;
-            targetProject.triggers[triggerName] = project.triggers[triggerName];
+        if (project.actions) {
+            mergeActions(basePath, '', targetProject, project.actions, true);
         }
-    }
 
-    // -- rules
+        // -- packages
 
-    if (project.rules) {
-        if (!targetProject.hasOwnProperty('rules'))
-            targetProject.rules = {};
+        if (project.packages) {
+            if (!targetProject.hasOwnProperty('packages'))
+                targetProject.packages = {};
 
-        for (const ruleName in project.rules) {
-            if (targetProject.rules.hasOwnProperty(ruleName))
-                throw `A conflict occurred while attempting to include the rule ${ruleName} from ${basePath}`;
-            targetProject.rules[ruleName] = project.rules[ruleName];
+            for (const pkgName in project.packages) {
+                // TODO: could support merging packages
+                if (targetProject.packages.hasOwnProperty(pkgName))
+                    throw `A conflict occurred while attempting to include the package ${pkgName} from ${basePath}`;
+
+                const pkg = project.packages[pkgName];
+
+                if (pkg.actions)
+                    mergeActions(basePath, pkgName, pkg, pkg.actions, false)
+
+                targetProject.packages[pkgName] = pkg;
+            }
         }
-    }
 
-    // -- apis
+        // -- triggers
 
-    if (project.apis) {
-        if (!targetProject.hasOwnProperty('apis'))
-            targetProject.apis = {};
+        if (project.triggers) {
+            if (!targetProject.hasOwnProperty('triggers'))
+                targetProject.triggers = {};
 
-        for (const apiname in project.apis) {
-            if (targetProject.apis.hasOwnProperty(apiname))
-                throw `A conflict occurred while attempting to include the api ${apiname} from ${basePath}`;
-
-            targetProject.apis[apiname] = project.apis[apiname];
+            for (const triggerName in project.triggers) {
+                if (targetProject.triggers.hasOwnProperty(triggerName))
+                    throw `A conflict occurred while attempting to include the trigger ${triggerName} from ${basePath}`;
+                targetProject.triggers[triggerName] = project.triggers[triggerName];
+            }
         }
+
+        // -- rules
+
+        if (project.rules) {
+            if (!targetProject.hasOwnProperty('rules'))
+                targetProject.rules = {};
+
+            for (const ruleName in project.rules) {
+                if (targetProject.rules.hasOwnProperty(ruleName))
+                    throw `A conflict occurred while attempting to include the rule ${ruleName} from ${basePath}`;
+                targetProject.rules[ruleName] = project.rules[ruleName];
+            }
+        }
+
+        // -- apis
+
+        if (project.apis) {
+            if (!targetProject.hasOwnProperty('apis'))
+                targetProject.apis = {};
+
+            for (const apiname in project.apis) {
+                if (targetProject.apis.hasOwnProperty(apiname))
+                    throw `A conflict occurred while attempting to include the api ${apiname} from ${basePath}`;
+
+                targetProject.apis[apiname] = project.apis[apiname];
+            }
+        }
+    } catch (e) {
+        console.log(e);
+        throw e
     }
 }
 
@@ -491,18 +501,29 @@ const fakeow = {
 
 async function gitClone(config: types.Config, include) {
     const location = include.location.substr(4);
-    const parsed = parse(location);
-    if (!parsed.hostname)
-        throw `Malformed location ${location} in ${include}. (missing hostname)`;
-    const gitIdx = parsed.href.indexOf('.git');
+
+    const gitIdx = location.indexOf('.git');
     if (gitIdx === -1)
-        throw `Malformed location ${location} in ${include}. (missing .git)`;
-    const repo = parsed.href.substring(0, gitIdx + 4);
+        throw `Malformed git repository ${location} (missing .git)`;
 
-    const pathIdx = parsed.path.indexOf('.git');
-    const srepo = parsed.path.substring(0, pathIdx);
+    let localDir;
+    let repo = location.substring(0, gitIdx + 4);
+    if (repo.startsWith('ssh://')) {
+        repo = repo.substr(6);
+        // must be of the form git@<hostname>:<user>/<repository>.git
 
-    const localDir = path.join(config.cache, 'git', parsed.hostname, srepo);
+        const matched = repo.match(/^git@([^:]+):([^\/]+)\/(.+)\.git$/);
+        if (!matched)
+            throw `Malformed git repository ${repo}`;
+        localDir = path.join(config.cache, 'git', matched[2], matched[3]);
+    } else {
+        const parsed = parse(repo);
+
+        const pathIdx = parsed.path.indexOf('.git');
+        const srepo = parsed.path.substring(0, pathIdx);
+        localDir = path.join(config.cache, 'git', srepo);
+    }
+
 
     if (await fs.pathExists(localDir)) {
         config.logger.debug(`git fetch ${repo} in ${localDir}`);
@@ -514,10 +535,19 @@ async function gitClone(config: types.Config, include) {
         await simpleGit(localDir).clone(repo, '.');
     }
 
-    if (parsed.hash) {
-        await simpleGit(localDir).checkout(parsed.hash);
+    const hashIdx = location.indexOf('#');
+    if (hashIdx !== -1) {
+        const hash = location.substr(hashIdx);
+        // TODO: check syntax
+
+        await simpleGit(localDir).checkout(hash);
     }
-    return path.join(localDir, parsed.path.substr(pathIdx + 5));
+
+    let projectFilePath = location.substr(gitIdx + 5);
+    if (hashIdx !== -1)
+        projectFilePath = projectFilePath.substring(0, projectFilePath.indexOf('#'));
+
+    return path.join(localDir, projectFilePath);
 }
 
 function resolveActionLocation(basePath: string, pkgName: string, actionName: string, location: string) {
@@ -528,8 +558,8 @@ function resolveActionLocation(basePath: string, pkgName: string, actionName: st
         location = pkgName ? path.join('packages', pkgName) : '';
         location = path.join(location, 'actions', actionName);
     }
-    location = path.resolve(basePath, location)
-
+    location = path.resolve(basePath, location);
+    console.log(location)
     if (fs.statSync(location).isDirectory()) {
         if (fs.existsSync(path.join(location, 'Dockerfile')))
             location = path.join(location, 'Dockerfile');
@@ -538,6 +568,7 @@ function resolveActionLocation(basePath: string, pkgName: string, actionName: st
         else if (fs.existsSync(path.join(location, `${actionName}.js`)))
             location = path.join(location, `${actionName}.js`);
     }
+
     if (!fs.existsSync(location))
         throw `Action location does not exist ${location}`;
 

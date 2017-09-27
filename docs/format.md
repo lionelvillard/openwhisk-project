@@ -68,7 +68,7 @@ entities contained in the main configuration, potentially breaking some rules, s
 A *object* representing a project configuration to include.
 
 When the included project namespace is `_`, its configuration is merged into this configuration, as follows:
-- nested `include` are currently not supported and an error is raised
+- nested `includes` are currently not supported and an error is raised
 - an error is raised when attempting to include an entity with the same name as an entity (including packages)
 
 ### Properties
@@ -78,7 +78,7 @@ When the included project namespace is `_`, its configuration is merged into thi
    URL to the project configuration file. 
    
    Supported format: 
-     - git: `git+<protocol>/[<user>[:<password>]@]<hostname>[:<port>][:][/]<path>#<commit-ish>`, where `protocol` is one of `ssh`, `http`, `https`, or `file`. See [here](https://www.kernel.org/pub/software/scm/git/docs/gitrevisions.html#_specifying_revisions) for support commit-ish formats.
+     - git: `git+<protocol>://[<user>[:<password>]@]<hostname>[:<port>][:][/]<path>#<commit-ish>`, where `protocol` is one of `ssh`, `http`, `https`, or `file`. See [here](https://www.kernel.org/pub/software/scm/git/docs/gitrevisions.html#_specifying_revisions) for support commit-ish formats.
      - file: `./<path>` or `/<path>`
 
 ### Example
