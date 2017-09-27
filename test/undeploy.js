@@ -52,7 +52,7 @@ describe('testing undeploy', function () {
 
     it('undeploy managed action, same manifest', async function () {
 
-        await wskd.deploy({
+        await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
@@ -60,7 +60,7 @@ describe('testing undeploy', function () {
             force: true
         });
 
-        await wskd.deploy({
+        await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/nodejs/',
             cache: ctx.cacheDir,
