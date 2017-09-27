@@ -24,7 +24,7 @@ describe('sequence action', function () {
     before(utils.before(ctx));
     after(utils.after(ctx));
 
-    it('simple sequence', async function () {
+    it('ordered', async function () {
         const result = await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/sequences/',

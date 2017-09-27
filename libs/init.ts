@@ -83,9 +83,14 @@ async function resolveManifest(config: types.Config) {
         config.logger.debug('no configuration found');
     }
 
-    if (config.manifest && config.manifest.basePath) {
-        config.basePath = path.resolve(config.basePath, config.manifest.basePath);
+    if (config.manifest) {
+        if (config.manifest.basePath)
+            config.basePath = path.resolve(config.basePath, config.manifest.basePath);
+
+         config.manifest.namespace = '_'; // For now   
     }
+
+
 
     config.logger.debug(`base path set to ${config.basePath}`);
     // ok no manifest, fine.
@@ -357,7 +362,7 @@ function mergeProject(config: types.Config, basePath: string, project: types.Pro
                 throw `A conflict occurred while attempting to include the package ${pkgName} from ${basePath}`;
 
             const pkg = project.packages[pkgName];
-            
+
             if (pkg.actions)
                 mergeActions(basePath, pkgName, pkg, pkg.actions, false)
 
@@ -400,7 +405,7 @@ function mergeProject(config: types.Config, basePath: string, project: types.Pro
         for (const apiname in project.apis) {
             if (targetProject.apis.hasOwnProperty(apiname))
                 throw `A conflict occurred while attempting to include the api ${apiname} from ${basePath}`;
-            
+
             targetProject.apis[apiname] = project.apis[apiname];
         }
     }

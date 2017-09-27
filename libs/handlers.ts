@@ -180,12 +180,7 @@ const handleCode = (ctx, action) => {
 async function handleDefaultAction(ctx, action) {
     const pkgName = action.packageName
     const actionName = action.actionName
-    if (!action.hasOwnProperty('location')) {
-        throw new Error(`Missing property 'location' in ${pkgName}/actions/${actionName}`)
-    }
-
-    action.location = path.resolve(ctx.basePath, action.location)
-    helpers.normalizeLocation(action)
+    
     const kind = helpers.getKind(action)
     if (!kind) {
         throw new Error(`Could not automatically determined 'kind' in ${pkgName}/actions/${actionName}`)
