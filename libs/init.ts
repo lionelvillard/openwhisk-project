@@ -21,8 +21,9 @@ import * as types from './types';
 import * as plugins from './pluginmgr';
 import * as expandHome from 'expand-home-dir';
 import { evaluate } from './interpolation';
-
-const utils = require('./utils');
+import { parse } from 'url';
+import * as utils from './utils';
+import * as simpleGit from 'simple-git/promise'
 
 export async function init(config: types.Config) {
     if (!config.logger)
@@ -34,7 +35,7 @@ export async function init(config: types.Config) {
     if (!config.ow) {
         config.ow = fakeow;
         config.dryrun = true;
-        config.logger.debug('perform a dryrun');
+        config.logger.debug('dryrun mode');
     }
 
     const ow = config.ow;
@@ -103,24 +104,27 @@ async function configCache(config: types.Config) {
             config.cache = expandHome('~/.openwhisk')
 
         await fs.mkdirs(config.cache) // async since using fs-extra
+    } else {
+        config.cache = path.resolve(config.cache);
     }
 
     config.logger.debug(`caching directory set to ${config.cache}`);
 }
 
 function configVariableSources(config: types.Config) {
-    // TODO: configurable
-    config.variableSources = [
-        (config, name) => process.env[name],
-        plugins.getVariableSourcePlugin('wskprops').resolveVariable
-    ];
-
+    if (!config.variableSources) {
+        // TODO: configurable
+        config.variableSources = [
+            (config, name) => process.env[name],
+            plugins.getVariableSourcePlugin('wskprops').resolveVariable
+        ];
+    }
 }
 
 
 // perform:
 // - validation 
-// - normalization (remove syntax sugar)
+// - normalization (remove syntax sugar, resolve location)
 // - interpolation (evaluate ${..})
 async function check(config: types.Config) {
     const manifest = config.manifest;
@@ -130,6 +134,7 @@ async function check(config: types.Config) {
 
     config.logger.debug('normalizing project configuration');
 
+    await checkIncludes(config, manifest);
     await checkPackages(config, manifest);
     await checkApis(config, manifest);
 
@@ -138,6 +143,30 @@ async function check(config: types.Config) {
         if (!(key in types.deploymentProperties)) {
             config.logger.warn(`property /${key} ignored`);
         }
+    }
+}
+
+async function checkIncludes(config: types.Config, manifest) {
+    const includes = manifest.includes;
+    if (includes) {
+        for (const include of includes) {
+            if (!include.location)
+                throw `Missing location in ${include}`;
+
+            let location = include.location.trim();
+            if (location.startsWith('git+')) {
+                location = await gitClone(config, include);
+            } else {
+                // File.
+                location = path.resolve(config.basePath, location);
+            }
+
+            // Currently only support one namespace so merge and resolve path!
+            const includedProject = yaml.load(location);
+            const basePath = path.dirname(location);
+            mergeProject(config, basePath, includedProject);
+        }
+        delete manifest.includes;
     }
 }
 
@@ -191,9 +220,9 @@ async function checkActions(config: types.Config, manifest, pkgName: string, act
 }
 
 async function checkAction(config: types.Config, manifest, pkgName: string, actions, actionName: string, action: types.Action) {
-    if (action.location) { // builtin basic action
+    if (action.hasOwnProperty('location')) { // builtin basic action
+        action.location = resolveActionLocation(config.basePath, pkgName, actionName, action.location);
 
-        // TODO
     } else if (action.sequence) { // builtin sequence action
 
         // TODO
@@ -246,7 +275,9 @@ async function checkApi(config: types.Config, manifest, apis, apiname: string, a
     }
 }
 
-async function applyConstributions(config: types.Config, manifest: types.Deployment, contributions: types.Contribution[], plugin) {
+// --- Plugin contributions
+
+async function applyConstributions(config: types.Config, manifest: types.Project, contributions: types.Contribution[], plugin) {
     if (contributions) {
         for (const contrib of contributions) {
             switch (contrib.kind) {
@@ -291,6 +322,106 @@ async function applyConstributions(config: types.Config, manifest: types.Deploym
         }
     }
 }
+
+// --- Project configuration merge
+
+function mergeProject(config: types.Config, basePath: string, project: types.Project) {
+    if (project.basePath)
+        basePath = path.resolve(basePath, project.basePath);
+
+    config.logger.debug(`included project basePath ${basePath}`);
+
+    const targetProject = config.manifest;
+
+    // -- includes
+
+    if (project.includes) {
+        throw 'Nested inclusion not supported yet';
+    }
+
+    // -- actions in default packages
+
+    if (project.actions) {
+        mergeActions(basePath, '', targetProject, project.actions, true);
+    }
+
+    // -- packages
+
+    if (project.packages) {
+        if (!targetProject.hasOwnProperty('actions'))
+            targetProject.packages = {};
+
+        for (const pkgName in project.packages) {
+            // TODO: could support merging packages
+            if (targetProject.packages.hasOwnProperty(pkgName))
+                throw `A conflict occurred while attempting to include the package ${pkgName} from ${basePath}`;
+
+            const pkg = project.packages[pkgName];
+            
+            if (pkg.actions)
+                mergeActions(basePath, pkgName, pkg, pkg.actions, false)
+
+            targetProject.packages[pkgName] = pkg;
+        }
+    }
+
+    // -- triggers
+
+    if (project.triggers) {
+        if (!targetProject.hasOwnProperty('triggers'))
+            targetProject.triggers = {};
+
+        for (const triggerName in project.triggers) {
+            if (targetProject.triggers.hasOwnProperty(triggerName))
+                throw `A conflict occurred while attempting to include the trigger ${triggerName} from ${basePath}`;
+            targetProject.triggers[triggerName] = project.triggers[triggerName];
+        }
+    }
+
+    // -- rules
+
+    if (project.rules) {
+        if (!targetProject.hasOwnProperty('rules'))
+            targetProject.rules = {};
+
+        for (const ruleName in project.rules) {
+            if (targetProject.rules.hasOwnProperty(ruleName))
+                throw `A conflict occurred while attempting to include the rule ${ruleName} from ${basePath}`;
+            targetProject.rules[ruleName] = project.rules[ruleName];
+        }
+    }
+
+    // -- apis
+
+    if (project.apis) {
+        if (!targetProject.hasOwnProperty('apis'))
+            targetProject.apis = {};
+
+        for (const apiname in project.apis) {
+            if (targetProject.apis.hasOwnProperty(apiname))
+                throw `A conflict occurred while attempting to include the api ${apiname} from ${basePath}`;
+            
+            targetProject.apis[apiname] = project.apis[apiname];
+        }
+    }
+}
+
+function mergeActions(basePath: string, pkgName: string, pkg: types.Package, actions: types.Action[], checkConflict: boolean) {
+    if (!pkg.hasOwnProperty('actions'))
+        pkg.actions = {};
+
+    for (const actionName in actions) {
+        if (checkConflict && pkg.actions.hasOwnProperty(actionName))
+            throw `A conflict occurred while attempting to include the action ${actionName} from ${basePath}`;
+
+        const action = actions[actionName];
+        if (action.hasOwnProperty('location'))
+            action.location = resolveActionLocation(basePath, '', actionName, action.location);
+
+        pkg.actions[actionName] = action;
+    }
+}
+
 
 // Mockup OpenWhisk client.
 const fakeow = {
@@ -350,4 +481,61 @@ const fakeow = {
         delete: () => Promise.resolve(true),
         update: () => Promise.resolve(true)
     }
+}
+
+
+async function gitClone(config: types.Config, include) {
+    const location = include.location.substr(4);
+    const parsed = parse(location);
+    if (!parsed.hostname)
+        throw `Malformed location ${location} in ${include}. (missing hostname)`;
+    const gitIdx = parsed.href.indexOf('.git');
+    if (gitIdx === -1)
+        throw `Malformed location ${location} in ${include}. (missing .git)`;
+    const repo = parsed.href.substring(0, gitIdx + 4);
+
+    const pathIdx = parsed.path.indexOf('.git');
+    const srepo = parsed.path.substring(0, pathIdx);
+
+    const localDir = path.join(config.cache, 'git', parsed.hostname, srepo);
+
+    if (await fs.pathExists(localDir)) {
+        config.logger.debug(`git fetch ${repo} in ${localDir}`);
+        await simpleGit(localDir).fetch(null, null, ['--all']);
+
+    } else {
+        await fs.ensureDir(localDir);
+        config.logger.debug(`git clone ${repo} in ${localDir}`);
+        await simpleGit(localDir).clone(repo, '.');
+    }
+
+    if (parsed.hash) {
+        await simpleGit(localDir).checkout(parsed.hash);
+    }
+    return path.join(localDir, parsed.path.substr(pathIdx + 5));
+}
+
+function resolveActionLocation(basePath: string, pkgName: string, actionName: string, location: string) {
+    if (path.isAbsolute(location))
+        return location;
+
+    if (!location) {
+        location = pkgName ? path.join('packages', pkgName) : '';
+        location = path.join(location, 'actions', actionName);
+    }
+    location = path.resolve(basePath, location)
+
+    if (fs.statSync(location).isDirectory()) {
+        if (fs.existsSync(path.join(location, 'Dockerfile')))
+            location = path.join(location, 'Dockerfile');
+        else if (fs.existsSync(path.join(location, 'package.json')))
+            location = path.join(location, 'package.json');
+        else if (fs.existsSync(path.join(location, `${actionName}.js`)))
+            location = path.join(location, `${actionName}.js`);
+    }
+    if (!fs.existsSync(location))
+        throw `Action location does not exist ${location}`;
+
+
+    return location;
 }

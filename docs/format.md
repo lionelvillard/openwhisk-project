@@ -33,7 +33,7 @@ A *deployment* is an *object* representing a collection of OpenWhisk entities (a
    - otherwise: if there is a `basePath` specified in the deployment file and it is relative, resolve it by using the contextual base path (see below), and use it.
    - otherwise: use the directory containing the deployment file.
 
-- [`includes`](#includes) (array, optional)
+- [`includes`](#includes) (array, optional): includes external project configurations
 - [`packages`](#packages) (object, optional)
 - [`actions`](#actions) (object, optional)
 - [`triggers`](#triggers) (object, optional)
@@ -47,7 +47,7 @@ name: example
 
 basePath: .
 
-includes:  # includes other deployment
+includes:  # includes other project configuration
 actions:   # actions in the default package
 packages:  # actions in packages and package bindings
 triggers:  
@@ -57,30 +57,35 @@ apis:
 
 ## `includes` 
 
-An *array* of `include` *objects* representing the inclusion of an external manifest file 
-into this manifest, as is. 
+An *array* of `include` *objects* representing the inclusion of an external project configuration  
+into this configuration. 
 
-All entities specified in the external file are merged with the 
-entities contained in the main manifest, potentially breaking some rules, such as unique package name
+All entities specified in the external configuration are merged with the 
+entities contained in the main configuration, potentially breaking some rules, such as unique package name
 
 ## `include`
  
-A *object* representing a manifest to include.
+A *object* representing a project configuration to include.
+
+When the included project namespace is `_`, its configuration is merged into this configuration, as follows:
+- nested `include` are currently not supported and an error is raised
+- an error is raised when attempting to include an entity with the same name as an entity (including packages)
 
 ### Properties
 
 - `location` (string, required): 
     
-   Path to the root directory containing the `manifest.yaml` file. 
+   URL to the project configuration file. 
    
    Supported format: 
-     - `github.com/{owner}/{repo}/{path}` 
- 
+     - git: `git+<protocol>/[<user>[:<password>]@]<hostname>[:<port>][:][/]<path>#<commit-ish>`, where `protocol` is one of `ssh`, `http`, `https`, or `file`. See [here](https://www.kernel.org/pub/software/scm/git/docs/gitrevisions.html#_specifying_revisions) for support commit-ish formats.
+     - file: `./<path>` or `/<path>`
+
 ### Example
 
 ```yaml
 includes:
-  - location: github.com/lionelvillard/openwhisk-deploy
+  - location: git+https://github.com/lionelvillard/openwhisk-deploy.git/project.yaml#master
 ```
 
 ## `packages`
@@ -148,7 +153,7 @@ An *object* representing an action. Extends [`baseAction`](#baseaction)
 
 - `location` (string, required): the action code location. Either a folder or a file.
    
-   Must be a path relative to the directory containing the deployment file.
+   Must be a path relative to the directory containing the project file.
 
 - `kind` (enum, optional): the action kind. Determined automatically (see below)  
    - `nodejs:default`: node js (latest builtin version) action. This is the default kind when 

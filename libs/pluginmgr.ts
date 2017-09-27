@@ -31,10 +31,15 @@ const variableSourcePlugins = {};
 const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'annotations', 'sequence', 'extra', 'actionName', 'packageName', 'docker'];
 const RESERVED_API_KEYWORDS = [];
 
+let loaded = false;
+
 // Build plugin index.
 export async function init(config: types.Config) {
-    config.logger.info(`initializing plugins ${PLUGINS_ROOT}`);
-    await registerAll(config);
+    if (!loaded) {
+        config.logger.info(`initializing plugins ${PLUGINS_ROOT}`);
+        await registerAll(config);
+        loaded = true;
+    }
 }
 
 // Register plugin at given location 

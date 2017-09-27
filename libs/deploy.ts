@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 const fs = require('fs')
-const simpleGit = require('simple-git')
 const logger = require('log4js').getLogger()
 
 const names = require('./names')
@@ -27,7 +26,9 @@ export async function apply(args) {
     await init.init(args);
 
     try {
-        await deployIncludes(args);
+        // Renable when supporting multiple namespace deployment
+        // await deployIncludes(args);
+
         await deployPackages(args, false); // bindings
         await deployPackages(args, true);  // new packages
         await deployActions(args);
@@ -39,65 +40,7 @@ export async function apply(args) {
         return Promise.reject(e)
     }
 }
-
-function deployIncludes(args) {
-    const manifest = args.manifest
-    args.manifest.namespace = '_'
-    if (manifest.hasOwnProperty('includes')) {
-        const includes = manifest.includes
-
-        let promises = []
-
-        // TODO: check for cycles!!
-
-        for (const include of includes) {
-
-            const location = include.location
-            const github = location.trim().match(/^github\.com\/([^/]*)\/([^/]*)(\/(.*))?$/)
-
-            if (!github) {
-                throw `Invalid GitHub repository: ${location}`
-            }
-            const owner = github[1]
-            const repo = github[2]
-            const path = github[4] || ''
-            const targetDir = `${args.basePath}/deps/${repo}`
-
-            let subdeploy = {
-                ow: args.ow,
-                basePath: `${targetDir}/${path}`,
-                cache: args.cache,
-                location: 'manifest.yaml',
-                logger_level: args.logger_level,
-                force: args.force
-            }
-
-            const promise = checkFileExists(targetDir)
-                .then(cloneRepo(owner, repo, targetDir))
-                .then(() => {
-                    logger.debug(`sub-deploy ${location}`)
-                    return apply(subdeploy)
-                })
-
-            promises.push(promise)
-        }
-        return Promise.all(promises)
-    }
-
-    return true
-}
-
-const cloneRepo = (owner, repo, targetDir) => exists => new Promise(resolve => {
-    if (exists)
-        resolve()
-    else {
-        logger.debug(`Clone github repository ${owner}/${repo} in ${targetDir}`)
-        simpleGit().clone(`https://github.com/${owner}/${repo}`, targetDir, () => {
-            resolve()
-        })
-    }
-})
-
+ 
 // Deploy packages (excluding bindings, and package content)
 function deployPackages(args, bindings) {
     const manifest = args.manifest
@@ -263,7 +206,6 @@ const deployRule = (ow, ruleName, trigger, action) => {
 
 enum API_VERBS { GET, PUT, POST, DELETE, PATCH, HEAD, OPTIONS };
 
-
 async function deployApis(args) {
     const manifest = args.manifest;
     const apis = manifest.apis;
@@ -302,15 +244,6 @@ async function deployApis(args) {
             return Promise.all(promises)
     }
 }
-
-// -- Utils
-
-function checkFileExists(file) {
-    return new Promise(resolve => {
-        fs.exists(file, result => resolve(result))
-    })
-}
-
 
 // -- Dependency graph
 
@@ -414,5 +347,4 @@ function remainingActions(graph) {
     }
     return hasActions ? actions : null;
 }
-
-// --- 
+ 

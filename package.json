@@ -16,6 +16,7 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
+    "@types/fs-extra": "^4.0.2",
     "child-process-promise": "^2.2.1",
     "expand-home-dir": "0.0.3",
     "fs-extra": "^3.0.1",
