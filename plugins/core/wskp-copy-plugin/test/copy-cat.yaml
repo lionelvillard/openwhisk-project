@@ -1,0 +1,7 @@
+packages:
+  plugin-copy:
+    actions:
+      mycat:
+        copy: /whisk.system/utils/cat
+
+        

@@ -236,9 +236,6 @@ async function checkAction(config: types.Config, manifest, pkgName: string, acti
     } else if (action.sequence) { // builtin sequence action
 
         // TODO
-    } else if (action.copy) { // builtin copy action
-
-        // TODO
     } else if (action.code) { // builtin inlined action
 
         // TODO

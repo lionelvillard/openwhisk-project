@@ -24,75 +24,6 @@ import * as fs from 'fs-extra';
 
 const helpers = require('./helpers')
 
-// --- Copy action
-
-const handleCopy = (ctx, action) => {
-    const manifest = ctx.manifest
-    const sourceActionName = names.resolveQName(action.copy, manifest.namespace, action.packageName)
-
-    const sourceAction = findAction(manifest, sourceActionName)
-    if (sourceAction) {
-        const patchedAction = Object.assign(sourceAction, { actionName: action.actionName })
-        return lookupActionHandler(patchedAction).deploy(ctx, patchedAction)
-    }
-
-    const params = helpers.getKeyValues(action.inputs, ctx)
-    const annotations = utils.getAnnotations(ctx, action.annotations)
-    const limits = action.limits || {}
-
-    const qname = names.makeQName('_', action.packageName, action.actionName)
-
-    return ctx.ow.actions.get({ name: sourceActionName })
-        .then(deployCopyAction(ctx, qname, params, annotations, limits))
-}
-
-const dependsOnCopy = (namespace, action) => {
-    return [names.resolveQName(action.copy, namespace, action.packageName)]
-}
-
-const deployCopyAction = (ctx, actionName, params, annos, newlimits) => sourceAction => {
-    const actionParams = helpers.indexKeyValues(sourceAction.parameters)
-    const actionAnnos = helpers.indexKeyValues(sourceAction.annotations)
-
-    params.forEach(kv => actionParams[kv.key] = kv.value)
-    annos.forEach(kv => actionAnnos[kv.key] = kv.value)
-
-    const limits = sourceAction.limits
-    if (newlimits.timeout)
-        limits.timeout = newlimits.timeout
-    if (newlimits.memory)
-        limits.memory = newlimits.memory
-    if (newlimits.logs)
-        limits.logs = newlimits.logs
-
-    const parameters = helpers.getKeyValues(actionParams)
-    const annotations = utils.getAnnotations(ctx, actionAnnos);
-
-    return utils.deployRawAction(ctx, actionName,
-        {
-            exec: sourceAction.exec,
-            parameters,
-            annotations,
-            limits
-        });
-}
-
-// Look for the action of the given full-qualified name in the manifest. Skip includes declarations (for now)
-const findAction = (manifest, actionName) => {
-    const parts = names.parseQName(actionName)
-    const packages = manifest.packages
-    for (const pkgName in packages) {
-        if (parts.pkg === pkgName) {
-            const pkg = packages[pkgName] || {}
-            const actions = pkg.actions || {}
-            const action = actions[parts.name]
-            if (action) {
-                return action
-            }
-        }
-    }
-}
-
 // --- Sequence
 
 const handleSequence = (ctx, action) => {
@@ -200,37 +131,12 @@ async function handleDefaultAction(ctx, action) {
     return await utils.deployRawAction(ctx, qname, { exec: { kind, code }, parameters, annotations, limits });
 }
 
-// // --- Plugin
-
-// const handlePluginAction = plugin => (ctx, action) => {
-//     const context = { pkgName: action.packageName, actionName: action.actionName, action }
-//     let entities = plugin.getEntities(context)
-//     if (!Array.isArray(entities))
-//         entities = [entities]
-
-//     const promises = []
-//     for (const newaction of entities) {
-//         // handle only actions for now
-//         if (!newaction.hasOwnProperty('actionName'))
-//             throw new Error(`Plugin ${plugin.__pluginName} returned an invalid entity ${JSON.stringify(entity)}`)
-
-//         newaction.packageName = action.packageName
-//         const promise = lookupActionHandler(newaction).deploy(ow, ctx, newaction)
-//         promises.push(promise)
-//     }
-//     return Promise.all(promises)
-// }
-
 // --- Handlers manager
 
 const actionsHandlers = {
     sequence: {
         deploy: handleSequence,
         dependsOn: dependsOnSequence
-    },
-    copy: {
-        deploy: handleCopy,
-        dependsOn: dependsOnCopy
     },
     code: {
         deploy: handleCode,
@@ -277,22 +183,4 @@ export async function build(config, pkgName, actionName, action) {
         binary: false
     }
 }
-
-// --- Asset builders
-
-// // TODO: deprecate
-// const buildAction = (context, kind, action) => {
-//     const baseLocInCache = path.dirname(path.join(context.cache, path.relative('test', action.location)))
-//     const builderArgs = {
-//         target: baseLocInCache,
-//         action
-//     }
-
-//     const basekind = kind.split(':')[0]
-//     switch (basekind) {
-//         case 'nodejs':
-//             return builder.nodejs.build(builderArgs)
-//         default:
-//             throw `Unsupported action kind: ${kind}`
-//     }
-// }
+ 

@@ -1,0 +1,8 @@
+packages:
+  plugin-copy:
+    actions:
+      mycat2:
+        copy: /whisk.system/utils/cat
+        inputs:
+          lines: ['first', 'second']
+        

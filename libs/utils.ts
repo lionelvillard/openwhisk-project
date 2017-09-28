@@ -78,7 +78,6 @@ const resolveValue = (value, args) => {
     return value
 }
 
-
 // --- low level deployment functions
 
 export const deployRawAction = (ctx, actionName, action) => {
