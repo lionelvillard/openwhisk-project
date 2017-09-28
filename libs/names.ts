@@ -62,7 +62,7 @@ export function resolveQName(qname, namespace, packageName) {
     let parts = parseQName(qname);
     parts.namespace = parts.namespace || namespace;
     parts.pkg = parts.pkg || packageName;
-    return `/${parts.namespace}/${parts.pkg}/${parts.name}`;
+    return `/${parts.namespace}${parts.pkg ? '/': ''}${parts.pkg}/${parts.name}`;
 };
 
 // Make qname from parts

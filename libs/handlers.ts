@@ -111,7 +111,7 @@ const handleCode = (ctx, action) => {
 async function handleDefaultAction(ctx, action) {
     const pkgName = action.packageName
     const actionName = action.actionName
-    
+
     const kind = helpers.getKind(action)
     if (!kind) {
         throw new Error(`Could not automatically determined 'kind' in ${pkgName}/actions/${actionName}`)
@@ -168,19 +168,19 @@ async function load(config, location: string) {
 
 // Generate action artifact to deploy
 export async function build(config, pkgName, actionName, action) {
-    if (action.builder) {
-        // const isFile = fs.statSync(action.location).isFile();
-        // let builddir = isFile ? path.join(path.dirname(action.location), 'build') : path.join(action.location, 'build');
-        // //const builddir = isFile ? path.join(path.dirname(action.location), 'build') : path.join(action.location, 'build');
+    if (action.builder && action.builder.name) {
         const builddir = path.join(config.cache, 'build', pkgName, actionName);
 
         const name = action.builder.name;
         const plugin = plugins.getActionBuilderPlugin(name);
-        return await plugin.build(config, pkgName, actionName, action, builddir);
+
+        if (plugin) {
+            return await plugin.build(config, pkgName, actionName, action, builddir);
+        }
+        config.logger.fatal(`Could not find builder ${name}`);
     }
     return {
         location: action.location,
         binary: false
     }
 }
- 

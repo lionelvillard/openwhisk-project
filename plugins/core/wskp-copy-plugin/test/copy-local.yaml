@@ -1,0 +1,30 @@
+packages:
+  plugin-copy-local:
+    actions:
+      local:
+        kind: nodejs
+        code: const main = ({msg}) => ({msg});
+        inputs:
+          msg: base
+
+      local-copy:
+        copy: local
+      
+      local-copy-param:
+        copy: local
+        inputs:
+          msg: local-copy-param
+
+      local-copy-of-copy:
+        copy: local-copy
+        inputs:
+          msg: local-copy-of-copy
+
+  plugin-copy-local2:
+    actions:
+      local-copy-other-package:
+        copy: plugin-copy-local/local
+        inputs:
+          msg: local-copy-other-package
+
+ 

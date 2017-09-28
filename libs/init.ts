@@ -23,7 +23,8 @@ import * as expandHome from 'expand-home-dir';
 import { evaluate } from './interpolation';
 import { parse } from 'url';
 import * as utils from './utils';
-import * as simpleGit from 'simple-git/promise'
+import * as simpleGit from 'simple-git/promise';
+import * as stringify from 'json-stringify-safe';
 
 export async function init(config: types.Config) {
     if (!config.logger)
@@ -63,7 +64,8 @@ export async function init(config: types.Config) {
 
     await check(config);
 
-    config.logger.debug(JSON.stringify(config, null, 2));
+    config.logger.debug(stringify(config, null, 2));
+
 }
 
 async function resolveManifest(config: types.Config) {
@@ -139,7 +141,6 @@ async function check(config: types.Config) {
 
     config.logger.debug('normalizing project configuration');
 
-
     await checkIncludes(config, manifest);
 
     if (manifest.actions)
@@ -154,6 +155,8 @@ async function check(config: types.Config) {
             config.logger.warn(`property /${key} ignored`);
         }
     }
+    config.logger.debug('normalization done');
+    
 }
 
 async function checkIncludes(config: types.Config, manifest) {

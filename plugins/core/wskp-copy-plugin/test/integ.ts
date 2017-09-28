@@ -56,4 +56,43 @@ class copyInteg {
         });
         assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' });
     }
+
+
+    @test('Copy within same project')
+    async copy_same() {
+        await wskd.deploy.apply({
+            ow: this.ctx.ow,
+            location: 'test/copy-local.yaml'
+        });
+
+        let action = await this.ctx.ow.actions.invoke({
+            actionName: 'plugin-copy-local/local',
+            blocking: true
+        });
+        assert.deepEqual(action.response.result, { msg: 'base' });
+    
+        action = await this.ctx.ow.actions.invoke({
+            actionName: 'plugin-copy-local/local-copy',
+            blocking: true
+        });
+        assert.deepEqual(action.response.result, { msg: 'base' });
+
+        action = await this.ctx.ow.actions.invoke({
+            actionName: 'plugin-copy-local/local-copy-param',
+            blocking: true
+        });
+        assert.deepEqual(action.response.result, { msg: 'local-copy-param' });
+
+        action = await this.ctx.ow.actions.invoke({
+            actionName: 'plugin-copy-local/local-copy-of-copy',
+            blocking: true
+        });
+        assert.deepEqual(action.response.result, { msg: 'local-copy-of-copy' });
+
+        action = await this.ctx.ow.actions.invoke({
+            actionName: 'plugin-copy-local2/local-copy-other-package',
+            blocking: true
+        });
+        assert.deepEqual(action.response.result, { msg: 'local-copy-other-package' });
+    }
 }
