@@ -134,7 +134,7 @@ An error is raised when a cyclic dependency is detected.
 
 ### Properties
 
-- `{action-name}` ([`action`](#action) | [`sequence`](#sequence) | [`copy`](#copy) | [`inline`](#inline) | [`docker`](#inline), optional)
+- `{action-name}` ([`action`](#action) | [`sequence`](#sequence) | [`copy`](#copy) | [`inline`](#inline), optional)
 
   `action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
   and must be unique among the list of action names.
@@ -153,15 +153,35 @@ An *object* representing an action. Extends [`baseAction`](#baseaction)
 
 - `location` (string, required): the action code location. Either a folder or a file.
    
-   Must be a path relative to the directory containing the project file.
+   Relative paths are resolved by using the in-scope `basePath` value.
 
 - `kind` (enum, optional): the action kind. Determined automatically (see below)  
-   - `nodejs:default`: node js (latest builtin version) action. This is the default kind when 
-       - the location points to a file with the extension `.js`
-       - the location points to `package.json` 
-       - the location points to a folder containing `package.json` 
-   - `nodejs:6`: builtin node js 6.* action. See the [nodejs6 docker file](https://raw.githubusercontent.com/apache/incubator-openwhisk/master/core/nodejs6Action/Dockerfile) for the details of which npm packages are available. 
-   
+
+  | Actual kind | Specified Kind | Default When |
+  |----------------|-------------|--------------|
+  | [nodejs:6](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#javascript-runtime-environments) | nodejs <br/> nodejs:6 <br/> nodejs:default |file extension is `.js` <br/> file name is `package.json` </br> folder contains `package.json`|
+  | [python:2](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#python-2-actions)  | python <br/> python:2 | file extension is `.py`
+  | [python:3](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#python-3-actions)  | python:3 |  
+  | [java](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-and-invoking-an-action-1) | java | file extension is `.jar` <br/> | 
+  | [php:7.1](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-and-invoking-an-action-1) | php <br/> php:7.1 | file extension is `.php` <br/> | 
+  | [swift:3.1.1](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#swift-actions) | swift <br/> swift:3.1.1 | file extension is `.swift` | 
+  | [swift:3](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#swift-actions) | swift <br/> swift:3 |   | 
+  | [docker](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-docker-actions) | blackbox | file  is `Dockefile` <br/> folder contains `Dockerfile` <br/> action has `image` property | 
+
+- `main` (string, optional): the action entry point. Only valid for [Java](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-java-actions) (no default), [PHP](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-and-invoking-a-php-action) (default is `main`) and [Python](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-and-invoking-a-python-action) (default is `main`).
+
+- `image` (string, optional): a docker image.
+
+### Example
+
+```yaml
+actions:
+  docker-action:
+    image: openwhisk/dockerskeleton
+```
+
+
+
 - `zip` (boolean, optional, default: false): whether to zip the action. 
    
    - For `nodejs` action, `npm install --production` is run before `zip`. symlinks are dereferenced. 
@@ -255,22 +275,6 @@ packages:
     actions:
       mysequence:
         sequence: /whisk.system/utils/echo, /whisk.system/utils/cat
-```
-
-## `docker`
-
-A docker action. See [docker action](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-docker-actions) for more details
-
-### Properties
-
-- `docker` (string, required): a docker image.
-
-### Example
-
-```yaml
-actions:
-  docker-action:
-    image: openwhisk/dockerskeleton
 ```
 
 ## `baseAction`

@@ -1,0 +1,6 @@
+packages:
+  java:
+    actions:
+      hello:
+        location: ./hello.jar
+        main: Hello

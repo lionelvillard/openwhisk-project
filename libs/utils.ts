@@ -43,17 +43,17 @@ export const initFromBaseAction = baseAction => {
 
 // --- Conversion functions from manifest format to rest params
 
-export const getAnnotations = (config, annotations) => {
-    const converted = getKeyValues(annotations, config);
+export const getAnnotations = (config, annotations) : any => {
+    const converted = getKeyValues(annotations);
     if (config.manifest.name) {
         converted.push({ key: 'managed', value: config.manifest.name });
     }
     return converted;
 }
 
-export const getKeyValues = (inputs, args) => {
+export const getKeyValues = inputs => {
     if (inputs) {
-        return Object.keys(inputs).map(key => ({ key, value: resolveValue(inputs[key], args) }))
+        return Object.keys(inputs).map(key => ({ key, value: inputs[key] }))
     }
     return []
 }

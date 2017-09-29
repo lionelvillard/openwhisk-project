@@ -21,15 +21,13 @@ import * as names from './names';
 import * as path from 'path';
 import * as plugins from './pluginmgr';
 import * as fs from 'fs-extra';
-
-const helpers = require('./helpers')
-
+ 
 // --- Sequence
 
 const handleSequence = (ctx, action) => {
     const manifest = ctx.manifest
     const components = getComponents(manifest.namespace, action.packageName, action.sequence)
-    const parameters = helpers.getKeyValues(action.inputs, ctx)
+    const parameters = utils.getKeyValues(action.inputs)
     const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
     const sequence = {
@@ -66,7 +64,7 @@ const dependsOnSequence = (namespace, action) => {
 const handleImage = (ctx, action) => {
     const manifest = ctx.manifest
     const image = action.image
-    const parameters = helpers.getKeyValues(action.inputs, ctx)
+    const parameters = utils.getKeyValues(action.inputs)
     const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
     const wskaction = {
@@ -88,9 +86,9 @@ const handleCode = (ctx, action) => {
     if (!action.hasOwnProperty('kind'))
         throw new Error(`Missing property 'kind' in packages/actions/${action.actionName}`)
 
-    const kind = helpers.getKind(action);
+    const kind = action.kind;
     const code = action.code;
-    const parameters = helpers.getKeyValues(action.inputs, ctx)
+    const parameters = utils.getKeyValues(action.inputs)
     const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
     const wskaction = {
@@ -106,18 +104,12 @@ const handleCode = (ctx, action) => {
 
 // --- Fallback
 
-// TODO: consider making this a plugin.
-
 async function handleDefaultAction(ctx, action) {
     const pkgName = action.packageName
     const actionName = action.actionName
+    const kind = action.kind;
 
-    const kind = helpers.getKind(action)
-    if (!kind) {
-        throw new Error(`Could not automatically determined 'kind' in ${pkgName}/actions/${actionName}`)
-    }
-
-    const parameters = helpers.getKeyValues(action.inputs, ctx)
+    const parameters = utils.getKeyValues(action.inputs)
     const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
 
@@ -127,8 +119,9 @@ async function handleDefaultAction(ctx, action) {
     const content = await load(ctx, artifact.location);
 
     const code = Buffer.from(content).toString(artifact.binary ? 'base64' : 'utf8');
+    const main = action.main;
 
-    return await utils.deployRawAction(ctx, qname, { exec: { kind, code }, parameters, annotations, limits });
+    return await utils.deployRawAction(ctx, qname, { exec: { kind, code, main }, parameters, annotations, limits });
 }
 
 // --- Handlers manager
@@ -181,6 +174,6 @@ export async function build(config, pkgName, actionName, action) {
     }
     return {
         location: action.location,
-        binary: false
+        binary: action.kind === 'java'
     }
 }

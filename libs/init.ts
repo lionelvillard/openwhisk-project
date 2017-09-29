@@ -156,7 +156,7 @@ async function check(config: types.Config) {
         }
     }
     config.logger.debug('normalization done');
-    
+
 }
 
 async function checkIncludes(config: types.Config, manifest) {
@@ -235,14 +235,17 @@ async function checkActions(config: types.Config, manifest, pkgName: string, act
 async function checkAction(config: types.Config, manifest, pkgName: string, actions, actionName: string, action: types.Action) {
     if (action.hasOwnProperty('location')) { // builtin basic action
         action.location = resolveActionLocation(config.basePath, pkgName, actionName, action.location);
+        action.kind = resolveKind(action);
+        action.main = resolveMain(action);
 
     } else if (action.sequence) { // builtin sequence action
 
         // TODO
     } else if (action.code) { // builtin inlined action
+        action.kind = resolveKind(action);
+        action.main = resolveMain(action);
 
-        // TODO
-    } else if (action.docker) { // builtin docker action
+    } else if (action.image) { // builtin docker action
 
         // TODO
     } else {
@@ -573,4 +576,69 @@ function resolveActionLocation(basePath: string, pkgName: string, actionName: st
 
 
     return location;
+}
+
+
+const kindsForExt = {
+    '.js': 'nodejs:6',
+    '.py': 'python:2',
+    '.swift': 'swift:3.1.1',
+    '.jar': 'java',
+    '.php': 'php'
+}
+
+const actualKinds = {
+    'nodejs': 'nodejs:6',
+    'nodejs:6': 'nodejs:6',
+    'nodejs:default': 'nodejs:6',
+    'python': 'python:2',
+    'python:2': 'python:2',
+    'python:3': 'python:3',
+    'java': 'java',
+    'php': 'php:7.1',
+    'swift': 'swift:3.1.1',
+    'swift:3.1.1': 'swift:3.1.1',
+    'swift:3': 'swift:3'
+}
+
+function resolveKind(action) {
+    let actual;
+    if (action.kind) {
+        const actual = actualKinds[action.kind];
+        if (actual)
+            return actual;
+    }
+
+    if (action.image)
+        return 'blackbox';
+
+    // location must be a file. (see resolveActionLocation)
+    if (action.location) {
+        const p = path.parse(action.location);
+        if (p.base === 'package.json')
+            return 'nodejs:6';
+
+        if (p.base === 'Dockerfile')
+            return 'blackbox';
+
+        actual = kindsForExt[p.ext];
+        if (actual)
+            return actual;
+    }
+
+    throw action.kind ? `Invalid action kind ${action.kind}` : `Missing action kind.`;
+}
+
+function resolveMain(action) {
+    switch (action.kind) {
+        case 'java':
+            if (!action.main)
+                throw 'Missing action main';
+                
+            return action.main;
+        case 'php:7.1':
+        case 'python:2':
+        case 'python:3':
+            return action.main || 'main';
+    }
 }

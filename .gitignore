@@ -13,3 +13,4 @@ examples/*
 /libs/*.js
 /index.js
 .openwhisk
+*.class

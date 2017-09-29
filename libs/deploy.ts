@@ -13,34 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const fs = require('fs')
-const logger = require('log4js').getLogger()
+import * as fs from 'fs';
+import { getLogger } from 'log4js'
 
-const names = require('./names')
-const utils = require('./utils')
-const handlers = require('./handlers')
-const helpers = require('./helpers')
-const init = require('./init')
+import * as names from './names';
+import * as utils from './utils';
+import * as handlers from './handlers';
+import * as init from './init';
 
-export async function apply(args) {
-    await init.init(args);
+export async function apply(config) {
+    await init.init(config);
 
     try {
         // Renable when supporting multiple namespace deployment
         // await deployIncludes(args);
 
-        await deployPackages(args, false); // bindings
-        await deployPackages(args, true);  // new packages
-        await deployActions(args);
-        await deployTriggers(args);
-        await deployRules(args);
-        await deployApis(args);
+        await deployPackages(config, false); // bindings
+        await deployPackages(config, true);  // new packages
+        await deployActions(config);
+        await deployTriggers(config);
+        await deployRules(config);
+        await deployApis(config);
     } catch (e) {
-        logger.error(e)
+        config.logger.error(e)
         return Promise.reject(e)
     }
 }
- 
+
 // Deploy packages (excluding bindings, and package content)
 function deployPackages(args, bindings) {
     const manifest = args.manifest
@@ -63,7 +62,7 @@ function deployPackages(args, bindings) {
                         name: qname.name
                     }
                 }
-                const parameters = helpers.getKeyValues(pkg.inputs)
+                const parameters = utils.getKeyValues(pkg.inputs)
                 const annotations = utils.getAnnotations(args, pkg.annotations)
                 const publish = pkg.hasOwnProperty('publish') ? pkg.publish : false
 
@@ -133,7 +132,7 @@ function deployTriggers(args) {
             const trigger = triggers[triggerName] || {};
             const feed = trigger.feed;
 
-            const parameters = helpers.getKeyValues(trigger.inputs, args)
+            const parameters = utils.getKeyValues(trigger.inputs)
             const annotations = utils.getAnnotations(args, trigger.annotations)
             const publish = trigger.hasOwnProperty('publish') ? trigger.publish : false
 
@@ -347,4 +346,3 @@ function remainingActions(graph) {
     }
     return hasActions ? actions : null;
 }
- 
