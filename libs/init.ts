@@ -559,7 +559,6 @@ function resolveActionLocation(basePath: string, pkgName: string, actionName: st
         location = path.join(location, 'actions', actionName);
     }
     location = path.resolve(basePath, location);
-    console.log(location)
     if (fs.statSync(location).isDirectory()) {
         if (fs.existsSync(path.join(location, 'Dockerfile')))
             location = path.join(location, 'Dockerfile');

@@ -44,6 +44,10 @@ export async function init(config: types.Config) {
 
 // Register plugin at given location 
 export async function registerFromPath(config: types.Config, modulepath: string) {
+    const pkgjson = path.join(modulepath, 'package.json');
+    if (!(await fs.pathExists(pkgjson)))
+        return;
+        
     const plugininfo = await fs.readJSON(path.join(modulepath, 'package.json'));
 
     const contributions = plugininfo.wskp;
