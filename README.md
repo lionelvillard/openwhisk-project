@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/lionelvillard/openwhisk-deploy.svg?branch=master)](https://travis-ci.org/lionelvillard/openwhisk-deploy) [![Dependencies](https://david-dm.org/lionelvillard/openwhisk-deploy.svg)](https://david-dm.org/lionelvillard/openwhisk-deploy)
+[![Build Status](https://travis-ci.org/lionelvillard/openwhisk-deploy.svg?branch=master)](https://travis-ci.org/lionelvillard/openwhisk-project) [![Dependencies](https://david-dm.org/lionelvillard/openwhisk-project.svg)](https://david-dm.org/lionelvillard/openwhisk-project)
 
 This project provides a set of tools for managing a collection of OpenWhisk entities and related services (eg. Cloudant, Redis, etc...).      
  
@@ -70,8 +70,8 @@ See [specification](docs/format.md)
 # Development
 
 ```bash
-$ git clone https://github.com/lionelvillard/openwhisk-deploy.git
-$ cd openwhisk-deploy
+$ git clone https://github.com/lionelvillard/openwhisk-project.git
+$ cd openwhisk-project
 $ npm i
 ```
 
