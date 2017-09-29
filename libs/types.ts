@@ -41,7 +41,7 @@ export interface Config {
     env?: string;
 
     /* Set the command status, e.g. loading foo.js */
-    setStatus: (msg: string) => void;    
+    setStatus?: (msg: string) => void;    
 }
 
 export interface DeployConfig extends Config {
