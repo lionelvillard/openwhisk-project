@@ -70,4 +70,20 @@ describe('sequence action', function () {
         }
 
     });
+
+    it('unordered - default package', async function () {
+        const result = await wskd.deploy.apply({
+            ow: ctx.ow,
+            basePath: 'test/fixtures/sequences/',
+            cache: ctx.cacheDir,
+            location: 'unordered-default.yaml'
+        });
+
+        const hello = await ctx.ow.actions.invoke({
+            actionName: 'hello',
+            params: { lines: ['first', 'second'] },
+            blocking: true
+        })
+        assert.deepEqual(hello.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' })
+    });
 })

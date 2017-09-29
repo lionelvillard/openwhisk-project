@@ -246,36 +246,18 @@ async function deployApis(args) {
 
 // -- Dependency graph
 
-
-// Add action to graph.
-function extendGraph(graph, ns, pkgName, actionName, action) {
-    action.actionName = actionName;
-    action.packageName = pkgName;
-
-    const dependencies = handlers.lookupActionHandler(action).dependsOn(ns, action);
-    const qname = `${pkgName}/${actionName}`;
-    if (graph[qname])
-        throw new Error(`Duplicate action ${qname}`);
-
-    graph[`${pkgName}/${actionName}`] = {
-        action,
-        deployed: false,
-        dependencies
-    };
-}
-
 /* Compute a dependency graph of the form
    
    {
-       "pkgname/actionname": { 
+       "/ns/pkgname/actionname": { 
            action,
            deployed: false|true,
-           dependencies: [ actionname ]
+           dependencies: [ actionqname ]
        }
        ...
    } 
 
-   pkgname/actionname can be deployed when all its dependencies have been marked as deployed
+   /_/pkgname/actionname can be deployed when all its dependencies have been marked as deployed
 */
 function dependenciesGraph(manifest) {
     const graph = {};
@@ -301,10 +283,20 @@ function dependenciesGraph(manifest) {
     return graph;
 }
 
+
+// Add action to graph.
+function extendGraph(graph, ns, pkgName, actionName, action) {
+    const dependencies = handlers.lookupActionHandler(action).dependsOn(ns, action);
+    graph[action._qname] = {
+        action,
+        deployed: false,
+        dependencies
+    };
+}
+
 function nodependencies(graph, entry) {
     for (const qname of entry.dependencies) {
-        const parts = names.parseQName(qname);
-        const dependency = graph[`${parts.pkg}/${parts.name}`];
+        const dependency = graph[qname];
         if (dependency && !dependency.deployed)
             return false;
     }

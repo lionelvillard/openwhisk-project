@@ -23,6 +23,7 @@ import * as expandHome from 'expand-home-dir';
 import { evaluate } from './interpolation';
 import { parse } from 'url';
 import * as utils from './utils';
+import * as names from './names';
 import * as simpleGit from 'simple-git/promise';
 import * as stringify from 'json-stringify-safe';
 
@@ -233,13 +234,15 @@ async function checkActions(config: types.Config, manifest, pkgName: string, act
 }
 
 async function checkAction(config: types.Config, manifest, pkgName: string, actions, actionName: string, action: types.Action) {
+    action._qname = names.resolveQName(actionName, manifest.namespace, pkgName);
+    
     if (action.hasOwnProperty('location')) { // builtin basic action
         action.location = resolveActionLocation(config.basePath, pkgName, actionName, action.location);
         action.kind = resolveKind(action);
         action.main = resolveMain(action);
 
     } else if (action.sequence) { // builtin sequence action
-
+        action.sequence = resolveComponents(manifest.namespace, pkgName, action.sequence);
         // TODO
     } else if (action.code) { // builtin inlined action
         action.kind = resolveKind(action);
@@ -634,11 +637,16 @@ function resolveMain(action) {
         case 'java':
             if (!action.main)
                 throw 'Missing action main';
-                
+
             return action.main;
         case 'php:7.1':
         case 'python:2':
         case 'python:3':
             return action.main || 'main';
     }
+}
+
+function resolveComponents(namespace, pkgName, sequence) {
+    const actions = sequence.split(',')
+    return actions.map(action => names.resolveQName(action, namespace, pkgName));
 }

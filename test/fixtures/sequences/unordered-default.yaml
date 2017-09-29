@@ -1,0 +1,13 @@
+# actions in default package
+actions:
+  hello:
+    sequence: echo-unordered, /whisk.system/utils/cat
+  
+  echo-unordered:
+    location: ./echo.js
+    inputs: 
+      lines: ["Hello", "World"]
+
+    
+    
+ 

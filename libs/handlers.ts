@@ -26,7 +26,7 @@ import * as fs from 'fs-extra';
 
 const handleSequence = (ctx, action) => {
     const manifest = ctx.manifest
-    const components = getComponents(manifest.namespace, action.packageName, action.sequence)
+    const components = action.sequence
     const parameters = utils.getKeyValues(action.inputs)
     const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
@@ -39,24 +39,23 @@ const handleSequence = (ctx, action) => {
         annotations,
         limits
     }
-    const qname = names.makeQName(null, action.packageName, action.actionName)
-    return utils.deployRawAction(ctx, qname, sequence);
+    return utils.deployRawAction(ctx, action._qname, sequence);
 }
 
-const getComponents = (namespace, pkgName, sequence) => {
-    const actions = sequence.split(',')
-    let components = []
-    for (const i in actions) {
-        const component = names.resolveQName(actions[i], namespace, pkgName)
-        // TODO: check component exists?
+// const getComponents = (namespace, pkgName, sequence) => {
+//     const actions = sequence.split(',')
+//     let components = []
+//     for (const i in actions) {
+//         const component = names.resolveQName(actions[i], namespace, pkgName)
+//         // TODO: check component exists?
 
-        components.push(component)
-    }
-    return components
-}
+//         components.push(component)
+//     }
+//     return components
+// }
 
 const dependsOnSequence = (namespace, action) => {
-    return getComponents(namespace, action.packageName, action.sequence)
+    return action.sequence
 }
 
 // --- Docker action
@@ -76,16 +75,12 @@ const handleImage = (ctx, action) => {
         annotations,
         limits
     }
-    const qname = names.makeQName('_', action.packageName, action.actionName)
-    return utils.deployRawAction(ctx, qname, wskaction);
+    return utils.deployRawAction(ctx, action._qname, wskaction);
 }
 
 // --- Code
 
 const handleCode = (ctx, action) => {
-    if (!action.hasOwnProperty('kind'))
-        throw new Error(`Missing property 'kind' in packages/actions/${action.actionName}`)
-
     const kind = action.kind;
     const code = action.code;
     const parameters = utils.getKeyValues(action.inputs)
@@ -97,31 +92,25 @@ const handleCode = (ctx, action) => {
         annotations,
         limits
     }
-    const qname = names.makeQName('_', action.packageName, action.actionName)
-
-    return utils.deployRawAction(ctx, qname, wskaction);
+    return utils.deployRawAction(ctx, action._qname, wskaction);
 }
 
 // --- Fallback
 
 async function handleDefaultAction(ctx, action) {
-    const pkgName = action.packageName
-    const actionName = action.actionName
     const kind = action.kind;
 
     const parameters = utils.getKeyValues(action.inputs)
     const annotations = utils.getAnnotations(ctx, action.annotations)
     const limits = action.limits || {}
 
-    const qname = names.makeQName('_', pkgName, actionName)
-
-    const artifact = await build(ctx, pkgName, actionName, action);
+    const artifact = await build(ctx, action);
     const content = await load(ctx, artifact.location);
 
     const code = Buffer.from(content).toString(artifact.binary ? 'base64' : 'utf8');
     const main = action.main;
 
-    return await utils.deployRawAction(ctx, qname, { exec: { kind, code, main }, parameters, annotations, limits });
+    return await utils.deployRawAction(ctx, action._qname, { exec: { kind, code, main }, parameters, annotations, limits });
 }
 
 // --- Handlers manager
@@ -160,17 +149,18 @@ async function load(config, location: string) {
 };
 
 // Generate action artifact to deploy
-export async function build(config, pkgName, actionName, action) {
+export async function build(config, action) {
     if (action.builder && action.builder.name) {
-        const builddir = path.join(config.cache, 'build', pkgName, actionName);
+        const { namespace, pkg, name } = names.parseQName(action._qname);
+        const builddir = path.join(config.cache, 'build', pkg, name);
 
-        const name = action.builder.name;
-        const plugin = plugins.getActionBuilderPlugin(name);
+        const bname = action.builder.name;
+        const plugin = plugins.getActionBuilderPlugin(bname);
 
         if (plugin) {
-            return await plugin.build(config, pkgName, actionName, action, builddir);
+            return await plugin.build(config, pkg, name, action, builddir);
         }
-        config.logger.fatal(`Could not find builder ${name}`);
+        config.logger.fatal(`Could not find builder ${bname}`);
     }
     return {
         location: action.location,
