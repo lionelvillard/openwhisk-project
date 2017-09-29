@@ -26,6 +26,7 @@ import * as utils from './utils';
 import * as names from './names';
 import * as simpleGit from 'simple-git/promise';
 import * as stringify from 'json-stringify-safe';
+import * as readline from 'readline';
 
 export async function init(config: types.Config) {
     if (!config.logger)
@@ -33,6 +34,7 @@ export async function init(config: types.Config) {
 
     config.logger_level = config.logger_level || process.env.LOGGER_LEVEL || 'off';
     config.logger.setLevel(config.logger_level);
+    config.setStatus = printStatus;
 
     if (!config.ow) {
         config.ow = fakeow;
@@ -66,7 +68,7 @@ export async function init(config: types.Config) {
     await check(config);
 
     config.logger.debug(stringify(config, null, 2));
-
+    config.setStatus('');
 }
 
 async function resolveManifest(config: types.Config) {
@@ -129,6 +131,13 @@ function configVariableSources(config: types.Config) {
     }
 }
 
+// Print current command status
+function printStatus(status: string) {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write(status);
+}
+    
 
 // perform:
 // - validation 
