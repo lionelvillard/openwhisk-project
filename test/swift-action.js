@@ -18,12 +18,14 @@ const utils = require('./helpers/utils');
 const wskd = require('..');
 
 describe('Swift action', function () {
+    this.timeout(240000);
     const ctx = {};
 
     before(utils.before(ctx));
     after(utils.after(ctx));
 
     it('Hello', async function () {
+
         const result = await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/swift/',
