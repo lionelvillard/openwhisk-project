@@ -24,7 +24,7 @@ describe('Swift action', function () {
     before(utils.before(ctx));
     after(utils.after(ctx));
 
-    it('Hello', async function () {
+    it.skip('Hello', async function () {
 
         const result = await wskd.deploy.apply({
             ow: ctx.ow,
