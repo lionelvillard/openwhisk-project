@@ -23,8 +23,9 @@ import * as init from './init';
 
 export async function apply(config) {
     await init.init(config);
-
     try {
+        config.setProgress('deploying...');
+        
         // Renable when supporting multiple namespace deployment
         // await deployIncludes(args);
 
@@ -34,6 +35,8 @@ export async function apply(config) {
         await deployTriggers(config);
         await deployRules(config);
         await deployApis(config);
+
+        config.setProgress('deployed');
     } catch (e) {
         config.logger.error(e)
         return Promise.reject(e)
@@ -89,8 +92,15 @@ function deployPackage(ow, name, parameters, annotations, binding, publish) {
     })
 }
 
+function deployActions(config) {
+    const manifest = config.manifest
+    const graph = dependenciesGraph(manifest);
+    config.setProgress('deploying action (:current/:total)', Object.keys(graph).length);
+    return deployPendingActions(config, graph);
+}
+
 function deployPendingActions(ctx, graph) {
-    const actions = pendingActions(graph)
+    const actions = pendingActions(graph);
     if (actions) {
         const promises = []
 
@@ -98,13 +108,12 @@ function deployPendingActions(ctx, graph) {
             const entry = actions[qname]
             const action = entry.action
             const promise = handlers.lookupActionHandler(action).deploy(ctx, action)
-            promises.push(promise)
+            promises.push(promise.then(()=> ctx.progress.tick()))
         }
 
-        commitActions(actions)
+        commitActions(actions);
 
-        return Promise.all(promises)
-            .then(reportAction1 => deployPendingActions(ctx, graph).then(reportAction2 => [...reportAction1, ...reportAction2]))
+        return Promise.all(promises).then(() => deployPendingActions(ctx, graph))
     }
 
     const remaining = remainingActions(graph)
@@ -115,13 +124,6 @@ function deployPendingActions(ctx, graph) {
 
     return Promise.resolve([])
 }
-
-function deployActions(ctx) {
-    const manifest = ctx.manifest
-    const graph = dependenciesGraph(manifest)
-    return deployPendingActions(ctx, graph);
-}
-
 function deployTriggers(args) {
     const manifest = args.manifest;
     const triggers = manifest.triggers;

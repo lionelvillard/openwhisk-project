@@ -26,7 +26,7 @@ import * as utils from './utils';
 import * as names from './names';
 import * as simpleGit from 'simple-git/promise';
 import * as stringify from 'json-stringify-safe';
-import * as readline from 'readline';
+import * as progress from 'progress';
 
 export async function init(config: types.Config) {
     if (!config.logger)
@@ -34,7 +34,7 @@ export async function init(config: types.Config) {
 
     config.logger_level = config.logger_level || process.env.LOGGER_LEVEL || 'off';
     config.logger.level = config.logger_level;
-    config.setStatus = printStatus;
+    config.setProgress = setProgress(config);
 
     if (!config.ow) {
         config.ow = fakeow;
@@ -68,11 +68,12 @@ export async function init(config: types.Config) {
     await check(config);
 
     config.logger.debug(stringify(config, null, 2));
-    config.setStatus('');
+    config.setProgress('');
 }
 
 async function resolveManifest(config: types.Config) {
-    config.logger.info('loading configuration');
+    config.logger.info('loading project configuration');
+    config.setProgress('loading project configuration');
     if (config.manifest || config.manifest === '') {
 
         if (typeof config.manifest === 'string') {
@@ -94,8 +95,6 @@ async function resolveManifest(config: types.Config) {
 
         config.manifest.namespace = '_'; // For now   
     }
-
-
 
     config.logger.debug(`base path set to ${config.basePath}`);
     // ok no manifest, fine.
@@ -131,19 +130,30 @@ function configVariableSources(config: types.Config) {
     }
 }
 
-// Print current command status
-function printStatus(status: string) {
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0);
-    process.stdout.write(status);
+function setProgress(config) {
+    return (format, options) => {
+        if (config.progress)
+            config.progress.terminate;
+
+        const autotick = !options;
+        if (typeof(options) === 'number') 
+            options = { total: options };
+        else 
+            options = options || { total: 1 };
+        options.clear = true;
+
+        config.progress = new progress(format, options);
+        if (autotick)
+            config.progress.tick();
+    }
 }
-    
 
 // perform:
 // - validation 
 // - normalization (remove syntax sugar, resolve location)
 // - interpolation (evaluate ${..})
 async function check(config: types.Config) {
+    config.setProgress('validating project configuration')
     const manifest = config.manifest;
 
     if (!manifest)
@@ -166,7 +176,6 @@ async function check(config: types.Config) {
         }
     }
     config.logger.debug('normalization done');
-
 }
 
 async function checkIncludes(config: types.Config, manifest) {
@@ -244,7 +253,7 @@ async function checkActions(config: types.Config, manifest, pkgName: string, act
 
 async function checkAction(config: types.Config, manifest, pkgName: string, actions, actionName: string, action: types.Action) {
     action._qname = names.resolveQName(actionName, manifest.namespace, pkgName);
-    
+
     if (action.hasOwnProperty('location')) { // builtin basic action
         action.location = resolveActionLocation(config.basePath, pkgName, actionName, action.location);
         action.kind = resolveKind(action);

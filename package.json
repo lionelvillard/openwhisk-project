@@ -25,6 +25,7 @@
     "json-stringify-safe": "^5.0.1",
     "log4js": "^2.3.4",
     "openwhisk": "^3.8.0",
+    "progress": "^2.0.0",
     "properties-parser": "^0.3.1",
     "recursive-readdir": "^2.2.1",
     "simple-git": "^1.76.0",
@@ -32,6 +33,7 @@
     "yeoman-environment": "^2.0.4"
   },
   "devDependencies": {
+    "@types/progress": "^2.0.0",
     "@types/yamljs": "^0.2.30",
     "assert": "^1.4.1",
     "deep-diff": "^0.3.8",

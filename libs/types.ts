@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Logger } from 'log4js';
+import { Logger } from 'log4js'; 
 
 export type YAML = any;
 
@@ -40,8 +40,11 @@ export interface Config {
     basePath?: string;
     env?: string;
 
-    /* Set the command status, e.g. loading foo.js */
-    setStatus?: (msg: string) => void;    
+    /* Set the command progress, e.g. loading foo.js */
+    setProgress?: (format: string, options?) => void;   
+    
+    /* Current progress. Use progress.tick for update */
+    progress?: any;
 }
 
 export interface DeployConfig extends Config {

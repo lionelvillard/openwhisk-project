@@ -37,7 +37,7 @@ let loaded = false;
 export async function init(config: types.Config) {
     if (!loaded) {
         config.logger.info(`initializing plugins ${PLUGINS_ROOT}`);
-        config.setStatus('registering plugins...');
+        config.setProgress('registering plugins...');
         await registerAll(config);
         loaded = true;
     }
@@ -115,7 +115,6 @@ async function registerAll(config: types.Config) {
         for (const moduleid of files) {
             if (moduleid.match(/wskp-\w*-plugin/)) {
                 const modulepath = path.join(PLUGINS_ROOT, moduleid);
-                config.setStatus(`registering plugins...${modulepath}`);
                 
                 await registerFromPath(config, modulepath);
             }
