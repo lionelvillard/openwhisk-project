@@ -5,9 +5,9 @@ This document formally described the deployment configuration format and semanti
 The deployment configuration are written in `YAML`. Since `JSON` and `YAML` are closely related, 
 we use JSON schema to define the constraints imposed on the deployment configurations. These constraints are presented below, along with some examples. 
 
-## `deployment` (top-level schema)
+## `project` (top-level schema)
 
-A *deployment* is an *object* representing a collection of OpenWhisk entities (actions, packages, rules, triggers and apis) to be deployed.
+A *project* is an *object* representing a collection of OpenWhisk entities (actions, packages, rules, triggers and apis).
 
 ### Properties
 
@@ -139,11 +139,6 @@ An error is raised when a cyclic dependency is detected.
   `action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
   and must be unique among the list of action names.
 
-**Plugin extensions**:
-- [web](https://github.com/lionelvillard/openwhisk-deploy/blob/master/plugins/actions/web/README.md): syntactic sugar for configurating Web actions.
-
-- [combinator](https://github.com/lionelvillard/openwhisk-deploy/blob/master/plugins/actions/combinator/README.md): syntactic sugar for the [combinator package](https://github.com/apache/incubator-openwhisk-catalog/tree/master/packages/combinators).
-
 
 ## `action`
 
@@ -153,7 +148,7 @@ An *object* representing an action. Extends [`baseAction`](#baseaction)
 
 - `location` (string, required): the action code location. Either a folder or a file.
    
-   Relative paths are resolved by using the in-scope `basePath` value.
+   Relative paths are resolved by using the in-scope `basePath` value. 
 
 - `kind` (enum, optional): the action kind. Determined automatically (see below)  
 
@@ -172,21 +167,18 @@ An *object* representing an action. Extends [`baseAction`](#baseaction)
 
 - `image` (string, optional): a docker image.
 
-### Example
+### Extensions
 
-```yaml
-actions:
-  docker-action:
-    image: openwhisk/dockerskeleton
-```
+- [package](https://github.com/lionelvillard/openwhisk-project/blob/master/plugins/wskp-package-plugin/README.md): zip builder.
+
+- [web](https://github.com/lionelvillard/openwhisk-project/blob/master/plugins/wskp-web-plugin/README.md): syntactic sugar for configurating Web actions.
+
+- [combinator](https://github.com/lionelvillard/openwhisk-project/blob/master/plugins/actions/combinator/README.md): syntactic sugar for the [combinator package](https://github.com/apache/incubator-openwhisk-catalog/tree/master/packages/combinators).
 
 
+### Examples
 
-- `zip` (boolean, optional, default: false): whether to zip the action. 
-   
-   - For `nodejs` action, `npm install --production` is run before `zip`. symlinks are dereferenced. 
-
-### Example
+#### sequence
 
 ```yaml
 packages:
@@ -197,6 +189,14 @@ packages:
         kind: nodejs
       mysequence:
         sequence: /whisk.system/utils/echo, /whisk.system/utils/cat
+```
+
+#### docker
+
+```yaml
+actions:
+  docker-action:
+    image: openwhisk/dockerskeleton
 ```
 
 ## `copy`  
@@ -463,9 +463,11 @@ An *object* representing action limits
 
 An *object* representing the action builder.
 
+Extensible: see [`builder`](../plugins/README.md#) contribution point.
+
 ### Properties
 
-- `name`  (string, required): the name of the builder plugin
+- `name`  (string, required): the name of the builder plugin. 
 - `{key}` (any): the plugin input parameters
 
 ### Example
@@ -474,12 +476,13 @@ An *object* representing the action builder.
 actions:
   zipaction:
     builder:
-      name: zip
+      name: package
       excludes:
         - *.ts
 ```
 
-## `Interpolation`
+
+## `interpolation`
 
 A *string* of the form `${ expr }` where `expr` is interpreted as a Javascript expression returning a JSON value. This expression is evaluated in a sandbox initialized to this object:
 

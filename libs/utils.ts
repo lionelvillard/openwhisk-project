@@ -81,22 +81,16 @@ const resolveValue = (value, args) => {
 // --- low level deployment functions
 
 export const deployRawAction = (ctx, actionName, action) => {
-    ctx.logger.info(`[ACTION] [DEPLOYING] ${actionName}`);
-    ctx.logger.trace(`[ACTION] [DEPLOYING] ${JSON.stringify(action)}`);
+    ctx.logger.info(`deploying ${actionName}`);
+    ctx.logger.trace(JSON.stringify(action));
     return ctx.ow.actions.change({
         actionName,
         action
     }).then(r => {
         if (r.exec) delete r.exec.code;
-        ctx.logger.info(`[ACTION] [DEPLOYED] ${JSON.stringify(r)}`);
+        ctx.logger.info(`deployed ${JSON.stringify(r)}`);
     });
 }
-
-export const deployActionWithContent = (ctx, actionName, action, binary) => content => {
-    action.exec.code = Buffer.from(content).toString(binary ? 'base64' : 'utf8');
-    return deployRawAction(ctx, actionName, action);
-}
-
 
 // Helper functions managing openwhisk configuration files
 

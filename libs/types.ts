@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Logger } from 'log4js'; 
+import { Logger } from 'log4js';
 
 export type YAML = any;
 
@@ -41,8 +41,8 @@ export interface Config {
     env?: string;
 
     /* Set the command progress, e.g. loading foo.js */
-    setProgress?: (format: string, options?) => void;   
-    
+    setProgress?: (format: string, options?) => void;
+
     /* Current progress. Use progress.tick for update */
     progress?: any;
 }
@@ -54,7 +54,7 @@ export interface DeployConfig extends Config {
 
 // OpenWhisk Plugin Interface 
 export interface Plugin {
- 
+
     // Action contributor returning a list of contributions to apply to the deployment configuration
     actionContributor?: ActionContributor;
 
@@ -72,12 +72,10 @@ export interface Plugin {
 
 }
 
-export type ActionContributor = (Config, Deployment, pkgName: string, actionName: string, Action) => Contribution[]
-
-
-export type ServiceContributor = (Config, pkgName: string, Package) => Contribution[]
-export type ApiContributor = (Config, Deployment, apiname: string, Api) => Contribution[]
-export type ActionBuilder = (Config, pkgName: string, actionName: string, Action, buildir) => Artifact
+export type ActionContributor = (Config, Project, pkgName: string, actionName: string, Action) => Contribution[];
+export type ServiceContributor = (Config, pkgName: string, Package) => Contribution[];
+export type ApiContributor = (Config, Project, apiname: string, Api) => Contribution[];
+export type ActionBuilder = (Config, Action, Builder) => Promise<string>;
 export type VariableResolver = (Config, name: string) => any;
 
 // A contribution to the deployment configuration 
@@ -86,52 +84,41 @@ export type Contribution = ActionContribution | ApiContribution | PackageContrib
 // An action contribution
 export interface ActionContribution {
     // kind of contribution
-    kind : "action";
+    kind: "action";
 
     // action package
-    pkgName : string | null;
+    pkgName: string | null;
 
     // action name
-    name : string;
+    name: string;
 
     // action configuration
-    body : Action;
+    body: Action;
 }
 
 
 // An package contribution
 export interface PackageContribution {
     // kind of contribution
-    kind : "package";
+    kind: "package";
 
     // package name (or null-kind for default package)
-    name : string;
+    name: string;
 
     // package body
-    body : Package;
+    body: Package;
 }
 
 // An api contribution
 export interface ApiContribution {
     // kind of contribution
-    kind : "api";
+    kind: "api";
 
     // api name
-    name : string;
+    name: string;
 
     // api configuration
-    body : Api;
-}
-
-
-// An deployable artifact
-export interface Artifact {
-    // Where the artifact is located
-    location: string;
-
-    // Binary?
-    binary: boolean;
-
+    body: Api;
 }
 
 // --- Project configuration format
@@ -144,4 +131,23 @@ export type Action = any
 export type Package = any
 export type Api = any
 
-export enum deploymentProperties { NAME = 'name', BASEPATH = 'basePath', ACTIONS = 'actions', APIS = 'apis' }
+export interface Builder {
+    // name
+    name: string;
+
+    // build directory
+    dir?: string;
+
+    // builder options
+    [key: string]: any;
+
+    // The builder executor
+    __exec?: ActionBuilder;
+}
+
+export enum projectProps { name = 'name', basepath = 'basePath', includes = 'includes', packages = 'packages', actions = 'actions', triggers = 'triggers', rules = 'rules', apis = 'apis', };
+export enum actionProps {
+    limits = 'limits', inputs = 'inputs', annotations = 'annotations', builder = 'builder',
+    location = 'location', code = 'code', sequence = 'sequence', kind = 'kind', main = 'main',
+    image = 'image', _qname = '_qname'
+};

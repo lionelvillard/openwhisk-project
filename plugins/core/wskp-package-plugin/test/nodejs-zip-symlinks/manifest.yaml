@@ -4,4 +4,5 @@ packages:
       cat:
         location: main.js
         builder:
-          name: zip
+          name: package
+          follow: true

@@ -1,20 +1,33 @@
 *Warning: work in progress.*
 
-This directory contains plugins extending the deployment format.
+This directory contains plugins extending the project configuration format .
 
-# Adding a new kind of action
+# Plugin registration
 
-Action plugins must be stored in the `actions` subdirectory 
-and must follow this minimal structure:
+In your `package.json` file, add the following entry:
 
+```json
+{
+    "wskp": {
+        "<extension-point>": "<plugin-name>",
+        ...
+    }
+}
 ```
-actions
-|- <plugin-name>
-   |- package.json
-```
 
-The plugin `plugin-name` is activated when `plugin-name` occurs 
-within an `action`:
+Where `extension-point` is one of the following values:
+- `action`: contributes to an [`action`](../docs/format.md#action) 
+- `api`: contributes to an [`api`](../docs/format.md#api) 
+- `builder`: contributes to an action [`builder`](../docs/format.md#builder) 
+
+A plugin can contribute to multiple extension point. See [types](https://github.com/lionelvillard/openwhisk-project/blob/master/libs/types.ts) for the signature definition for each extension point 
+
+# Extension points
+
+# `action`
+
+The plugin `plugin-name` is activated during this initialization phase when `plugin-name` occurs 
+within the configuration of an [`action`](../docs/format.md#action), for instance:
 
 ```yaml
 ...
@@ -23,29 +36,23 @@ actions:
     <plugin-name>: ...   
 ```
 
+Multiple plugins can be activated for the same action, until the action has no properties other than the one defined by the [action](../docs/format.md#action) type. 
 
-# Plugin interface
+# `builder`
 
-```javascript
-const Plugin = {
-    
-    /* Get the list of entities to deploy */
-    getEntities: context => {}
-}
+The plugin `plugin-name` is activated during the deployment phase when name of a [`builder`](../docs/format.md#builder) matches `plugin-name`.
+
+```yaml
+...
+actions:
+  <action-name>:
+    builder:
+      name: <plugin-name>   
 ```
 
-## `context` properties
- 
-- `pkgName` (string, optional): the current package name, or `undefined`
-- `actionName` (string, optional): the current action name
-- `action` (object, optional): the action content
+# Plugin submission
 
-
-# Submitting plugins
-
-Via PR. 
-
-It is recommended to only include `package.json` in the PR
-and to publish your plugin in the npm registry. You can then 
-release plugin updates without having to way for us to approve
-your PR.
+This is done via PR:
+- Clone https://github.com/lionelvillard/openwhisk-project
+- edit `plugins/package.json` to include your extension
+- submit PR.

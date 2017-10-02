@@ -21,7 +21,7 @@ import * as names from './names';
 import * as path from 'path';
 import * as plugins from './pluginmgr';
 import * as fs from 'fs-extra';
- 
+
 // --- Sequence
 
 const handleSequence = (ctx, action) => {
@@ -105,9 +105,11 @@ async function handleDefaultAction(ctx, action) {
     const limits = action.limits || {}
 
     const artifact = await build(ctx, action);
-    const content = await load(ctx, artifact.location);
+    const content = await load(ctx, artifact);
+    const ext = path.extname(artifact);
+    const binary = ext == '.zip' || ext == '.jar';
 
-    const code = Buffer.from(content).toString(artifact.binary ? 'base64' : 'utf8');
+    const code = Buffer.from(content).toString(binary ? 'base64' : 'utf8');
     const main = action.main;
 
     return await utils.deployRawAction(ctx, action._qname, { exec: { kind, code, main }, parameters, annotations, limits });
@@ -150,20 +152,5 @@ async function load(config, location: string) {
 
 // Generate action artifact to deploy
 export async function build(config, action) {
-    if (action.builder && action.builder.name) {
-        const { namespace, pkg, name } = names.parseQName(action._qname);
-        const builddir = path.join(config.cache, 'build', pkg, name);
-
-        const bname = action.builder.name;
-        const plugin = plugins.getActionBuilderPlugin(bname);
-
-        if (plugin) {
-            return await plugin.build(config, pkg, name, action, builddir);
-        }
-        config.logger.fatal(`Could not find builder ${bname}`);
-    }
-    return {
-        location: action.location,
-        binary: action.kind === 'java'
-    }
+    return action.builder && action.builder._exec ? action.builder._exec(config, action, action.builder) : action.location;
 }

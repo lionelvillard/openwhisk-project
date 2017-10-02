@@ -136,9 +136,9 @@ function setProgress(config) {
             config.progress.terminate;
 
         const autotick = !options;
-        if (typeof(options) === 'number') 
+        if (typeof (options) === 'number')
             options = { total: options };
-        else 
+        else
             options = options || { total: 1 };
         options.clear = true;
 
@@ -171,7 +171,7 @@ async function check(config: types.Config) {
 
     // check for invalid additional properties
     for (const key in manifest) {
-        if (!(key in types.deploymentProperties)) {
+        if (!(key in types.projectProps)) {
             config.logger.warn(`property /${key} ignored`);
         }
     }
@@ -252,35 +252,44 @@ async function checkActions(config: types.Config, manifest, pkgName: string, act
 }
 
 async function checkAction(config: types.Config, manifest, pkgName: string, actions, actionName: string, action: types.Action) {
+    // Expand unknown properties.
+    for (const key in action) {
+        if (!(key in types.actionProps)) {
+            const plugin = plugins.getActionPlugin(action, key);
+            if (!plugin) {
+                throw `Invalid property ${key} in action ${actionName}`;
+            }
+            delete actions[actionName];
+            const contributions = await plugin.actionContributor(config, manifest, pkgName, actionName, action);
+            await applyConstributions(config, manifest, contributions, plugin); // will call check!
+
+            return;
+        }
+    }
+    
+    // At this point, all unkown properties have been expanded.
+    
     action._qname = names.resolveQName(actionName, manifest.namespace, pkgName);
+    resolveBuilder(config, pkgName, actionName, action);
 
     if (action.hasOwnProperty('location')) { // builtin basic action
         action.location = resolveActionLocation(config.basePath, pkgName, actionName, action.location);
         action.kind = resolveKind(action);
         action.main = resolveMain(action);
 
-    } else if (action.sequence) { // builtin sequence action
+    } else if (action.hasOwnProperty('sequence')) { // builtin sequence action
         action.sequence = resolveComponents(manifest.namespace, pkgName, action.sequence);
         // TODO
-    } else if (action.code) { // builtin inlined action
+    } else if (action.hasOwnProperty('code')) { // builtin inlined action
         action.kind = resolveKind(action);
         action.main = resolveMain(action);
 
-    } else if (action.image) { // builtin docker action
+    } else if (action.hasOwnProperty('image')) { // builtin docker action
 
         // TODO
     } else {
-        delete actions[actionName];
-
-        const plugin = plugins.getActionPlugin(action);
-        if (!plugin) {
-            config.logger.warn(`no plugin found for action ${actionName}. Ignored`);
-            return;
-        }
-
-        const contributions = await plugin.actionContributor(config, manifest, pkgName, actionName, action);
-        await applyConstributions(config, manifest, contributions, plugin);
-    }
+        throw `Invalid action ${actionName}: missing either location, sequence, code or image property`;
+    } 
 }
 
 async function checkApis(config: types.Config, manifest) {
@@ -595,7 +604,6 @@ function resolveActionLocation(basePath: string, pkgName: string, actionName: st
     if (!fs.existsSync(location))
         throw `Action location does not exist ${location}`;
 
-
     return location;
 }
 
@@ -661,6 +669,21 @@ function resolveMain(action) {
         case 'python:2':
         case 'python:3':
             return action.main || 'main';
+    }
+}
+
+function resolveBuilder(config, pkgName, actionName, action) {
+    if (action.builder && action.builder.name) {
+        if (!action.builder.dir)
+            action.builder.dir = path.join(config.cache, 'build', pkgName, actionName);
+
+        const builderName = action.builder.name;
+        const plugin = plugins.getActionBuilderPlugin(builderName);
+
+        if (plugin)
+            action.builder._exec = plugin.build;
+        else
+            throw `Could not find builder ${builderName}`;
     }
 }
 

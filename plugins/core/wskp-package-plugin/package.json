@@ -1,9 +1,9 @@
 {
-  "name": "wskp-zip-plugin",
+  "name": "wskp-package-plugin",
   "version": "0.1.0",
   "description": "Zip builder extension for OpenWhisk Project",
-  "main": "dist/zip.js",
-  "types": "zip.ts",
+  "main": "dist/package.js",
+  "types": "package.ts",
   "scripts": {
     "pretest": "../../../node_modules/.bin/tsc",
     "test": "../../../node_modules/.bin/mocha dist/test",
@@ -20,6 +20,7 @@
     "archiver": "^2.0.3"
   },
   "wskp": {
-    "builder": "zip"
+    "action": "package",
+    "builder": "package"
   }
 }

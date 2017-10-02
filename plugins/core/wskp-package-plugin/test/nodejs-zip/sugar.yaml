@@ -1,0 +1,6 @@
+packages:
+  nodejs-zip-sugar:
+    actions:
+      cat:
+        location: cat.js
+        package:

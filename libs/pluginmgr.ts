@@ -115,7 +115,7 @@ async function registerAll(config: types.Config) {
         for (const moduleid of files) {
             if (moduleid.match(/wskp-\w*-plugin/)) {
                 const modulepath = path.join(PLUGINS_ROOT, moduleid);
-                
+
                 await registerFromPath(config, modulepath);
             }
         }
@@ -124,8 +124,8 @@ async function registerAll(config: types.Config) {
     }
 }
 
-export function getActionPlugin(action): types.Plugin | null {
-    return getPlugin(actionPlugins, action);
+export function getActionPlugin(action, name?: string): types.Plugin | null {
+    return getPlugin(actionPlugins, action, name);
 }
 
 export function getPackagePlugin(pkg): types.Plugin | null {
@@ -163,12 +163,21 @@ export function getVariableSourcePlugin(name): types.Plugin | null {
     return null;
 }
 
-function getPlugin(index, obj): types.Plugin | null {
-    for (const name in index) {
-        if (obj.hasOwnProperty(name)) {
+function getPlugin(index, obj, name?): types.Plugin | null {
+    if (name) {
+        if (index[name]) {
             const plugin = require(index[name]);
-            plugin.__pluginName = name;
+            if (plugin)
+                plugin.__pluginName = name;
             return plugin;
+        }
+    } else {
+        for (const n in index) {
+            if (obj.hasOwnProperty(n)) {
+                const plugin = require(index[n]);
+                plugin.__pluginName = n;
+                return plugin;
+            }
         }
     }
     return null;
