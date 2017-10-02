@@ -33,7 +33,7 @@ export async function init(config: types.Config) {
         config.logger = getLogger();
 
     config.logger_level = config.logger_level || process.env.LOGGER_LEVEL || 'off';
-    config.logger.setLevel(config.logger_level);
+    config.logger.level = config.logger_level;
     config.setStatus = printStatus;
 
     if (!config.ow) {
