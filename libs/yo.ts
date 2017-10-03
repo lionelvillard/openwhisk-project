@@ -24,7 +24,11 @@ function init() {
     return new Promise(resolve => {
         if (!env) {
             env = yeoman.createEnv();
-            const root = path.join(__dirname, '..', '..', 'node_modules', 'generator-openwhisk', 'generators');
+            let root = path.join(__dirname, '..', '..', 'node_modules', 'generator-openwhisk', 'generators');
+            if (!fs.existsSync(root)) {
+                root = path.join(__dirname, '..', '..', '..', 'generator-openwhisk', 'generators');
+            }
+
             const generators = fs.readdirSync(root);
             for (const gen of generators)
                 env.register(path.join(root, gen, 'index.js'), gen);
