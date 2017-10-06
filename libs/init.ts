@@ -65,8 +65,13 @@ export async function init(config: types.Config) {
     await configCache(config);
     configVariableSources(config);
 
-    await check(config);
+    if (config.manifest) {
+        await check(config);
 
+        const buildir = path.join(config.cache, 'build');
+        await fs.mkdirs(buildir);
+        await fs.writeJSON(path.join(buildir, 'project.json'), config.manifest, { spaces: 2 });
+    }
     config.logger.debug(stringify(config, null, 2));
     config.setProgress('');
 }
@@ -155,10 +160,6 @@ function setProgress(config) {
 async function check(config: types.Config) {
     config.setProgress('validating project configuration')
     const manifest = config.manifest;
-
-    if (!manifest)
-        return
-
     config.logger.debug('normalizing project configuration');
 
     await checkIncludes(config, manifest);
@@ -176,6 +177,7 @@ async function check(config: types.Config) {
         }
     }
     config.logger.debug('normalization done');
+
 }
 
 async function checkIncludes(config: types.Config, manifest) {
@@ -266,9 +268,9 @@ async function checkAction(config: types.Config, manifest, pkgName: string, acti
             return;
         }
     }
-    
+
     // At this point, all unkown properties have been expanded.
-    
+
     action._qname = names.resolveQName(actionName, manifest.namespace, pkgName);
     resolveBuilder(config, pkgName, actionName, action);
 
@@ -289,7 +291,7 @@ async function checkAction(config: types.Config, manifest, pkgName: string, acti
         // TODO
     } else {
         throw `Invalid action ${actionName}: missing either location, sequence, code or image property`;
-    } 
+    }
 }
 
 async function checkApis(config: types.Config, manifest) {

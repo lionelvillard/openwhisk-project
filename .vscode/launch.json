@@ -1,19 +1,21 @@
 {
     "version": "0.2.0",
     "configurations": [
+    
         {
-            "type": "chrome",
-            "request": "launch",
-            "name": "Launch Chrome against localhost",
-            "url": "http://localhost:8080",
-            "webRoot": "${workspaceRoot}"
-        },
-        {
-            "type": "chrome",
+            "type": "node",
             "request": "attach",
-            "name": "Attach to Chrome",
-            "port": 9222,
-            "webRoot": "${workspaceRoot}"
+            "name": "Attach to Node",
+            "port": 62725,
+            "remoteRoot": "/nodejsaction/action/",
+            "localRoot": "${workspaceRoot}/test/fixtures/nodejs/",
+            "skipFiles": [
+                "app.js",
+                "../**/app.js",
+                "../**/runner.js",
+                "../**/logger.js",
+                "../**/service.js"
+            ]
         }
     ]
 }

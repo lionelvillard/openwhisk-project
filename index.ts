@@ -23,8 +23,9 @@ import * as yo from'./libs/yo.js';
 import * as types from './libs/types';
 import * as names from'./libs/names';
 import * as bx from'./libs/bluemix';
+import * as controller from'./libs/controller';
 import * as plugins from'./libs/pluginmgr';
 
 type IConfig = types.Config;
 
-export { auth, deploy , undeploy, refresh, sync, env, yo, types, names, bx, plugins, IConfig };
+export { auth, deploy , undeploy, refresh, sync, env, yo, types, names, bx, controller, plugins, IConfig };
