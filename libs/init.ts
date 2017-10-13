@@ -29,6 +29,9 @@ import * as stringify from 'json-stringify-safe';
 import * as progress from 'progress';
 
 export async function init(config: types.Config) {
+    if (config._initialized)
+        return;
+
     if (!config.logger)
         config.logger = getLogger();
 
@@ -36,13 +39,29 @@ export async function init(config: types.Config) {
     config.logger.level = config.logger_level;
     config.setProgress = setProgress(config);
 
-    if (!config.ow) {
+    if (!config.ow) 
         config.ow = fakeow;
-        config.dryrun = true;
-        config.logger.debug('dryrun mode');
-    }
+    
+    setOW(config, config.ow)
 
-    const ow = config.ow;
+    await plugins.init(config);
+    await resolveManifest(config);
+    await configCache(config);
+    configVariableSources(config);
+
+    if (config.manifest) {
+        await check(config);
+
+        const buildir = path.join(config.cache, 'build');
+        await fs.mkdirs(buildir);
+        await fs.writeJSON(path.join(buildir, 'project.json'), config.manifest, { spaces: 2 });
+    }
+    config.logger.debug(stringify(config, null, 2));
+    config.setProgress('');
+    config._initialized = true;
+}
+
+export function setOW(config: types.Config, ow) {
     if (!config.force) {
         ow.packages.change = ow.packages.create;
         ow.triggers.change = ow.triggers.create;
@@ -59,21 +78,6 @@ export async function init(config: types.Config) {
         ow.rules.change = ow.rules.update;
     }
     config.ow = ow;
-
-    await plugins.init(config);
-    await resolveManifest(config);
-    await configCache(config);
-    configVariableSources(config);
-
-    if (config.manifest) {
-        await check(config);
-
-        const buildir = path.join(config.cache, 'build');
-        await fs.mkdirs(buildir);
-        await fs.writeJSON(path.join(buildir, 'project.json'), config.manifest, { spaces: 2 });
-    }
-    config.logger.debug(stringify(config, null, 2));
-    config.setProgress('');
 }
 
 async function resolveManifest(config: types.Config) {
@@ -147,7 +151,7 @@ function setProgress(config) {
             options = options || { total: 1 };
         options.clear = true;
 
-        config.progress = new progress(format, options); 
+        config.progress = new progress(format, options);
         if (autotick)
             config.progress.tick();
     }
@@ -302,9 +306,9 @@ function checkParameters(config: types.Config, pkgName: string, actionName: stri
         for (const key in inputs) {
             const value = inputs[key];
             if (typeof value === 'string' && value.startsWith('${'))
-                inputs[key] = evaluate(config, value);                
+                inputs[key] = evaluate(config, value);
         }
-    }    
+    }
 }
 
 function checkAnnotations(config: types.Config, pkgName: string, actionName: string, action: types.Action) {
@@ -313,11 +317,11 @@ function checkAnnotations(config: types.Config, pkgName: string, actionName: str
         for (const key in annos) {
             const value = annos[key];
             if (typeof value === 'string' && value.startsWith('${'))
-            annos[key] = evaluate(config, value);                
+                annos[key] = evaluate(config, value);
         }
-    }    
+    }
 }
-    
+
 
 async function checkApis(config: types.Config, manifest) {
     const apis = manifest.apis;

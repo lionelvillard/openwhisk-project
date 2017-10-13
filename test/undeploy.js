@@ -46,6 +46,7 @@ describe('testing undeploy', function () {
             cat = await ctx.ow.actions.get({ name: 'nodejs-unmanaged/cat' });
             assert.fail('cat should have been undeployed');
         } catch (e) {
+            console.log(e)
             assert.equal(e.statusCode, 404);
         }
     });

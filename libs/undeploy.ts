@@ -20,11 +20,12 @@ const names = require('./names');
 const utils = require('./utils');
 
 // remove all entities
-export async function all(ow) {
-    return apply({ ow } as types.Config);
+export async function all(config: types.Config) {
+    return apply(config);
 }
 
 export async function apply(config: types.Config) {
+    console.log('undeploy')
     await init(config);
 
     const manifest = config.manifest; // if null, then delete all!

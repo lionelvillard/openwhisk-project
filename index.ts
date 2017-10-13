@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import * as auth from './libs/auth';
 import * as deploy from'./libs/deploy';
 import * as undeploy from'./libs/undeploy';
 import * as refresh from'./libs/refresh.js';
@@ -28,4 +27,4 @@ import * as plugins from'./libs/pluginmgr';
 
 type IConfig = types.Config;
 
-export { auth, deploy , undeploy, refresh, sync, env, yo, types, names, bx, controller, plugins, IConfig };
+export { deploy , undeploy, refresh, sync, env, yo, types, names, bx, controller, plugins, IConfig };

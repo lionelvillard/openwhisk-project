@@ -22,6 +22,8 @@ type Loader = (string) => Promise<Buffer>;
 // --- Common command configuration 
 
 export interface Config {
+    flags?: any;                    // option flags.
+     
     ow?: any;                       // OpenWhisk client. Perform a dry-run if not provided.
     dryrun?: boolean;               // dry run (false by default)
 
@@ -45,6 +47,9 @@ export interface Config {
 
     /* Current progress. Use progress.tick for update */
     progress?: any;
+
+    /* Internal */
+    _initialized? : boolean;
 }
 
 export interface DeployConfig extends Config {

@@ -8,8 +8,10 @@ const rp = require('request-promise')
 const before = ctx => async () => {
     fs.mkdirsSync('test-results');
     ctx.cacheDir = await fs.mkdtemp('test-results/test');
-    ctx.ow = wskd.auth.initWsk();
-    await wskd.undeploy.all(ctx.ow);
+    const config = {};
+    await wskd.env.initWsk(config);
+    await wskd.undeploy.all(config);
+    ctx.ow = config.ow;
 }
 exports.before = before;
 

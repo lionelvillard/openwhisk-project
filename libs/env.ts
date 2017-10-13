@@ -15,7 +15,6 @@
  */
 import * as init from './init';
 import * as types from './types';
-import * as auth from './auth';
 import * as bx from './bluemix';
 import * as utils from './utils';
 import * as readdir from 'recursive-readdir';
@@ -23,6 +22,15 @@ import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as propertiesParser from 'properties-parser';
 import * as expandHome from 'expand-home-dir';
+import * as openwhisk from 'openwhisk';
+
+export interface IWskProps {
+    AUTH? : string,
+    APIHOST?: string,
+    IGNORE_CERTS?:  boolean,
+    APIGW_ACCESS_TOKEN?: string,
+    [key:string]: any
+}
 
 // Get all declared environments 
 export async function getEnvironments(config: types.Config) {
@@ -45,8 +53,9 @@ export async function getEnvironments(config: types.Config) {
 }
 
 // Set current environment 
-export async function setEnvironment(config: types.Config, envname: string, copy: boolean = true) {
+export async function setEnvironment(config: types.Config, copy: boolean = true) {
     await init.init(config);
+    const envname = config.envname;
     config.logger.info(`set project environment to ${envname}`);
     const filename = `.${envname}.wskprops`;
 
@@ -54,7 +63,7 @@ export async function setEnvironment(config: types.Config, envname: string, copy
     if (!exists)
         return false;
 
-    const cached = path.join(config.cache, 'envs', `.${envname}.wskprops`);
+    const cached = getCachedEnvFilename(config);
     await fs.mkdirs(path.dirname(cached));
     exists = await fs.pathExists(cached);
 
@@ -78,6 +87,7 @@ export async function setEnvironment(config: types.Config, envname: string, copy
     }
     return true;
 }
+
 
 async function resolveProps(config: types.Config, envname: string, filename: string, props) {
     const apihost = props.get('APIHOST');
@@ -131,3 +141,79 @@ async function resolveAuthFromBluemix(config: types.Config, props, envname: stri
     props.set('AUTH', auth);
 }
 
+export async function getWskPropsFile(config: types.Config) {
+    let wskprops = process.env.WSK_CONFIG_FILE;
+    if (!wskprops || !fs.existsSync(wskprops)) {
+        
+        if (config.envname) {
+            if (await setEnvironment(config, false))
+                return getCachedEnvFilename(config);
+
+            return null;
+        }
+
+        const until = path.dirname(expandHome('~'));
+        let current = process.cwd();
+        while (current !== '/' && current !== until) {
+            wskprops = path.join(current, '.wskprops');
+
+            if (fs.existsSync(wskprops))
+                break;
+            current = path.dirname(current);   
+        }
+    }
+    return wskprops;
+}
+
+export async function readWskProps(config: types.Config) : Promise<IWskProps | null> {
+    await init.init(config);
+    const wskprops = await getWskPropsFile(config);
+    if (wskprops) {
+        const propertiesParser = require('properties-parser');
+        try {
+            return propertiesParser.read(wskprops);
+        } catch (e) {
+            return null;
+        }
+    }
+    return null;
+}
+
+const auth = async (config: types.Config) => {
+    const wskprops = await readWskProps(config)
+
+    if (wskprops) {
+        return {
+            api_key: wskprops.AUTH,
+            apihost: wskprops.APIHOST,
+            ignore_certs: wskprops.IGNORE_CERTS || false,
+            apigw_token: wskprops.APIGW_ACCESS_TOKEN
+        }
+    }
+
+    return null
+} 
+
+// Resolve variables by merging command line options with .wskprops content
+export async function resolveVariables(config: types.Config, options: any = {}) {
+    await init.init(config);
+    const wskprops = await readWskProps(config) || {}
+    const variables: any = {}
+
+    variables.auth = options.auth || process.env.WHISK_AUTH || wskprops.AUTH 
+    variables.apihost = options.apihost || process.env.WHISK_APIHOST || wskprops.APIHOST 
+    variables.ignore_certs = options.ignore_certs || process.env.WHISK_IGNORE_CERTS || wskprops.IGNORE_CERTS || false
+    variables.apigw_token = options.apigw_token || process.env.WHISK_APIGW_ACCESS_TOKEN || wskprops.APIGW_ACCESS_TOKEN
+
+    return variables
+}
+
+export async function initWsk(config: types.Config = {}, options = {}) {
+    await init.init(config);
+    const vars = await resolveVariables(config, options);
+    init.setOW(config, openwhisk({ api_key: vars.auth, apihost: vars.apihost, ignore_certs: vars.ignore_certs, apigw_token: vars.apigw_token }));
+}
+
+function getCachedEnvFilename(config: types.Config) {
+    return path.join(config.cache, 'envs', `.${config.envname}.wskprops`);
+}
