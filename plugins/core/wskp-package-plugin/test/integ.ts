@@ -26,7 +26,7 @@ class integration {
     cache;
 
     async before() {
-        this.ctx = { ow: wskd.auth.initWsk() };
+        this.ctx = { ow: wskd.env.initWsk() };
         this.cache = path.join(__dirname, '..', '..', '..', '..', '..', '.openwhisk', 'build', 'package-plugin'); 
         await wskd.undeploy.all(this.ctx.ow);
     }

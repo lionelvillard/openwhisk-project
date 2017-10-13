@@ -212,6 +212,7 @@ export async function initWsk(config: types.Config = {}, options = {}) {
     await init.init(config);
     const vars = await resolveVariables(config, options);
     init.setOW(config, openwhisk({ api_key: vars.auth, apihost: vars.apihost, ignore_certs: vars.ignore_certs, apigw_token: vars.apigw_token }));
+    return config.ow;
 }
 
 function getCachedEnvFilename(config: types.Config) {
