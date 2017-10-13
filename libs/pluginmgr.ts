@@ -20,6 +20,7 @@ import * as path from 'path';
 import * as types from './types';
 
 const PLUGINS_ROOT = path.join(__dirname, '../../plugins/core');
+const EXT_PLUGINS_ROOT = path.join(__dirname, '../../plugins/node_modules');
 
 const actionPlugins = {};
 const pkgPlugins = {};
@@ -36,7 +37,7 @@ let loaded = false;
 // Build plugin index.
 export async function init(config: types.Config) {
     if (!loaded) {
-        config.logger.info(`initializing plugins ${PLUGINS_ROOT}`);
+        config.logger.info(`initializing plugins ${PLUGINS_ROOT} and ${EXT_PLUGINS_ROOT}`);
         config.setProgress('registering plugins...');
         await registerAll(config);
         loaded = true;
@@ -110,17 +111,22 @@ export async function registerFromPath(config: types.Config, modulepath: string)
 
 async function registerAll(config: types.Config) {
     try {
-        const files = await fs.readdir(PLUGINS_ROOT);
-
-        for (const moduleid of files) {
-            if (moduleid.match(/wskp-\w*-plugin/)) {
-                const modulepath = path.join(PLUGINS_ROOT, moduleid);
-
-                await registerFromPath(config, modulepath);
-            }
-        }
+        await registerFiles(config, PLUGINS_ROOT);
+        await registerFiles(config, EXT_PLUGINS_ROOT);
     } catch (e) {
         config.logger.error(JSON.stringify(e, null, 2));
+    }
+}
+
+async function registerFiles(config: types.Config, root: string) {
+    const files = await fs.readdir(root)
+    for (const moduleid of files) {
+        console.log(moduleid)
+        if (moduleid.match(/wskp-\w*-plugin/)) {
+            const modulepath = path.join(root, moduleid);
+
+            await registerFromPath(config, modulepath);
+        }
     }
 }
 
