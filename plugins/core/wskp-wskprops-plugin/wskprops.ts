@@ -20,7 +20,13 @@ import * as path from 'path';
 
 export function resolveVariable(config: types.Config, name: string) {
     const wskprops = readWskProps(config);
-    return wskprops ? wskprops[name] : undefined;
+    const lc = name.toLowerCase();
+    let value = wskprops ? wskprops[lc] : undefined;
+    if (!value) {
+        const uc = name.toUpperCase();
+        value = wskprops[uc];
+    }
+    return value;
 };
 
 function getWskPropsFile(config: types.Config) {

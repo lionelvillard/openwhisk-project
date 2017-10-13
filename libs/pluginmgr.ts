@@ -112,16 +112,16 @@ export async function registerFromPath(config: types.Config, modulepath: string)
 async function registerAll(config: types.Config) {
     try {
         await registerFiles(config, PLUGINS_ROOT);
-        await registerFiles(config, EXT_PLUGINS_ROOT);
+        if (await fs.pathExists(EXT_PLUGINS_ROOT))
+            await registerFiles(config, EXT_PLUGINS_ROOT);
     } catch (e) {
         config.logger.error(JSON.stringify(e, null, 2));
     }
 }
 
 async function registerFiles(config: types.Config, root: string) {
-    const files = await fs.readdir(root)
+    const files = await fs.readdir(root);
     for (const moduleid of files) {
-        console.log(moduleid)
         if (moduleid.match(/wskp-\w*-plugin/)) {
             const modulepath = path.join(root, moduleid);
 

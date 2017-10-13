@@ -39,9 +39,9 @@ export async function init(config: types.Config) {
     config.logger.level = config.logger_level;
     config.setProgress = setProgress(config);
 
-    if (!config.ow) 
+    if (!config.ow)
         config.ow = fakeow;
-    
+
     setOW(config, config.ow)
 
     await plugins.init(config);
@@ -218,13 +218,7 @@ async function checkPackages(config: types.Config, manifest) {
 async function checkPackage(config: types.Config, manifest, packages, pkgName, pkg) {
     switch (typeof pkg) {
         case 'string':
-            packages[pkgName] = pkg = pkg.trim();
-            if (pkg.startsWith('$')) {
-                packages[pkgName] = pkg = await evaluate(config, pkg);
-                await checkPackage(config, manifest, packages, pkgName, pkg);
-            } else if (pkg.length() !== 0) {
-                throw `${JSON.stringify(pkg)} is not a valid value`;
-            }
+            packages[pkgName] = await evaluate(config, pkg);
             break;
         case 'object':
             if (pkg.bind) {
@@ -305,7 +299,7 @@ function checkParameters(config: types.Config, pkgName: string, actionName: stri
     if (inputs) {
         for (const key in inputs) {
             const value = inputs[key];
-            if (typeof value === 'string' && value.startsWith('${'))
+            if (typeof value === 'string')
                 inputs[key] = evaluate(config, value);
         }
     }
@@ -316,12 +310,11 @@ function checkAnnotations(config: types.Config, pkgName: string, actionName: str
     if (annos) {
         for (const key in annos) {
             const value = annos[key];
-            if (typeof value === 'string' && value.startsWith('${'))
+            if (typeof value === 'string')
                 annos[key] = evaluate(config, value);
         }
     }
 }
-
 
 async function checkApis(config: types.Config, manifest) {
     const apis = manifest.apis;

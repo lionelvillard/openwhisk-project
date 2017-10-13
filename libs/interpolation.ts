@@ -18,10 +18,8 @@ import * as types from './types';
 import * as vm from 'vm';
 
 export function evaluate(config: types.Config, expr: string) {
-    if (expr[0] !== '$' || expr[1] !== '{' || expr[expr.length - 1] !== '}')
-        throw `Invalid interpolation: ${expr}`;
-    expr = expr.substr(2, expr.length - 3);
-
+    expr = `\`${expr}\``;
+    config.logger.info(`evaluate ${expr}`);
 
     const variableHandler = {
         get: (target, name) => resolveVariable(config, name)
@@ -32,7 +30,9 @@ export function evaluate(config: types.Config, expr: string) {
     }
 
     const sandbox = vm.createContext(context);
-    return vm.runInContext(expr, sandbox);
+    const result = vm.runInContext(expr, sandbox);
+    config.logger.info(`result: ${result}`);
+    return result;
 }
 
 function resolveVariable(config, name) {
@@ -41,5 +41,8 @@ function resolveVariable(config, name) {
         if (value)
             return value;
     }
-    return undefined;
+    if (name === 'envname')
+        return config.envname;
+        
+    throw `Undefined variable ${name}`;
 }

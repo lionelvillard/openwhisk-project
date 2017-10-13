@@ -24,7 +24,8 @@ import * as names from'./libs/names';
 import * as bx from'./libs/bluemix';
 import * as controller from'./libs/controller';
 import * as plugins from'./libs/pluginmgr';
+import * as interpolation from'./libs/interpolation';
 
 type IConfig = types.Config;
 
-export { deploy , undeploy, refresh, sync, env, yo, types, names, bx, controller, plugins, IConfig };
+export { deploy , undeploy, refresh, sync, env, yo, types, names, bx, controller, plugins, interpolation, IConfig };
