@@ -38,7 +38,7 @@ export interface Config {
 
     load?: Loader;
     basePath?: string;
-    env?: string;
+    envname?: string;                   // targeted environment name
 
     /* Set the command progress, e.g. loading foo.js */
     setProgress?: (format: string, options?) => void;
@@ -145,7 +145,7 @@ export interface Builder {
     __exec?: ActionBuilder;
 }
 
-export enum projectProps { name = 'name', basepath = 'basePath', includes = 'includes', packages = 'packages', actions = 'actions', triggers = 'triggers', rules = 'rules', apis = 'apis', };
+export enum projectProps { name = 'name', version = 'version', basepath = 'basePath', includes = 'includes', packages = 'packages', actions = 'actions', triggers = 'triggers', rules = 'rules', apis = 'apis', };
 export enum actionProps {
     limits = 'limits', inputs = 'inputs', annotations = 'annotations', builder = 'builder',
     location = 'location', code = 'code', sequence = 'sequence', kind = 'kind', main = 'main',

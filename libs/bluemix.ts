@@ -20,11 +20,11 @@ import * as path from 'path';
 import { exec } from 'child-process-promise';
 import * as types from './types';
 
-// @return true if Bluemix is available on this system, false otherwise
+// @return true if Bluemix with wsk plugin is available on this system, false otherwise
 export const isBluemixCapable = async () => {
     if (process.env.BLUEMIX_API_KEY) {
         try {
-            exec('bx help');
+            await exec('bx wsk help');
             return true;
         } catch (e) {
             return false;
@@ -48,6 +48,7 @@ export const login = async (config: types.Config, cred: Credential) => {
         const space = cred.space ? `-s ${cred.space}` : '';
         const bx = `BLUEMIX_HOME=${cred.home} bx login -a ${cred.endpoint} --apikey ${cred.apikey} -o ${cred.org} ${space}`;
         config.logger.debug(`exec ${bx}`);
+        config.setProgress('login to Bluemix');
         await exec(bx);
         return true;
     } catch (e) {
@@ -63,6 +64,7 @@ export const run = async (config: types.Config, cred: Credential, cmd: string) =
     return await exec(bx);
 }
 
+//
 const fixupCredentials = (config: types.Config, cred: Credential) => {
     cred = cred || {};
     cred.endpoint = cred.endpoint || 'api.ng.bluemix.net';
@@ -82,110 +84,132 @@ const fixupCredentials = (config: types.Config, cred: Credential) => {
     return cred;
 }
 
-// Retrieve authentication tokens from local file system
-export const getTokens = () => {
-    let configFile = expandHomeDir('~/.bluemix/.cf/config.json')
-    if (!fs.existsSync(configFile)) {
-        configFile = expandHomeDir('~/.cf/config.json')
-        if (!fs.existsSync(configFile)) {
-            return null
+// Get Wsk AUTH for given credential. If cred space does not exist, create it.
+export async function getAuthKeysForSpace(config: types.Config, cred: Credential): Promise<string | null> {
+    config.setProgress(`setting space to ${cred.space}`);
+    await run(config, cred, `account space-create ${cred.space}`);
+    await run(config, cred, `target -s ${cred.space}`);
+    config.setProgress(`retrieving wsk authentication`);
+    
+    const io = await run(config, cred, `wsk property get --auth`);
+    console.log(io.stderr);
+    if (io.stdout) {
+        
+        const matched = io.stdout.trim().match(/^whisk auth\s*(.*)$/);
+        if (matched) {
+            config.logger.info('AUTH retrieved');        
+            return matched[1];
         }
     }
+    config.logger.info('AUTH not retrieved');
+    return null;
+};
 
-    const config = require(configFile)
-    if (!config.AccessToken)
-        return null
 
-    return {
-        accessToken: config.AccessToken,
-        refreshToken: config.RefreshToken
-    }
-}
+// // Retrieve authentication tokens from local file system
+// // deprecated
+// export const getTokens = () => {
+//     let configFile = expandHomeDir('~/.bluemix/.cf/config.json')
+//     if (!fs.existsSync(configFile)) {
+//         configFile = expandHomeDir('~/.cf/config.json')
+//         if (!fs.existsSync(configFile)) {
+//             return null
+//         }
+//     }
 
-// Send request to get all OpenWhisk keys for the given Bluemix authentication
-export const getAuthKeys = (accessToken, refreshToken) => {
-    return request({
-        method: 'POST',
-        uri: 'https://openwhisk.ng.bluemix.net/bluemix/v2/authenticate',
-        body: {
-            accessToken: accessToken.substr(7),
-            refreshToken
-        },
-        json: true
-    })
-}
+//     const config = require(configFile)
+//     if (!config.AccessToken)
+//         return null
 
-const delay = ms => new Promise(resolve => {
-    setTimeout(resolve, ms)
-})
+//     return {
+//         accessToken: config.AccessToken,
+//         refreshToken: config.RefreshToken
+//     }
+// }
 
-/*
- Wait for the given spaces to be available in OpenWhisk
 
- @return {Object[]} the list of keys for the given spaces
- */
-export const waitForAuthKeys = (accessToken, refreshToken, spaces, timeout = 1000) => {
-    if (spaces.length == 0)
-        return Promise.resolve(true)
+// // Send request to get all OpenWhisk keys for the given Bluemix authentication
+// // deprecated
+// export const getAuthKeys = (accessToken, refreshToken) => {
+//     return request({
+//         method: 'POST',
+//         uri: 'https://openwhisk.ng.bluemix.net/bluemix/v2/authenticate',
+//         body: {
+//             accessToken: accessToken.substr(7),
+//             refreshToken
+//         },
+//         json: true
+//     })
+// }
 
-    if (timeout < 0)
-        return Promise.reject(new Error('timeout'))
+// const delay = ms => new Promise(resolve => {
+//     setTimeout(resolve, ms)
+// })
 
-    timeout = (timeout === undefined) ? 10000 : timeout
+// /*
+//  Wait for the given spaces to be available in OpenWhisk
 
-    return getAuthKeys(accessToken, refreshToken)
-        .then(keys => {
-            const namespaces = keys.namespaces
-            let spacekeys = []
-            for (const ns of namespaces) {
+//  @return {Object[]} the list of keys for the given spaces
+//  */
+// // deprecated
+// export const waitForAuthKeys = (accessToken, refreshToken, spaces, timeout = 1000) => {
+//     if (spaces.length == 0)
+//         return Promise.resolve(true)
 
-                for (const s of spaces) {
+//     if (timeout < 0)
+//         return Promise.reject(new Error('timeout'))
 
-                    if (ns.name.endsWith(`_${s}`)) {
-                        spacekeys.push(ns)
-                        break
-                    }
-                }
-            }
+//     timeout = (timeout === undefined) ? 10000 : timeout
 
-            if (spacekeys.length == spaces.length) {
-                // got all.
-                return Promise.resolve(spacekeys)
-            } else {
-                // Try again in a bit
-                return delay(1000).then(() => waitForAuthKeys(accessToken, refreshToken, spaces, timeout - 1000))
-            }
-        }
-        )
-        .catch(e => {
-            if ((e instanceof Error) && e.message === 'timeout')
-                return Promise.reject(e)
+//     return getAuthKeys(accessToken, refreshToken)
+//         .then(keys => {
+//             const namespaces = keys.namespaces
+//             let spacekeys = []
+//             for (const ns of namespaces) {
 
-            // most likely a 409. Try again.
-            return delay(1000).then(() => waitForAuthKeys(accessToken, refreshToken, spaces, timeout - 1000))
-        })
-}
+//                 for (const s of spaces) {
 
-export const createSpace = space => {
-    const tokens = getTokens()
-    return new Promise((resolve, reject) => {
-        exec(`bx iam space-create ${space}`, (err, stdout, stderr) => {
-            if (err) {
-                console.log(stdout)
-                console.log(stderr)
-                return reject(err)
-            }
-            return resolve(true)
-        })
-    })
-        .then(() => waitForAuthKeys(tokens.accessToken, tokens.refreshToken, [space]))
-        .then(keys => (keys && keys.length > 0) ? keys[0] : null)
-}
+//                     if (ns.name.endsWith(`_${s}`)) {
+//                         spacekeys.push(ns)
+//                         break
+//                     }
+//                 }
+//             }
 
-export const deleteSpace = space => {
-    return new Promise(resolve => {
-        exec(`bx iam space-delete ${space} -f`, () => {
-            return resolve(true)
-        })
-    })
-}
+//             if (spacekeys.length == spaces.length) {
+//                 // got all.
+//                 return Promise.resolve(spacekeys)
+//             } else {
+//                 // Try again in a bit
+//                 return delay(1000).then(() => waitForAuthKeys(accessToken, refreshToken, spaces, timeout - 1000))
+//             }
+//         }
+//         )
+//         .catch(e => {
+//             if ((e instanceof Error) && e.message === 'timeout')
+//                 return Promise.reject(e)
+
+//             // most likely a 409. Try again.
+//             return delay(1000).then(() => waitForAuthKeys(accessToken, refreshToken, spaces, timeout - 1000))
+//         })
+// }
+
+// export const createSpace = async space => {
+//     const tokens = getTokens()
+
+//     try {
+//         await exec(`bx iam space-create ${space}`);
+//         const keys = await waitForAuthKeys(tokens.accessToken, tokens.refreshToken, [space]);
+//         return (keys && keys.length > 0) ? keys[0] : null;
+//     } catch (e) {
+//         throw e;
+//     }
+// }
+// // deprecated
+// export const deleteSpace = space => {
+//     return new Promise(resolve => {
+//         exec(`bx iam space-delete ${space} -f`, () => {
+//             return resolve(true)
+//         })
+//     })
+// }

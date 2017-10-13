@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 import * as util from 'util';
+import * as types from './types';
 import * as vm from 'vm';
 
-export function evaluate(config, expr: string) {
+export function evaluate(config: types.Config, expr: string) {
     if (expr[0] !== '$' || expr[1] !== '{' || expr[expr.length - 1] !== '}')
         throw `Invalid interpolation: ${expr}`;
     expr = expr.substr(2, expr.length - 3);

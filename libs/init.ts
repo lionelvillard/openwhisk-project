@@ -147,7 +147,7 @@ function setProgress(config) {
             options = options || { total: 1 };
         options.clear = true;
 
-        config.progress = new progress(format, options);
+        config.progress = new progress(format, options); 
         if (autotick)
             config.progress.tick();
     }
@@ -177,7 +177,6 @@ async function check(config: types.Config) {
         }
     }
     config.logger.debug('normalization done');
-
 }
 
 async function checkIncludes(config: types.Config, manifest) {
@@ -272,7 +271,10 @@ async function checkAction(config: types.Config, manifest, pkgName: string, acti
     // At this point, all unkown properties have been expanded.
 
     action._qname = names.resolveQName(actionName, manifest.namespace, pkgName);
-    resolveBuilder(config, pkgName, actionName, action);
+    checkParameters(config, pkgName, actionName, action);
+    checkAnnotations(config, pkgName, actionName, action);
+    checkBuilder(config, pkgName, actionName, action);
+
 
     if (action.hasOwnProperty('location')) { // builtin basic action
         action.location = resolveActionLocation(config.basePath, pkgName, actionName, action.location);
@@ -293,6 +295,29 @@ async function checkAction(config: types.Config, manifest, pkgName: string, acti
         throw `Invalid action ${actionName}: missing either location, sequence, code or image property`;
     }
 }
+
+function checkParameters(config: types.Config, pkgName: string, actionName: string, action: types.Action) {
+    const inputs = action.inputs;
+    if (inputs) {
+        for (const key in inputs) {
+            const value = inputs[key];
+            if (typeof value === 'string' && value.startsWith('${'))
+                inputs[key] = evaluate(config, value);                
+        }
+    }    
+}
+
+function checkAnnotations(config: types.Config, pkgName: string, actionName: string, action: types.Action) {
+    const annos = action.annotations;
+    if (annos) {
+        for (const key in annos) {
+            const value = annos[key];
+            if (typeof value === 'string' && value.startsWith('${'))
+            annos[key] = evaluate(config, value);                
+        }
+    }    
+}
+    
 
 async function checkApis(config: types.Config, manifest) {
     const apis = manifest.apis;
@@ -674,7 +699,7 @@ function resolveMain(action) {
     }
 }
 
-function resolveBuilder(config, pkgName, actionName, action) {
+function checkBuilder(config, pkgName, actionName, action) {
     if (action.builder && action.builder.name) {
         if (!action.builder.dir)
             action.builder.dir = path.join(config.cache, 'build', pkgName, actionName);

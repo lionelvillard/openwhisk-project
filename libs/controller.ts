@@ -51,10 +51,9 @@ interface IContainer {
     debugPort: number;
 }
 
-enum ClientState { IDLE };
 interface IClient {
-    socket: net.Socket;
-    state: ClientState;
+    socket: net.Socket,
+    data: string[]
 }
 
 // inactive container pool, indexed by action name
@@ -77,7 +76,6 @@ export async function init(cfg: types.Config) {
         if (cfg.cache) {
             const projectPath = path.join(cfg.cache, 'build', 'project.json');
             if (fs.pathExistsSync(projectPath)) {
-
                 projects[cfg.cache] = fs.readJsonSync(projectPath);
                 defaultProject = cfg.cache;
             }
@@ -97,16 +95,22 @@ export function start(port: number) {
     config.logger.info(`local controller listening port ${port}`);
 
     server = net.createServer(c => {
-        config.logger.info(`client connected port ${c.localPort}`);
+        const remotePort = c.remotePort;
+        config.logger.info(`client connected port ${remotePort}`);
 
-        clients[c.localPort] = {
+        c.setNoDelay(true);
+        clients[remotePort] = {
             socket: c,
-            state: ClientState.IDLE
+            data: []
         };
 
+        // c.on('data', data => {
+        //     clients[remotePort].data.push(data.toString());
+        // });
+
         c.on('end', () => {
-            config.logger.info(`client disconnect port ${c.localPort}`);
-            delete clients[c.localPort];
+            config.logger.info(`client disconnect port ${remotePort}`);
+            delete clients[remotePort];
         });
     });
 
@@ -125,6 +129,8 @@ export async function stop() {
 
     if (ids.length > 0) {
         try {
+            console.log('stopping containers...')
+            
             const cmd = `docker stop ${ids.join(' ')}`;
             return exec(cmd);
         } catch (e) {
@@ -147,12 +153,12 @@ app.use(bodyParser.json());
 // action get
 app.get('/api/v1/namespaces/:namespace/actions/:packageName?/:actionName', async (req, res, next) => {
     try {
-        const project = await getProject(req);
-        if (!project)
+        const clientInfo = await getClientInfo(req);;
+        if (!clientInfo.project)
             return terminate(res, error(404, projectDoesNotExist));
 
         const { namespace, packageName, actionName } = req.params;
-        const action = utils.getAction(project, packageName, actionName);
+        const action = utils.getAction(clientInfo.project, packageName, actionName);
         if (!action)
             return terminate(res, error(404, resourceDoesNotExist));
 
@@ -182,8 +188,8 @@ app.get('/api/v1/namespaces/:namespace/actions/:packageName?/:actionName', async
 // action invoke
 app.post('/api/v1/namespaces/:namespace/actions/:packageName?/:actionName', async (req, res, next) => {
     try {
-        const project = await getProject(req);
-        if (!project)
+        const clientInfo = await getClientInfo(req);
+        if (!clientInfo)
             return terminate(res, error(404, projectDoesNotExist));
 
         const { namespace, packageName, actionName } = req.params;
@@ -191,7 +197,7 @@ app.post('/api/v1/namespaces/:namespace/actions/:packageName?/:actionName', asyn
         const debugport = req.query.debugport === 'false' ? false : req.query.debugport;
 
         if (req.query.blocking === 'true') {
-            const result = await invoke(project, activationId, packageName, actionName, req.body, debugport);
+            const result = await invoke(clientInfo, activationId, packageName, actionName, req.body, debugport);
 
             if (result.error) {
                 return terminate(res, error);
@@ -199,7 +205,7 @@ app.post('/api/v1/namespaces/:namespace/actions/:packageName?/:actionName', asyn
 
             res.status(200).type('json').send(result);
         } else {
-            invoke(project, activationId, packageName, actionName, req.body, debugport);
+            invoke(clientInfo, activationId, packageName, actionName, req.body, debugport);
             res.status(200).type('json').send({ activationId });
         }
     } catch (e) {
@@ -213,8 +219,8 @@ app.all('*', (req, res) => {
 
 // --- utils
 
-async function invoke(project, activationId, packageName, actionName, params, debugport) {
-    const action = utils.getAction(project, packageName, actionName);
+async function invoke(clientInfo, activationId, packageName, actionName, params, debugport) {
+    const action = utils.getAction(clientInfo.project, packageName, actionName);
     if (!action)
         return error(404, resourceDoesNotExist);
 
@@ -223,7 +229,7 @@ async function invoke(project, activationId, packageName, actionName, params, de
 
         for (const qname of action.sequence) {
             const { namespace, pkg, name } = names.parseQName(qname);
-            const result = await invoke(project, activationId, pkg, name, data, debugport);
+            const result = await invoke(clientInfo, activationId, pkg, name, data, debugport);
             data = result.response.result;
             debugport = false;
         }
@@ -231,7 +237,7 @@ async function invoke(project, activationId, packageName, actionName, params, de
     } else {
         const code = (await fs.readFile(action.location)).toString();
 
-        const container = await getContainer(project, action, debugport);
+        const container = await getContainer(clientInfo, action, debugport);
         if (!container)
             return error(500, containerFailed);
 
@@ -259,6 +265,7 @@ async function invoke(project, activationId, packageName, actionName, params, de
         });
 
         // Put container in pool
+        await exec(`docker stop ${container.id}`);
         pool[action._qname] = container;
         delete active[container.id];
 
@@ -281,15 +288,17 @@ function terminate(res, msg) {
     res.status(msg.code).type('json').send(msg);
 }
 
-async function getContainer(project, action, requestedDebugPort) {
+async function getContainer(clientInfo, action, requestedDebugPort) {
     try {
         let container: IContainer;
 
         // // pooled?
         // container = pool[action._qname];
         // if (container) {
-        //     config.logger.info(`reusing pooled container ${container.id} bound to ${container.endpoint}`);
-
+        //     const port = await getPort();
+        //     config.logger.info(`reusing pooled container ${container.id} bound to ${container.endpoint}, debugport: ${container.debugPort}`);
+        //     const cmd = `docker start ${container.id}`;
+        //     await exec(cmd);
         //     delete pool[action._qname];
         // }
 
@@ -297,12 +306,12 @@ async function getContainer(project, action, requestedDebugPort) {
             const port = await getPort();
             const debugPort = await (requestedDebugPort ? getPort({ port: requestedDebugPort }) : getPort());
 
-            const cmd = `docker run -d -p ${port}:8080 -p ${debugPort}:5858 wskp/nodejs6action node --inspect=5858 app.js`;
+            const cmd = `docker run -d -p ${port}:8080 -p ${debugPort}:5858 wskp/nodejs6action npm run debug`;
 
             config.logger.info(`starting container: ${cmd}`);
             const output = await exec(cmd);
             const endpoint = `http://localhost:${port}`;
-            container = { project, id: output.stdout.trim(), endpoint, debugPort };
+            container = { project: clientInfo.project, id: output.stdout.trim(), endpoint, debugPort };
 
             // Wait for app to come up.
             // TODO: timeout
@@ -316,13 +325,14 @@ async function getContainer(project, action, requestedDebugPort) {
             }
         }
         active[container.id] = container;
-
         config.logger.info('container ready');
 
-        for (const clientid in clients) {
-            clients[clientid].socket.write(`{"name":"attach", "actionName": "${action._qname}", "debugPort": ${container.debugPort}}\n`);
-        }
-        await wait(1000);
+        await waitAttached(clientInfo.client, clientInfo.name, action._qname, container.debugPort);
+        // for (const clientid in clients) {
+        //     clients[clientid].socket.write(`{"name":"attach", "actionName": "${action._qname}", "debugPort": ${container.debugPort}}`);
+
+        // }
+        //await wait(1000);
 
         return container;
     } catch (e) {
@@ -331,16 +341,19 @@ async function getContainer(project, action, requestedDebugPort) {
     }
 }
 
-async function getProject(req) {
+async function getClientInfo(req) {
     const encodedRoot = req.headers.authorization;
     if (encodedRoot && encodedRoot.startsWith('Basic ')) {
-        const root = Buffer.from(encodedRoot.substr(6), 'base64').toString().substr(1);
-        if (projects[root]) {
-            return projects[root];
+        const raw = Buffer.from(encodedRoot.substr(6), 'base64').toString();
+        console.log(raw);
+        const info = JSON.parse(raw);
+        if (projects[info.root]) {
+            info.project = projects[info.root];
         }
-        return await loadProject(root);
+        info.project = await loadProject(info.root);
+        return info;
     }
-    return projects[defaultProject];
+    return null;
 }
 
 async function loadProject(root) {
@@ -356,4 +369,27 @@ function wait(time) {
     return new Promise(resolve => {
         setTimeout(() => resolve(), time);
     })
+}
+
+// Wait for client to attached to debug session
+async function waitAttached(clientId, sessionName, actionName, debugPort) {
+    const client = clients[clientId];
+    if (!client) {
+        // disconnected?
+        return;
+    }
+    await new Promise(resolve => {
+        client.socket.once('data', data => {
+            console.log(data.toString());
+            resolve();
+        });
+        client.socket.write(`{"name":"attach", "actionName": "${actionName}", "debugPort": ${debugPort}}`);
+        
+    });
+    // Wait a bit more to make sure breakpoints have been sent.
+    // Currently there is no way to detect this.
+    console.log('wait for breakpoint to be sent');
+    await wait(2000);
+    console.log('breakpoint sent');
+    
 }

@@ -28,10 +28,9 @@ A *project* is an *object* representing a collection of OpenWhisk entities (acti
 
   Internally, a fully managed entity contains the annotation called `managed`.
 
-- `basePath` (string, optional) : the relative or absolute base path used to resolve relative location. The actual absolute base path is resolved as follows:
-   - if there is a `basePath` specified in the deployment file and it is absolute, use it.
-   - otherwise: if there is a `basePath` specified in the deployment file and it is relative, resolve it by using the contextual base path (see below), and use it.
-   - otherwise: use the directory containing the deployment file.
+- `basePath` (string, optional): the relative or absolute base path used to resolve relative location. 
+
+- `version` (string, optional): project version following semver format.
 
 - [`includes`](#includes) (array, optional): includes external project configurations
 - [`packages`](#packages) (object, optional)
@@ -44,7 +43,7 @@ A *project* is an *object* representing a collection of OpenWhisk entities (acti
 
 ```yaml
 name: example
-
+version: 0.1.0
 basePath: .
 
 includes:  # includes other project configuration
@@ -421,7 +420,7 @@ An *object* representing a list of parameters
 
 ### Properties
 
-- `{key}` (string, optional)
+- `{key}` (string | [`interpolation`](#interpolation), optional)
 
 ### Example
 
@@ -443,7 +442,7 @@ An *object* representing a list of annotations
 
 ### Properties
 
-- `{key}` (string, optional)
+- `{key}` (string | [`interpolation`](#interpolation), optional)
 
 ## `limits`
 
@@ -486,7 +485,10 @@ actions:
 
 A *string* of the form `${ expr }` where `expr` is interpreted as a Javascript expression returning a JSON value. This expression is evaluated in a sandbox initialized to this object:
 
-- `vars`: an *object* containing *resolved* variable values.   
+- `vars`: an *object* containing *resolved* variable values in addition to built-in variables.
+
+The built-in variables are:
+- `envname`: name of the current environment 
 
 ## Entity name resolution
 

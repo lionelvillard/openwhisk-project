@@ -13,94 +13,113 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const readdir = require('recursive-readdir')
-const path = require('path')
-const fs = require('fs-extra')
-const bx = require('./bluemix')
-const propertiesParser = require('properties-parser')
-const expandHome = require('expand-home-dir')
+import * as init from './init';
+import * as types from './types';
+import * as auth from './auth';
+import * as bx from './bluemix';
+import * as utils from './utils';
+import * as readdir from 'recursive-readdir';
+import * as path from 'path';
+import * as fs from 'fs-extra';
+import * as propertiesParser from 'properties-parser';
+import * as expandHome from 'expand-home-dir';
 
 // Get all declared environments 
-export const getEnvironments = () => new Promise(resolve => {
+export async function getEnvironments(config: types.Config) {
+    await init.init(config);
+    config.logger.info('get project environments');
+    
     const ignore = (file, stats) => {
         if (stats.isDirectory())
-            return true
-        const name = path.basename(file)
-        return !name.endsWith('.wskprops')
+            return true;
+        const name = path.basename(file);
+        return !name.endsWith('.wskprops');
     }
 
-    readdir('.', [ignore], (err, files) => {
-        const result = []
-        for (const file of files) {
-            const envname = path.basename(file, '.wskprops').substr(1)
-            if (envname !== 'global')
-                result.push(envname)
-        }
-        resolve(result)
-    })
-})
+    try {
+        const files: string[] = readdir('.', [ignore]);
+        return files.map(file => path.basename(file, '.wskprops').substr(1));
+    } catch (e) {
+        config.logger.error(e);
+    }
+}
 
 // Set current environment 
-export const setEnvironment = async envname => {
-    const filename = `.${envname}.wskprops`
-    let exists = await fs.exists(filename)
+export async function setEnvironment(config: types.Config, envname: string) {
+    await init.init(config);
+    config.logger.info(`set project environment to ${envname}`);
+    const filename = `.${envname}.wskprops`;
+    let exists = await fs.pathExists(filename);
     if (!exists)
         return false
 
-    exists = await fs.exists('.wskprops')
+    exists = await fs.pathExists('.wskprops');
     if (exists) {
-        await fs.copy('.wskprops', '.wskprops.bak', { overwrite: true })
+        await fs.copy('.wskprops', '.wskprops.bak', { overwrite: true });
     }
-    
-    // Resolve AUTH/APIHOST if needed.
+    await fs.copy(filename, '.wskprops', { overwrite: true });
 
-    try {
-        let props = propertiesParser.createEditor(filename)
-        let changed = false
-        let bxspace = props.get('BLUEMIX_SPACE')
-        if (bxspace)
-            bxspace = bxspace.trim()
-        if (!props.get('AUTH')) {
-            if (bxspace) {
-                if (!bx.isBluemixCapable()) {
-                    console.error('bx not installed.')
-                    return false
-                }
-                let bxorg = props.get('BLUEMIX_ORG')
-                if (!bxorg) {
-                    console.error('missing BLUEMIX_ORG.')
-                    return false
-                }
+    // Check and resolve
+    resolveProps(config, envname);
 
-                await bx.login(null, { org: bxorg, space: bxspace,  home: expandHome('~')});
-                const key = await bx.createSpace(bxspace)
-                console.log(key)
-                if (!key) {
-                    console.error(`error getting the openwhisk key for ${bxspace}`)
-                    return false
-                }
-
-                props.set('AUTH', `${key.uuid}:${key.key}`)
-                changed = true
-            }
-        }
-        if (!props.get('APIHOST')) {
-            if (bxspace) {
-                props.set('APIHOST', 'https://openwhisk.ng.bluemix.net')
-                changed = true
-            }
-        }
-
-        if (changed) {
-            props.save('.wskprops')
-        } else {
-            await fs.copy(filename, '.wskprops', { overwrite: true })
-        }
-
-    } catch (e) {
-        console.error(e)
-        // TODO: log
-        return false
-    }
-    return true
+    return true;
 }
+
+async function resolveProps(config: types.Config, envname: string) {
+    const props = propertiesParser.createEditor('.wskprops');
+    
+    const apihost = props.get('APIHOST');
+    if (!apihost) {
+        config.logger.fatal('missing APIHOST in .wskprops');
+        throw 'missing APIHOST in ./.wskprops';
+    }
+
+    if (!props.get('AUTH')) {
+        if (apihost.endsWith('bluemix.net')) {
+            await resolveAuthFromBluemix(config, props, envname);
+        } else {
+            config.logger.fatal('cannot resolve AUTH');
+            throw 'cannot resolve AUTH';
+        }
+        
+        props.save('.wskprops');
+    }
+}
+
+async function resolveAuthFromBluemix(config: types.Config, props, envname: string) {
+    if (!bx.isBluemixCapable()) {
+        config.logger.error('bx not is installed.')
+        throw 'bx is not installed';
+    }
+
+    let bxorg = props.get('BLUEMIX_ORG');
+    if (!bxorg) {
+        config.logger.error('missing BLUEMIX_ORG in .wskprops');
+        throw 'missing BLUEMIX_ORG in .wskprops';
+    }
+
+    let bxspace = props.get('BLUEMIX_SPACE');
+    bxspace = bxspace ? bxspace.trim() : null;
+    if (!bxspace) {
+        // Generate space from manifest
+        if (!config.manifest)
+            throw 'Cannot resolve AUTH: missing BLUEMIX_SPACE or project configuration';
+        const name = config.manifest.name;
+        if (!name)   
+            throw `Cannot resolve AUTH from project configuration: missing 'name' property.`;
+        
+        if (envname === 'dev' || envname === 'test' || !config.manifest.version)
+            bxspace = `${name}-${envname}`;
+        else 
+            bxspace = `${name}-${envname}@${config.manifest.version}`;
+
+        bxspace = utils.escapeNamespace(bxspace);
+        config.logger.info(`targeting ${bxspace} space`);
+    }
+
+    const cred: bx.Credential = { org: bxorg, space: bxspace, home: expandHome('~') };
+    await bx.login(config, cred);
+    const auth = await bx.getAuthKeysForSpace(config, cred);
+    props.set('AUTH', auth);
+}
+

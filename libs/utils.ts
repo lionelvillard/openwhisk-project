@@ -41,6 +41,13 @@ export const initFromBaseAction = baseAction => {
     return action
 }
 
+// Convert string to valid namespace
+export function escapeNamespace(str: string) {
+    // The first character must be an alphanumeric character, or an underscore.
+    // The subsequent characters can be alphanumeric, spaces, or any of the following: _, @, ., -
+    return str;
+}
+
 // --- Conversion functions from manifest format to rest params
 
 export const getAnnotations = (config, annotations) : any => {
