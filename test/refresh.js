@@ -66,7 +66,7 @@ describe('testing refresh', function () {
             target: 2 // bash
         });
 
-        await wskd.undeploy.all(ctx.ow);
+        await wskd.undeploy.all({ ow: ctx.ow });
         const json2 = await wskd.refresh.apply({
             ow: ctx.ow,
             target: 1 // raw
@@ -94,7 +94,7 @@ describe('testing refresh', function () {
     it('data processing - yaml', async function () {
         this.timeout(30000);
         
-        await wskd.undeploy.all(ctx.ow);
+        await wskd.undeploy.all({ ow: ctx.ow });
         
         await wskd.deploy.apply({
             ow: ctx.ow,

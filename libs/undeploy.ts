@@ -25,7 +25,6 @@ export async function all(config: types.Config) {
 }
 
 export async function apply(config: types.Config) {
-    console.log('undeploy')
     await init(config);
 
     const manifest = config.manifest; // if null, then delete all!

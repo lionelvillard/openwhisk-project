@@ -16,7 +16,7 @@
 const assert = require('assert');
 const utils = require('./helpers/utils');
 const expr = require('../dist/libs/interpolation');
-
+const log4j = require('log4js');
 
 describe('Interpolation', function () {
 
@@ -24,7 +24,8 @@ describe('Interpolation', function () {
         const config = {
             variableSources: [
                 (config, name) => ({ 'env': 'dev' }[name])
-            ]
+            ],
+            logger: log4j.getLogger()
         };
 
         const value = expr.evaluate(config, '${vars.env}');
@@ -35,7 +36,8 @@ describe('Interpolation', function () {
         const config = {
             variableSources: [
                 (config, name) => process.env[name]
-            ]
+            ],
+            logger: log4j.getLogger()
         };
 
         const value = expr.evaluate(config, '${vars.HOME}');
@@ -47,8 +49,9 @@ describe('Interpolation', function () {
             variableSources: [
                 (config, name) => ({ 'HOME': '/myhome' }[name]),
                 (config, name) => process.env[name]
-                
-            ]
+
+            ],
+            logger: log4j.getLogger()
         };
 
         const value = expr.evaluate(config, '${vars.HOME}');

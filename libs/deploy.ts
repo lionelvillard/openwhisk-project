@@ -124,6 +124,7 @@ function deployPendingActions(ctx, graph) {
 
     return Promise.resolve([])
 }
+
 function deployTriggers(args) {
     const manifest = args.manifest;
     const triggers = manifest.triggers;
@@ -176,15 +177,15 @@ function deployTriggers(args) {
     }
 }
 
-function deployRules(args) {
-    const manifest = args.manifest
+function deployRules(config) {
+    const manifest = config.manifest;
     if (manifest.hasOwnProperty('rules')) {
-        const rules = manifest.rules
-        const promises = []
+        const rules = manifest.rules;
+        const promises = [];
         for (let ruleName in rules) {
             let rule = rules[ruleName]
 
-            let cmd = deployRule(args.ow, ruleName, rule.trigger, rule.action)
+            let cmd = deployRule(config, ruleName, rule.trigger, rule.action);
 
             promises.push(cmd)
         }
@@ -195,12 +196,12 @@ function deployRules(args) {
 }
 
 
-const deployRule = (ow, ruleName, trigger, action) => {
-    return ow.rules.change({
+const deployRule = (config, ruleName, trigger, action) => {
+    return config.ow.rules.change({
         ruleName,
         action,
         trigger
-    })
+    }).then(() => config.logger.info(`[RULE] [CREATED] ${ruleName}`));
 }
 
 // --- Apis

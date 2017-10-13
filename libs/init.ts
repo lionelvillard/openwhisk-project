@@ -56,7 +56,7 @@ export async function init(config: types.Config) {
         await fs.mkdirs(buildir);
         await fs.writeJSON(path.join(buildir, 'project.json'), config.manifest, { spaces: 2 });
     }
-    config.logger.debug(stringify(config, null, 2));
+    config.logger.debug(stringify(config.manifest, null, 2));
     config.setProgress('');
     config._initialized = true;
 }
@@ -167,11 +167,13 @@ async function check(config: types.Config) {
     config.logger.debug('normalizing project configuration');
 
     await checkIncludes(config, manifest);
-
+    await checkPackages(config, manifest);
+    
     if (manifest.actions)
         await checkActions(config, manifest, '', manifest.actions);
 
-    await checkPackages(config, manifest);
+    await checkTriggers(config, manifest);
+    await checkRules(config, manifest);
     await checkApis(config, manifest);
 
     // check for invalid additional properties
@@ -211,11 +213,15 @@ async function checkPackages(config: types.Config, manifest) {
     const packages = manifest.packages;
 
     for (const pkgName in packages) {
-        await checkPackage(config, manifest, packages, pkgName, packages[pkgName]);
+        await checkPackage(config, manifest, packages, pkgName, packages[pkgName], true);
+    }
+
+    for (const pkgName in packages) {
+        await checkPackage(config, manifest, packages, pkgName, packages[pkgName], false);
     }
 }
 
-async function checkPackage(config: types.Config, manifest, packages, pkgName, pkg) {
+async function checkPackage(config: types.Config, manifest, packages, pkgName, pkg, binding: boolean) {
     switch (typeof pkg) {
         case 'string':
             packages[pkgName] = await evaluate(config, pkg);
@@ -235,7 +241,8 @@ async function checkPackage(config: types.Config, manifest, packages, pkgName, p
                 const contributions = await plugin.serviceContributor(config, pkgName, pkg);
                 await applyConstributions(config, manifest, contributions, plugin);
             } else {
-                await checkActions(config, manifest, pkgName, pkg.actions);
+                if (!binding)
+                    await checkActions(config, manifest, pkgName, pkg.actions);
             }
             break;
         default:
@@ -269,8 +276,8 @@ async function checkAction(config: types.Config, manifest, pkgName: string, acti
     // At this point, all unkown properties have been expanded.
 
     action._qname = names.resolveQName(actionName, manifest.namespace, pkgName);
-    checkParameters(config, pkgName, actionName, action);
-    checkAnnotations(config, pkgName, actionName, action);
+    evaluatesKV(config, action.inputs);
+    evaluatesKV(config, action.annos);
     checkBuilder(config, pkgName, actionName, action);
 
 
@@ -294,24 +301,47 @@ async function checkAction(config: types.Config, manifest, pkgName: string, acti
     }
 }
 
-function checkParameters(config: types.Config, pkgName: string, actionName: string, action: types.Action) {
-    const inputs = action.inputs;
-    if (inputs) {
-        for (const key in inputs) {
-            const value = inputs[key];
-            if (typeof value === 'string')
-                inputs[key] = evaluate(config, value);
+async function checkTriggers(config: types.Config, manifest) {
+    const triggers = manifest.triggers;
+    if (triggers) {
+        for (const triggerName in triggers) {
+            const trigger = triggers[triggerName];
+
+            if (trigger.feed)
+                trigger.feed = evaluate(config, trigger.feed);
+
+            evaluatesKV(config, trigger.inputs);
+            evaluatesKV(config, trigger.annos);
         }
     }
 }
 
-function checkAnnotations(config: types.Config, pkgName: string, actionName: string, action: types.Action) {
-    const annos = action.annotations;
-    if (annos) {
-        for (const key in annos) {
-            const value = annos[key];
+async function checkRules(config: types.Config, manifest) {
+    const rules = manifest.rules;
+    if (rules) {
+        for (const ruleName in rules) {
+            const rule = rules[ruleName];
+
+            if (!rule.trigger)
+                throw `Invalid rule ${ruleName}: missing trigger property`;
+            if (!rule.action)
+                throw `Invalid rule ${ruleName}: missing action property`;
+
+            rule.trigger = evaluate(config, rule.trigger);
+            rule.action = evaluate(config, rule.action);
+
+            evaluatesKV(config, rule.inputs);
+            evaluatesKV(config, rule.annos);
+        }
+    }
+}
+
+function evaluatesKV(config: types.Config, kvs) {
+    if (kvs) {
+        for (const key in kvs) {
+            const value = kvs[key];
             if (typeof value === 'string')
-                annos[key] = evaluate(config, value);
+                kvs[key] = evaluate(config, value);
         }
     }
 }
@@ -382,7 +412,8 @@ async function applyConstributions(config: types.Config, manifest: types.Project
                     }
 
                     pkgs[contrib.name] = contrib.body;
-                    await checkPackage(config, manifest, pkgs, contrib.name, contrib.body);
+                    await checkPackage(config, manifest, pkgs, contrib.name, contrib.body, true);
+                    await checkPackage(config, manifest, pkgs, contrib.name, contrib.body, false);
                     break;
 
             }

@@ -25,8 +25,13 @@ export function evaluate(config: types.Config, expr: string) {
         get: (target, name) => resolveVariable(config, name)
     };
 
+    const selfHandler = {
+        get: (target, name) => resolveSelf(config, name)
+    };
+
     const context = {
-        vars: new Proxy({}, variableHandler)
+        vars: new Proxy({}, variableHandler),
+        self: new Proxy({}, selfHandler)
     }
 
     const sandbox = vm.createContext(context);
@@ -43,6 +48,10 @@ function resolveVariable(config, name) {
     }
     if (name === 'envname')
         return config.envname;
-        
+
     throw `Undefined variable ${name}`;
+}
+
+function resolveSelf(config, name) {
+    return config.manifest[name];
 }
