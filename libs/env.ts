@@ -28,7 +28,7 @@ import * as expandHome from 'expand-home-dir';
 export async function getEnvironments(config: types.Config) {
     await init.init(config);
     config.logger.info('get project environments');
-    
+
     const ignore = (file, stats) => {
         if (stats.isDirectory())
             return true;
@@ -45,44 +45,52 @@ export async function getEnvironments(config: types.Config) {
 }
 
 // Set current environment 
-export async function setEnvironment(config: types.Config, envname: string) {
+export async function setEnvironment(config: types.Config, envname: string, copy: boolean = true) {
     await init.init(config);
     config.logger.info(`set project environment to ${envname}`);
     const filename = `.${envname}.wskprops`;
+
     let exists = await fs.pathExists(filename);
     if (!exists)
-        return false
+        return false;
 
-    exists = await fs.pathExists('.wskprops');
-    if (exists) {
-        await fs.copy('.wskprops', '.wskprops.bak', { overwrite: true });
+    const cached = path.join(config.cache, 'envs', `.${envname}.wskprops`);
+    await fs.mkdirs(path.dirname(cached));
+    exists = await fs.pathExists(cached);
+
+    const stat1 = exists ? await fs.stat(filename) : null;
+    const stat2 = exists ? await fs.stat(cached) : null;
+    if (!exists || stat1.ctimeMs > stat2.ctimeMs) {
+        // refresh cache
+
+        const props = propertiesParser.createEditor(filename);
+        await resolveProps(config, envname, filename, props);
+
+        props.save(cached);
     }
-    await fs.copy(filename, '.wskprops', { overwrite: true });
 
-    // Check and resolve
-    resolveProps(config, envname);
-
+    if (copy) {
+        exists = await fs.pathExists('.wskprops');
+        if (exists) {
+            await fs.copy('.wskprops', '.wskprops.bak', { overwrite: true });
+        }
+        await fs.copy(cached, '.wskprops', { overwrite: true });
+    }
     return true;
 }
 
-async function resolveProps(config: types.Config, envname: string) {
-    const props = propertiesParser.createEditor('.wskprops');
-    
+async function resolveProps(config: types.Config, envname: string, filename: string, props) {
     const apihost = props.get('APIHOST');
     if (!apihost) {
-        config.logger.fatal('missing APIHOST in .wskprops');
-        throw 'missing APIHOST in ./.wskprops';
+        throw `missing APIHOST in ${filename}`;
     }
 
     if (!props.get('AUTH')) {
         if (apihost.endsWith('bluemix.net')) {
             await resolveAuthFromBluemix(config, props, envname);
         } else {
-            config.logger.fatal('cannot resolve AUTH');
             throw 'cannot resolve AUTH';
         }
-        
-        props.save('.wskprops');
     }
 }
 
@@ -105,19 +113,19 @@ async function resolveAuthFromBluemix(config: types.Config, props, envname: stri
         if (!config.manifest)
             throw 'Cannot resolve AUTH: missing BLUEMIX_SPACE or project configuration';
         const name = config.manifest.name;
-        if (!name)   
+        if (!name)
             throw `Cannot resolve AUTH from project configuration: missing 'name' property.`;
-        
+
         if (envname === 'dev' || envname === 'test' || !config.manifest.version)
             bxspace = `${name}-${envname}`;
-        else 
+        else
             bxspace = `${name}-${envname}@${config.manifest.version}`;
 
         bxspace = utils.escapeNamespace(bxspace);
         config.logger.info(`targeting ${bxspace} space`);
     }
 
-    const cred: bx.Credential = { org: bxorg, space: bxspace, home: expandHome('~') };
+    const cred: bx.Credential = { org: bxorg, space: bxspace };
     await bx.login(config, cred);
     const auth = await bx.getAuthKeysForSpace(config, cred);
     props.set('AUTH', auth);

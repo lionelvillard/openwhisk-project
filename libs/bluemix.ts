@@ -41,29 +41,42 @@ export interface Credential {
     home?: string
 }
 
+// Run bluemix command
+export const run = async (config: types.Config, cred: Credential, cmd: string) => {
+    cred = fixupCredentials(config, cred);
+    const bx = `BLUEMIX_HOME=${cred.home} bx ${cmd}`;
+    config.logger.debug(`exec ${bx}`);
+    return await exec(bx);
+}
+
 // Login to Bluemix
 export const login = async (config: types.Config, cred: Credential) => {
     cred = fixupCredentials(config, cred);
     try {
         const space = cred.space ? `-s ${cred.space}` : '';
-        const bx = `BLUEMIX_HOME=${cred.home} bx login -a ${cred.endpoint} --apikey ${cred.apikey} -o ${cred.org} ${space}`;
-        config.logger.debug(`exec ${bx}`);
         config.setProgress('login to Bluemix');
-        await exec(bx);
+        try {
+            await run(config, cred, 'target');
+        } catch (e) {
+            await run(config, cred, `login -a ${cred.endpoint} --apikey ${cred.apikey} -o ${cred.org} ${space}`);
+        }
+
         return true;
     } catch (e) {
         return false;
     }
 }
 
-// Run bluemix command
-export const run = async (config: types.Config, cred: Credential, cmd: string) => {
-    const bx = `BLUEMIX_HOME=${cred.home} bx ${cmd}`;
-    cred = fixupCredentials(config, cred);
-    config.logger.debug(`exec ${bx}`);
-    return await exec(bx);
+// Install Cloud function plugin
+export async function installWskPlugin(config: types.Config, cred: Credential) {
+    try {
+        await run(config, cred, 'wsk');
+    } catch (e) {
+        config.setProgress('installing IBM cloud function plugin');
+        await run(config, cred, 'plugin install Cloud-Functions -r Bluemix');
+    }
 }
-
+    
 //
 const fixupCredentials = (config: types.Config, cred: Credential) => {
     cred = cred || {};
@@ -79,7 +92,7 @@ const fixupCredentials = (config: types.Config, cred: Credential) => {
         throw 'Cannot login to Bluemix: missing either space or home';
     }
     if (!cred.home) {
-        cred.home = path.join(config.cache, cred.endpoint, cred.org, cred.space);
+        cred.home = path.join(config.cache, '.bluemix', cred.endpoint, cred.org, cred.space);
     }
     return cred;
 }
@@ -90,14 +103,13 @@ export async function getAuthKeysForSpace(config: types.Config, cred: Credential
     await run(config, cred, `account space-create ${cred.space}`);
     await run(config, cred, `target -s ${cred.space}`);
     config.setProgress(`retrieving wsk authentication`);
-    
+
+    await installWskPlugin(config, cred);
     const io = await run(config, cred, `wsk property get --auth`);
-    console.log(io.stderr);
     if (io.stdout) {
-        
         const matched = io.stdout.trim().match(/^whisk auth\s*(.*)$/);
         if (matched) {
-            config.logger.info('AUTH retrieved');        
+            config.logger.info('AUTH retrieved');
             return matched[1];
         }
     }
