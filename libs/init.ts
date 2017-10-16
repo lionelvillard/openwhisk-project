@@ -31,7 +31,8 @@ import * as progress from 'progress';
 export async function init(config: types.Config) {
     if (config._initialized)
         return;
-
+    config._initialized = true;
+    
     if (!config.logger)
         config.logger = getLogger();
 
@@ -58,7 +59,6 @@ export async function init(config: types.Config) {
     }
     config.logger.debug(stringify(config.manifest, null, 2));
     config.setProgress('');
-    config._initialized = true;
 }
 
 export function setOW(config: types.Config, ow) {
@@ -306,12 +306,13 @@ async function checkTriggers(config: types.Config, manifest) {
     if (triggers) {
         for (const triggerName in triggers) {
             const trigger = triggers[triggerName];
+            if (trigger) {
+                if (trigger.feed)
+                    trigger.feed = evaluate(config, trigger.feed);
 
-            if (trigger.feed)
-                trigger.feed = evaluate(config, trigger.feed);
-
-            evaluatesKV(config, trigger.inputs);
-            evaluatesKV(config, trigger.annos);
+                evaluatesKV(config, trigger.inputs);
+                evaluatesKV(config, trigger.annos);
+            }
         }
     }
 }
@@ -322,11 +323,14 @@ async function checkRules(config: types.Config, manifest) {
         for (const ruleName in rules) {
             const rule = rules[ruleName];
 
+            if (!rule)
+                throw `Invalid rule ${ruleName}: missing properties`;
+
             if (!rule.trigger)
                 throw `Invalid rule ${ruleName}: missing trigger property`;
             if (!rule.action)
                 throw `Invalid rule ${ruleName}: missing action property`;
-            if (!rule.status) 
+            if (!rule.status)
                 rule.status = 'active';
 
             rule.trigger = evaluate(config, rule.trigger);
@@ -335,7 +339,7 @@ async function checkRules(config: types.Config, manifest) {
 
             if (rule.status !== 'active' && rule.status !== 'inactive')
                 throw `Invalid rule ${ruleName}: status property must either be 'active' or 'inactive'. Got ${rule.status}`;
-            
+
             evaluatesKV(config, rule.inputs);
             evaluatesKV(config, rule.annos);
         }

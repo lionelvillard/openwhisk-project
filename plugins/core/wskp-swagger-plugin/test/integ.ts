@@ -24,8 +24,8 @@ class integration {
     ctx;
 
     async before() {
-        this.ctx = { ow: wskd.env.initWsk() };
-        await wskd.undeploy.all(this.ctx.ow);
+        this.ctx = { ow: await wskd.env.initWsk() };
+        await wskd.undeploy.all({ ow: this.ctx.ow });
     }
 
     @test
