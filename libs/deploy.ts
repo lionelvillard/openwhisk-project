@@ -20,12 +20,13 @@ import * as names from './names';
 import * as utils from './utils';
 import * as handlers from './handlers';
 import * as init from './init';
+import * as types from './types';
 
 export async function apply(config) {
     await init.init(config);
     try {
         config.setProgress('deploying...');
-        
+
         // Renable when supporting multiple namespace deployment
         // await deployIncludes(args);
 
@@ -108,7 +109,7 @@ function deployPendingActions(ctx, graph) {
             const entry = actions[qname]
             const action = entry.action
             const promise = handlers.lookupActionHandler(action).deploy(ctx, action)
-            promises.push(promise.then(()=> ctx.progress.tick()))
+            promises.push(promise.then(() => ctx.progress.tick()))
         }
 
         commitActions(actions);
@@ -125,83 +126,73 @@ function deployPendingActions(ctx, graph) {
     return Promise.resolve([])
 }
 
-function deployTriggers(args) {
-    const manifest = args.manifest;
-    const triggers = manifest.triggers;
-    if (triggers) {
-        const ow = args.ow;
-        const promises = [];
-        for (const triggerName in triggers) {
-            const trigger = triggers[triggerName] || {};
-            const feed = trigger.feed;
-
-            const parameters = utils.getKeyValues(trigger.inputs)
-            const annotations = utils.getAnnotations(args, trigger.annotations)
-            const publish = trigger.hasOwnProperty('publish') ? trigger.publish : false
-
-            let triggerBody: any = {
-                annotations,
-                publish
-            }
-
-            if (feed) {
-                // this will help for deleting the feed
-                annotations.feed = trigger.feed;
-            } else {
-                triggerBody.parameters = parameters
-            }
-
-            let promise = ow.triggers.change({
-                triggerName,
-                trigger: triggerBody,
-                parameters,
-                annotations
-            }).then(() => args.logger.info(`[TRIGGER] [CREATED] ${triggerName}`));
-
-            if (feed) {
-                // transform parameters { .. : key , : value } to { key: value } 
-                let params = {};
-                for (const p of parameters) {
-                    params[p.key] = p.value
-                }
-                promise = promise.then(() => args.ow.feeds.change({ name: feed, trigger: triggerName, params }))
-                    .then(() => args.logger.info(`[FEED] [CREATED] ${feed}`))
-                    .catch(e => true); // Ignore for now See issue #41
-            }
-
-            promises.push(promise);
-        }
-
-        if (promises.length != 0)
-            return Promise.all(promises);
-    }
-}
-
-function deployRules(config) {
+function deployTriggers(config) {
     const manifest = config.manifest;
-    if (manifest.hasOwnProperty('rules')) {
-        const rules = manifest.rules;
-        const promises = [];
-        for (let ruleName in rules) {
-            let rule = rules[ruleName]
+    if (!manifest.hasOwnProperty('triggers'))
+        return true;
 
-            let cmd = deployRule(config, ruleName, rule.trigger, rule.action);
+    const triggers = manifest.triggers;
+    const ow = config.ow;
+    const promises = [];
+    for (const triggerName in triggers) {
+        const trigger = triggers[triggerName] || {};
+        const feed = trigger.feed;
 
-            promises.push(cmd)
+        const parameters = utils.getKeyValues(trigger.inputs)
+        const annotations = utils.getAnnotations(config, trigger.annotations)
+        const publish = trigger.hasOwnProperty('publish') ? trigger.publish : false
+
+        const triggerBody: any = { annotations, publish };
+
+        if (feed) {
+            // this will help for deleting the feed
+            annotations.feed = trigger.feed;
+        } else {
+            triggerBody.parameters = parameters
         }
-        if (promises.length != 0)
-            return Promise.all(promises)
+
+        let promise = ow.triggers.change({ triggerName, trigger: triggerBody, parameters, annotations })
+            .then(() => config.logger.info(`[TRIGGER] [CREATED] ${triggerName}`));
+
+        if (feed) {
+            // transform parameters { .. : key , : value } to { key: value } 
+            let params = {};
+            for (const p of parameters) {
+                params[p.key] = p.value
+            }
+            promise = promise.then(() => config.ow.feeds.change({ name: feed, trigger: triggerName, params }))
+                .then(() => config.logger.info(`[FEED] [CREATED] ${feed}`))
+                .catch(e => config.logger.error(`[FEED] [CREATED] ${JSON.stringify(e)}`)); // Ignore for now See issue #41
+        }
+
+        promises.push(promise);
     }
-    return true
+
+    return Promise.all(promises);
 }
 
+function deployRules(config: types.Config) {
+    const manifest = config.manifest;
 
-const deployRule = (config, ruleName, trigger, action) => {
-    return config.ow.rules.change({
-        ruleName,
-        action,
-        trigger
-    }).then(() => config.logger.info(`[RULE] [CREATED] ${ruleName}`));
+    if (!manifest.hasOwnProperty('rules'))
+        return true;
+
+    const rules = manifest.rules;
+    const owr = config.ow.rules;
+    const promises = [];
+    for (let ruleName in rules) {
+        const rule = rules[ruleName];
+        const trigger = rule.trigger;
+        const action = rule.action;
+        const status = rule.status;
+        
+        const cmd = owr.change({ ruleName, trigger, action })
+            .then(() => status === 'active' ? owr.enable({ruleName}) : owr.disable({ruleName}))
+            .then(() => config.logger.info(`[RULE] [CREATED] ${ruleName}`));
+
+        promises.push(cmd);
+    }
+    return Promise.all(promises);
 }
 
 // --- Apis

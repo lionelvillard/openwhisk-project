@@ -348,7 +348,8 @@ An `object` representing a rule.
 ### Properties
 
 - trigger (string, required): the trigger name. Resolved as described [here](#entity-name-resolution)
-- action (string, required): the action name. Resolved as described [here](#entity-name-resolution)  
+- action (string, required): the action name. Resolved as described [here](#entity-name-resolution) 
+- status (enum `active`|`inactive`, optional): whether the rule is `active` or `inactive`. Default is `active`
      
 ### Example
 

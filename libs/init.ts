@@ -168,7 +168,7 @@ async function check(config: types.Config) {
 
     await checkIncludes(config, manifest);
     await checkPackages(config, manifest);
-    
+
     if (manifest.actions)
         await checkActions(config, manifest, '', manifest.actions);
 
@@ -326,10 +326,16 @@ async function checkRules(config: types.Config, manifest) {
                 throw `Invalid rule ${ruleName}: missing trigger property`;
             if (!rule.action)
                 throw `Invalid rule ${ruleName}: missing action property`;
+            if (!rule.status) 
+                rule.status = 'active';
 
             rule.trigger = evaluate(config, rule.trigger);
             rule.action = evaluate(config, rule.action);
+            rule.status = evaluate(config, rule.status);
 
+            if (rule.status !== 'active' && rule.status !== 'inactive')
+                throw `Invalid rule ${ruleName}: status property must either be 'active' or 'inactive'. Got ${rule.status}`;
+            
             evaluatesKV(config, rule.inputs);
             evaluatesKV(config, rule.annos);
         }
