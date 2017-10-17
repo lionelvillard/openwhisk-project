@@ -33,3 +33,10 @@ const invokeWebAction = async  (ctx, actionName, params, contentExt) => {
     return await rp(url);
 } 
 exports.invokeWebAction = invokeWebAction;
+
+
+const delay = async ms => new Promise(resolve => {
+    setTimeout(() => resolve(), ms);
+});
+
+exports.delay = delay;

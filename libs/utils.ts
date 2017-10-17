@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const request = require('request-promise')
-const fs = require('fs')
+import * as request from 'request-promise';
+import * as types from './types';
 
 // Assign the source properties to target. Throw an exception when a conflict occurs.
 export const mergeObjects = (target, source) => {
@@ -99,7 +99,16 @@ export const deployRawAction = (ctx, actionName, action) => {
     });
 }
 
-// Helper functions managing openwhisk configuration files
+// --- OpenWhisk client introspection
+
+export function getAPIHost(config: types.Config) {
+    if (config.ow && config.ow.actions && config.ow.actions.client) {
+        return config.ow.actions.client.options.api;
+    }
+    return null;
+}
+
+// --- Helper functions managing openwhisk configuration files
 
 export const getPackage = (manifest, packageName, create = false) => {
     let pkgCfg;
@@ -196,4 +205,6 @@ export const getApi = (manifest, apiName, create = false) => {
     }
     return apiCfg;
 }
+
+
 

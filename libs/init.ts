@@ -32,7 +32,7 @@ export async function init(config: types.Config) {
     if (config._initialized)
         return;
     config._initialized = true;
-    
+
     if (!config.logger)
         config.logger = getLogger();
 
@@ -72,12 +72,48 @@ export function setOW(config: types.Config, ow) {
     } else {
         ow.packages.change = ow.packages.update;
         ow.triggers.change = ow.triggers.update;
-        ow.routes.change = ow.routes.update;
+        ow.routes.change = ow.routes.create;
         ow.actions.change = ow.actions.update;
         ow.feeds.change = ow.feeds.create;  // update? See issue #41
         ow.rules.change = ow.rules.update;
     }
+
     config.ow = ow;
+
+
+    // patch route to support sending swagger.
+    // see openwhisk-client-js issue #69
+    ow.routes.change = function (options) {
+        if (!options.hasOwnProperty('swagger')) {
+            const missing = ['relpath', 'operation', 'action'].filter(param => !(options || {}).hasOwnProperty(param))
+
+            if (missing.length) {
+                throw new Error(`Missing mandatory parameters: ${missing.join(', ')}`)
+            }
+        }
+
+        const body = this.route_swagger_definition(options)
+        const qs = this.qs(options, [])
+        return this.client.request('POST', this.routeMgmtApiPath('createApi'), { body, qs })
+    }
+
+    ow.routes.route_swagger_definition = function (params) {
+        if (params.hasOwnProperty('swagger')) {
+            return { apidoc: { namespace: '_', swagger: params.swagger } }
+        }
+
+        const apidoc = {
+            namespace: '_',
+            gatewayBasePath: this.route_base_path(params),
+            gatewayPath: params.relpath,
+            gatewayMethod: params.operation,
+            id: `API:_:${this.route_base_path(params)}`,
+            action: this.route_swagger_action(params)
+        }
+
+        return { apidoc }
+    }
+
 }
 
 async function resolveManifest(config: types.Config) {
@@ -102,7 +138,7 @@ async function resolveManifest(config: types.Config) {
         if (config.manifest.basePath)
             config.basePath = path.resolve(config.basePath, config.manifest.basePath);
 
-        config.manifest.namespace = '_'; // For now   
+        //config.manifest.namespace = '_'; // For now   
     }
 
     config.logger.debug(`base path set to ${config.basePath}`);
@@ -154,6 +190,8 @@ function setProgress(config) {
         config.progress = new progress(format, options);
         if (autotick)
             config.progress.tick();
+
+        config.logger.info(format);
     }
 }
 
@@ -164,7 +202,12 @@ function setProgress(config) {
 async function check(config: types.Config) {
     config.setProgress('validating project configuration')
     const manifest = config.manifest;
-    config.logger.debug('normalizing project configuration');
+    if (config.ow && (!manifest.namespace || manifest.namespace === '_')) {
+        const namespaces = await config.ow.namespaces.list();
+        config.logger.debug(namespaces);
+        manifest.namespace = namespaces && namespaces.length > 0 ? namespaces[0] : '_';
+    }
+    config.logger.info(`target namespace: ${manifest.namespace}`);
 
     await checkIncludes(config, manifest);
     await checkPackages(config, manifest);
@@ -358,6 +401,8 @@ function evaluatesKV(config: types.Config, kvs) {
 
 async function checkApis(config: types.Config, manifest) {
     const apis = manifest.apis;
+    if (!apis)
+        return;
 
     for (const apiname in apis) {
         const api = apis[apiname];
@@ -366,7 +411,15 @@ async function checkApis(config: types.Config, manifest) {
 }
 
 async function checkApi(config: types.Config, manifest, apis, apiname: string, api: types.Api) {
-    if (api.paths) { // builtin api
+    if (api.basePath) { // builtin api
+
+        if (!api['x-ibm-configuration']) {
+            api['x-ibm-configuration'] = generateAssembly(config, apiname, api);
+        }
+
+        api.info = { title: api.basePath };
+
+
     } else {
         delete apis[apiname];
 
@@ -381,6 +434,58 @@ async function checkApi(config: types.Config, manifest, apis, apiname: string, a
         await applyConstributions(config, manifest, contributions, plugin);
     }
 }
+
+// --- API gateway
+
+enum API_VERBS { GET, PUT, POST, DELETE, PATCH, HEAD, OPTIONS };
+
+function pathToOperationId(path: string) {
+    return path.replace(/\/(.)/g, (_, $1) => $1.toUpperCase());
+}
+
+function getURL(config: types.Config, qname: string) {
+    const { namespace, pkg, name } = names.resolveQNameParts(qname, config.manifest.namespace, null);
+    return `${utils.getAPIHost(config)}web/${namespace}/${pkg ? pkg : 'default'}/${name}.http`; // TODO: reponse type
+}
+
+function generateAssembly(config: types.Config, apiname: string, api: types.Api) {
+    const operations = [];
+    if (api.paths) {
+        const paths = api.paths;
+        for (const path in paths) {
+            const verbs = paths[path];
+            for (const verb in verbs) {
+                if (!(verb.toUpperCase() in API_VERBS))
+                    throw `Invalid API verb: ${verb} for API ${apiname}`;
+
+                const action = verbs[verb];
+                const operationId = `${verb.toLowerCase()}${pathToOperationId(path)}`;
+
+                verbs[verb] = { operationId, 'x-openwhisk': { action } };
+
+                operations.push({
+                    operations: [operationId],
+                    execute: [{
+                        invoke: {
+                            'target-url': getURL(config, action),
+                            verb: 'keep'
+                        }
+                    }]
+                });
+            }
+        }
+    }
+    return {
+        assembly: {
+            execute: [{
+                'operation-switch': {
+                    case: operations
+                }
+            }]
+        }
+    };
+}
+
 
 // --- Plugin contributions
 
@@ -539,60 +644,60 @@ function mergeActions(basePath: string, pkgName: string, pkg: types.Package, act
 // Mockup OpenWhisk client.
 const fakeow = {
     actions: {
-        create: () => Promise.resolve(true),
-        list: () => Promise.resolve(true),
-        get: () => Promise.resolve(true),
-        invoke: () => Promise.resolve(true),
-        delete: () => Promise.resolve(true),
-        update: () => Promise.resolve(true)
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
     },
     feeds: {
-        create: () => Promise.resolve(true),
-        list: () => Promise.resolve(true),
-        get: () => Promise.resolve(true),
-        invoke: () => Promise.resolve(true),
-        delete: () => Promise.resolve(true),
-        update: () => Promise.resolve(true)
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
     },
-    namepaces: {
-        create: () => Promise.resolve(true),
-        list: () => Promise.resolve(true),
-        get: () => Promise.resolve(true),
-        invoke: () => Promise.resolve(true),
-        delete: () => Promise.resolve(true),
-        update: () => Promise.resolve(true)
+    namespaces: {
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
     },
     packages: {
-        create: () => Promise.resolve(true),
-        list: () => Promise.resolve(true),
-        get: () => Promise.resolve(true),
-        invoke: () => Promise.resolve(true),
-        delete: () => Promise.resolve(true),
-        update: () => Promise.resolve(true)
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
     },
     rules: {
-        create: () => Promise.resolve(true),
-        list: () => Promise.resolve(true),
-        get: () => Promise.resolve(true),
-        invoke: () => Promise.resolve(true),
-        delete: () => Promise.resolve(true),
-        update: () => Promise.resolve(true)
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
     },
     routes: {
-        create: () => Promise.resolve(true),
-        list: () => Promise.resolve(true),
-        get: () => Promise.resolve(true),
-        invoke: () => Promise.resolve(true),
-        delete: () => Promise.resolve(true),
-        update: () => Promise.resolve(true)
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
     },
     triggers: {
-        create: () => Promise.resolve(true),
-        list: () => Promise.resolve(true),
-        get: () => Promise.resolve(true),
-        invoke: () => Promise.resolve(true),
-        delete: () => Promise.resolve(true),
-        update: () => Promise.resolve(true)
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
     }
 }
 

@@ -16,35 +16,60 @@
 const assert = require('assert');
 const utils = require('./helpers/utils');
 const wskd = require('..');
+const rp = require('request-promise');
 
 describe('API gateway', function () {
-    this.timeout(10000);
     const ctx = {};
-    
+
     before(utils.before(ctx));
     after(utils.after(ctx));
 
-
-    it('hello world', async function() {
+    it('hello world - no sugar', async function () {
         await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/api',
             cache: ctx.cacheDir,
-            location: 'api.yaml',
-            force: true 
+            location: process.env.CI ? 'api-raw.yaml' : 'api-raw-local.yaml',
+            force: true
         });
 
         const all = await ctx.ow.routes.list();
         const apis = all.apis;
         assert.ok(apis);
-        assert.ok(apis.length > 0);
-        let foundHello;
-        apis.forEach(api => {
-            const info = api.value.apidoc.info;
-            if (info.title === '/hello')
-                foundHello = true;
-        });
-        
-        assert.ok(foundHello);
+        assert.ok(apis.length === 1);
+        const api = apis[0];
+        const info = api.value.apidoc.info;
+        assert.deepStrictEqual(info.title, '/hello');
+
+        const gwApiUrl = api.value.gwApiUrl;        
+        await utils.delay(4000); // give some time to the API to settle
+        const result = await rp(`${gwApiUrl}/world`);
+        assert.deepStrictEqual(result, `{"payload":"Hello world Serverless API"}`);        
     });
+
+    it('hello world', async function () {
+        await wskd.undeploy.all({ow: ctx.ow});
+        
+        await wskd.deploy.apply({
+            ow: ctx.ow,
+            basePath: 'test/fixtures/api',
+            cache: ctx.cacheDir,
+            location: 'api.yaml',
+            force: true
+        });
+
+        const all = await ctx.ow.routes.list();
+        const apis = all.apis;
+        assert.ok(apis);
+        assert.ok(apis.length === 1);
+        const api = apis[0];
+        const info = api.value.apidoc.info;
+        assert.deepStrictEqual(info.title, '/hello2');
+
+        const gwApiUrl = api.value.gwApiUrl;        
+        await utils.delay(4000); // give some time to the API to settle
+        const result = await rp(`${gwApiUrl}/world`);
+        assert.deepStrictEqual(result, `{"payload":"Hello world Serverless API"}`);        
+    });
+
 });

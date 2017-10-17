@@ -114,7 +114,7 @@ export async function apply(config: types.Config) {
                 const basepath = api.value.apidoc.basePath;
                 if (await mustUndeployApi(basepath)) {
                     config.logger.debug(`[apis] [deleting] ${basepath}`);
-                    promises.push(ow.routes.delete({ basepath }));
+                    promises.push(ow.routes.delete({ basepath }).then(() => config.logger.debug(`[apis] [deleted] ${basepath.name}`)));
                 } else {
                     config.logger.debug(`[apis] [skipped] ${basepath}`);
                 }

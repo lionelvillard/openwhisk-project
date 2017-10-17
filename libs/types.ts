@@ -22,9 +22,12 @@ type Loader = (string) => Promise<Buffer>;
 // --- Common command configuration 
 
 export interface Config {
-    flags?: any;                    // option flags.
+    /** Option flags  */
+    flags?: any;     
      
-    ow?: any;                       // OpenWhisk client. Perform a dry-run if not provided.
+    /** OpenWhisk client. */
+    ow?: any;            
+    
     dryrun?: boolean;               // dry run (false by default)
 
     manifest?: YAML | string;       // manifest used for deployment. Parsed or unparsed.
@@ -38,7 +41,6 @@ export interface Config {
     logger_level?: string;          // logger level ('ALL', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE', 'OFF')
     logger?: Logger;                // logger
 
-    load?: Loader;
     basePath?: string;
     envname?: string;                   // targeted environment name
 
@@ -50,6 +52,9 @@ export interface Config {
 
     /* Internal */
     _initialized? : boolean;
+
+    // deprecated
+    load?: Loader;
 }
 
 export interface DeployConfig extends Config {

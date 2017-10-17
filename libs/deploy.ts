@@ -197,45 +197,22 @@ function deployRules(config: types.Config) {
 
 // --- Apis
 
-enum API_VERBS { GET, PUT, POST, DELETE, PATCH, HEAD, OPTIONS };
+//enum API_VERBS { GET, PUT, POST, DELETE, PATCH, HEAD, OPTIONS };
 
-async function deployApis(args) {
-    const manifest = args.manifest;
+async function deployApis(config: types.Config) {
+    const manifest = config.manifest;
     const apis = manifest.apis;
     if (apis) {
+        const routes = config.ow.routes;
         const promises = [];
         for (const apiname in apis) {
-            const api = apis[apiname];
-
-            const basepath = api.basePath;
-            if (!basepath)
-                throw `Missing basePath property for API ${apiname}`;
-
-            const paths = api.paths;
-            if (paths) {
-                for (const relpath in paths) {
-                    const verbs = paths[relpath];
-                    for (const verb in verbs) {
-
-                        if (!(verb.toUpperCase() in API_VERBS))
-                            throw `Invalid API verb: ${verb} for API ${apiname}`;
-
-                        const action = verbs[verb];
-                        const route = { basepath, relpath, operation: verb, action };
-                        args.logger.info(`Add route ${JSON.stringify(route, null, 2)}`);
-
-                        const cmd = args.ow.routes.create(route);
-
-                        promises.push(cmd)
-                    }
-                }
-            } else {
-                args.logger.info('no paths for API ${apiname}');
-            }
+            const swagger = apis[apiname];
+            const cmd = routes.change({swagger}).then(() => config.logger.info(`api ${apiname} deployed`));
+            promises.push(cmd);
         }
-        if (promises.length != 0)
-            return Promise.all(promises)
+        return Promise.all(promises)
     }
+    return true;
 }
 
 // -- Dependency graph

@@ -59,21 +59,21 @@ export function parseQName(qname) {
 
 // Make sure name if fully qualified
 export function resolveQName(qname, namespace, packageName) {
+    const parts = resolveQNameParts(qname, namespace, packageName);
+    return makeQName(parts.namespace, parts.pkg, parts.name);
+};
+
+// Make sure name if fully qualified, return parts
+export function resolveQNameParts(qname, namespace, packageName) {
     let parts = parseQName(qname);
     parts.namespace = parts.namespace || namespace;
     parts.pkg = parts.pkg || packageName;
-    return `/${parts.namespace}${parts.pkg ? '/': ''}${parts.pkg}/${parts.name}`;
+    return parts;
 };
 
 // Make qname from parts
 export function makeQName(namespace, packageName, actionName) {
-    let qname = ''
-    if (namespace)
-        qname += `/${namespace}/`
-    if (packageName)
-        qname += `${packageName}/`
-    qname += actionName
-    return qname
+    return `/${namespace}${packageName ? `/${packageName}`: ''}/${actionName}`;
 };
 
 // Compute relative qname /_/ 

@@ -1,0 +1,68 @@
+actions:
+  hello:
+    kind: nodejs
+    code : |
+      function main({name:name='Serverless API'}) {
+        return {
+          body: new Buffer(JSON.stringify({payload:`Hello world ${name}`})).toString('base64'),
+          statusCode: 200,
+          headers:{ 'Content-Type': 'application/json'}
+        };
+      }
+    annotations:
+      web-export: true
+
+  hellouniverse:
+    kind: nodejs
+    code : |
+      function main({name:name='Serverless API'}) {
+        return {
+          body: new Buffer(JSON.stringify({payload:`Hello universe ${name}`})).toString('base64'),
+          statusCode: 200,
+          headers:{ 'Content-Type': 'application/json'}
+        };
+      }
+    annotations:
+      web-export: true
+
+apis:
+  /hello:
+    # below just swagger with OpenWhisk API gateway extensions
+    basePath: /hello
+    info: 
+      title: /hello
+    paths:
+      /world:
+        get:
+          operationId: getWorld
+          x-openwhisk: 
+            action: hello
+           # namespace: _
+           # package: 
+           # url: 
+      /universe:
+        get:
+          operationId: getUniverse
+          x-openwhisk: 
+            action: hellouniverse
+            # namespace: _
+            # package:
+            # url:
+    x-ibm-configuration: 
+      assembly: 
+        execute:
+          - operation-switch:
+              case:
+                - operations:
+                   - getWorld
+                  execute: 
+                    - invoke:
+                        target-url: https://openwhisk.ng.bluemix.net/api/v1/web/villard@us.ibm.com_openwhisk-deploy-test/default/hello.http
+                        verb: keep
+                - operations:
+                   - getUniverse
+                  execute:
+                    - invoke:
+                        target-url: https://openwhisk.ng.bluemix.net/api/v1/web/villard@us.ibm.com_openwhisk-deploy-test/default/hellouniverse.http
+                        verb: keep
+                

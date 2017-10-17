@@ -380,7 +380,7 @@ An `object` representing an api. The format loosely follows the [OpenAPI](https:
 - paths ([`apiPaths`](#apiPaths), optional): the list of relative paths   
      
 **Plugin extensions**:
-- [`swagger`](https://github.com/lionelvillard/openwhisk-deploy/blob/master/plugins/apis/swagger/README.md): describes routes in Swagger.
+- [`swagger`](https://github.com/lionelvillard/openwhisk-project/blob/master/plugins/core/wskp-swagger-plugin/README.md): describes routes in Swagger.
 
 ### Example
 
