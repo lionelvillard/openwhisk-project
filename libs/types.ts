@@ -19,9 +19,14 @@ export type YAML = any;
 
 type Loader = (string) => Promise<Buffer>;
 
+export type Phase = 'validation'; 
+
 // --- Common command configuration 
 
 export interface Config {
+    /** What phases to skip */
+    skipPhases?: Phase[];     
+    
     /** Option flags */
     flags?: any;     
     

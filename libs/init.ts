@@ -54,10 +54,15 @@ export async function init(config: types.Config) {
         config.version = version;
     }
 
+    config.skipPhases = config.skipPhases || [];
+
     await resolveManifest(config);
     await configCache(config);
+
     await plugins.init(config);
     await configVariableSources(config);
+
+
     if (config.dryrun)
         config.ow = fakeow;
     else
@@ -68,14 +73,17 @@ export async function init(config: types.Config) {
     if (config.manifest) {
         filter(config);
 
-        await check(config);
+        if (!config.skipPhases.includes('validation')) {
+            await check(config);
 
-        const buildir = path.join(config.cache, 'build');
-        await fs.mkdirs(buildir);
-        await fs.writeJSON(path.join(buildir, 'project.json'), config.manifest, { spaces: 2 });
+            const buildir = path.join(config.cache, 'build');
+            await fs.mkdirs(buildir);
+            await fs.writeJSON(path.join(buildir, 'project.json'), config.manifest, { spaces: 2 });
+        }
+
+        config.logger.debug(stringify(config.manifest, null, 2));
     }
 
-    config.logger.debug(stringify(config.manifest, null, 2));
     config.setProgress('');
 }
 
