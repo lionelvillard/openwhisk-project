@@ -110,7 +110,7 @@ export async function setEnvironment(config: types.Config, persist: boolean = tr
     const allExists = await fs.pathExists(ALL_WSKPROPS);
 
     // cached properties
-    const cached = getCachedEnvFilename(config);
+    const cached = getCachedEnvFilename(config, version);
     await fs.mkdirs(path.dirname(cached));
     const cachedExists = await fs.pathExists(cached);
 
@@ -300,8 +300,8 @@ export async function initWsk(config: types.Config = {}, options = {}) {
     return openwhisk({ api_key: vars.auth, apihost: vars.apihost, ignore_certs: vars.ignore_certs, apigw_token: vars.apigw_token });
 }
 
-function getCachedEnvFilename(config: types.Config) {
-    return path.join(config.cache, 'envs', `.${config.envname}.wskprops`);
+function getCachedEnvFilename(config: types.Config, version: string) {
+    return path.join(config.cache, 'envs', `.${config.envname}${version? `@${version}`: ''}.wskprops`);
 }
 
 function parseEnvName(envname: string) {
