@@ -23,6 +23,7 @@ import * as fs from 'fs-extra';
 import * as propertiesParser from 'properties-parser';
 import * as expandHome from 'expand-home-dir';
 import * as openwhisk from 'openwhisk';
+import * as semver from 'semver';
 
 export interface IWskProps {
     APIHOST?: string,
@@ -163,6 +164,23 @@ export async function newEnvironment(config: types.Config, name: string, wskprop
     Object.keys(wskprops).forEach(key => props.set(key, wskprops[key]));
     console.log(props)
     props.save(filename);
+}
+
+// Increment project version
+export async function incVersion(config: types.Config, releaseType: semver.ReleaseType) {
+    if (!['major', 'premajor', 'minor', 'preminor', 'patch', 'prepatch', 'prerelease'].includes(releaseType))
+        throw `${releaseType} is not a valid release type`;
+
+    let version = config.manifest.version || '0.1.0';
+    version = semver.inc(version, releaseType);
+
+    let content = await fs.readFile(config.location, 'utf-8');
+
+    if (config.manifest.version) {
+        content = content.replace(/(version[^:]*:).*/, `$1 ${version}`);
+    }
+
+    await fs.writeFile(config.location, content, { encoding: 'utf-8' })
 }
 
 
