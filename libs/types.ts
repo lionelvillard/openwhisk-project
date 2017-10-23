@@ -58,6 +58,9 @@ export interface Config {
     /** Environment name. When null, fallback to basic wsk behavior */
     envname?: string;                  
 
+    /** Environment version. Null when given environment does not support versioning. Should match manifest.version */
+    version?: string;                  
+    
     /* Set the command progress, e.g. loading foo.js */
     setProgress?: (format?: string, options?) => void;
 

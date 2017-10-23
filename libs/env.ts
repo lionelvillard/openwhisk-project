@@ -23,7 +23,6 @@ import * as fs from 'fs-extra';
 import * as propertiesParser from 'properties-parser';
 import * as expandHome from 'expand-home-dir';
 import * as openwhisk from 'openwhisk';
-import * as semver from 'semver';
 
 export interface IWskProps {
     APIHOST?: string,
@@ -85,10 +84,9 @@ export async function getEnvironments(config: types.Config): Promise<IEnvPolicie
 
 // Set current environment.
 export async function setEnvironment(config: types.Config, persist: boolean = true) {
-    const envname = config.envname;
-    config.setProgress(`setting environment to ${envname}`);
-
-    let { name, version } = parseEnvName(envname);
+    const name = config.envname;
+    const version = config.version;
+    config.setProgress(`setting environment to ${name}${version ? `@${version}` : ''}`);
 
     const envs = await getEnvironments(config);
     const policies = envs.find(v => v.name === name);
@@ -97,9 +95,7 @@ export async function setEnvironment(config: types.Config, persist: boolean = tr
 
     config.logger.info(`environment policies:${JSON.stringify(policies)}`);
     if (!version && policies.versioned) {
-        version = config.manifest ? config.manifest.version : null;
-        if (!version)
-            throw `Missing version for environment ${name}`;
+        throw `Missing version for environment ${name}`;
     }
 
     // user-defined properties
@@ -110,7 +106,7 @@ export async function setEnvironment(config: types.Config, persist: boolean = tr
     const allExists = await fs.pathExists(ALL_WSKPROPS);
 
     // cached properties
-    const cached = getCachedEnvFilename(config, version);
+    const cached = getCachedEnvFilename(config);
     await fs.mkdirs(path.dirname(cached));
     const cachedExists = await fs.pathExists(cached);
 
@@ -300,19 +296,8 @@ export async function initWsk(config: types.Config = {}, options = {}) {
     return openwhisk({ api_key: vars.auth, apihost: vars.apihost, ignore_certs: vars.ignore_certs, apigw_token: vars.apigw_token });
 }
 
-function getCachedEnvFilename(config: types.Config, version: string) {
-    return path.join(config.cache, 'envs', `.${config.envname}${version? `@${version}`: ''}.wskprops`);
-}
-
-function parseEnvName(envname: string) {
-    const matched = envname.match(/^([\w]*)(@(.+))?$/);
-    if (matched) {
-        const version = matched[3];
-        if (version && !semver.valid(version))
-            throw `Malformed environment version ${version}`;
-        return { name: matched[1], version };
-    }
-    throw `Malformed environment name ${envname}`;
+function getCachedEnvFilename(config: types.Config) {
+    return path.join(config.cache, 'envs', `.${config.envname}${config.version ? `@${config.version}` : ''}.wskprops`);
 }
 
 // Convert env name to valid namespace

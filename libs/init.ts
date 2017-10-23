@@ -28,6 +28,7 @@ import * as simpleGit from 'simple-git/promise';
 import * as stringify from 'json-stringify-safe';
 import * as progress from 'progress';
 import * as env from './env';
+import * as semver from 'semver';
 
 
 /* Create basic configuration */
@@ -46,6 +47,12 @@ export async function init(config: types.Config) {
     config.logger_level = config.logger_level || process.env.LOGGER_LEVEL || 'off';
     config.logger.level = config.logger_level;
     config.setProgress = setProgress(config);
+
+    if (config.envname) {
+        const { name, version } = parseEnvName(config.envname);
+        config.envname = name;
+        config.version = version;
+    }
 
     await resolveManifest(config);
     await configCache(config);
@@ -128,10 +135,8 @@ export function setOW(config: types.Config, ow) {
 }
 
 async function resolveManifest(config: types.Config) {
-    config.logger.info('loading project configuration');
     config.setProgress('loading project configuration');
     if (config.manifest || config.manifest === '') {
-
         if (typeof config.manifest === 'string') {
             config.manifest = yaml.parse(config.manifest) || {};
         }
@@ -148,12 +153,9 @@ async function resolveManifest(config: types.Config) {
     if (config.manifest) {
         if (config.manifest.basePath)
             config.basePath = path.resolve(config.basePath, config.manifest.basePath);
-
-        //config.manifest.namespace = '_'; // For now   
     }
 
     config.logger.debug(`base path set to ${config.basePath}`);
-    // ok no manifest, fine.
 }
 
 async function loadManifest(config: types.Config) {
@@ -230,6 +232,12 @@ function filter(config: types.Config) {
 async function check(config: types.Config) {
     config.setProgress('validating project configuration')
     const manifest = config.manifest;
+
+    if (config.version && manifest.version) {
+        if (config.version !== manifest.version)
+            throw `mismatch environment and configuration versions (${config.version} != ${manifest.version})`;
+    }
+
     if (config.ow && (!manifest.namespace || manifest.namespace === '_')) {
         const namespaces = await config.ow.namespaces.list();
         config.logger.debug(namespaces);
@@ -892,4 +900,15 @@ function checkBuilder(config, pkgName, actionName, action) {
 function resolveComponents(namespace, pkgName, sequence) {
     const actions = sequence.split(',')
     return actions.map(action => names.resolveQName(action, namespace, pkgName));
+}
+
+function parseEnvName(envname: string) {
+    const matched = envname.match(/^([\w]*)(@(.+))?$/);
+    if (matched) {
+        const version = matched[3];
+        if (version && !semver.valid(version))
+            throw `Malformed environment version ${version}`;
+        return { name: matched[1], version };
+    }
+    throw `Malformed environment name ${envname}`;
 }
