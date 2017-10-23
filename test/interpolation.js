@@ -23,7 +23,7 @@ describe('Interpolation', function () {
     it('variable - custom', function () {
         const config = {
             variableSources: [
-                (config, name) => ({ 'env': 'dev' }[name])
+                name => ({ 'env': 'dev' }[name])
             ],
             logger: log4j.getLogger()
         };
@@ -35,7 +35,7 @@ describe('Interpolation', function () {
     it('variable - env HOME', function () {
         const config = {
             variableSources: [
-                (config, name) => process.env[name]
+                name => process.env[name]
             ],
             logger: log4j.getLogger()
         };
@@ -47,8 +47,8 @@ describe('Interpolation', function () {
     it('variable - override HOME', function () {
         const config = {
             variableSources: [
-                (config, name) => ({ 'HOME': '/myhome' }[name]),
-                (config, name) => process.env[name]
+                name => ({ 'HOME': '/myhome' }[name]),
+                name => process.env[name]
 
             ],
             logger: log4j.getLogger()

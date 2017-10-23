@@ -13,62 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { types } from 'openwhisk-deploy';
+import { types, env } from 'openwhisk-deploy';
 import * as fs from 'fs-extra';
 import * as expandHomeDir from 'expand-home-dir';
 import * as path from 'path';
 
-export function resolveVariable(config: types.Config, name: string) {
-    const wskprops = readWskProps(config);
-    const lc = name.toLowerCase();
-    let value = wskprops ? wskprops[lc] : undefined;
-    if (!value) {
-        const uc = name.toUpperCase();
-        value = wskprops[uc];
+export async function resolveVariableCreator(config: types.Config) {
+    const wskprops = await env.readWskProps(config);
+    return (name: string) => {
+        const lc = name.toLowerCase();
+        let value = wskprops ? wskprops[lc] : undefined;
+        if (!value) {
+            const uc = name.toUpperCase();
+            value = wskprops[uc];
+        }
+        return value;
     }
-    return value;
 };
-
-function getWskPropsFile(config: types.Config) {
-    const env = config.envname || '';
-
-    if (!env && process.env.WSK_CONFIG_FILE && fs.existsSync(process.env.WSK_CONFIG_FILE)) {
-        return process.env.WSK_CONFIG_FILE;
-    }
-
-    let wskprops;
-    const until = path.dirname(expandHomeDir('~'));
-    let current = process.cwd()
-    while (current !== '/' && current !== until) {
-        // first try .<env>.wskprops
-        if (env) {
-            wskprops = path.join(current, '.', env, '.wskprops');
-
-            if (fs.existsSync(wskprops))
-                break;
-        }
-        // then try .wskprops
-        wskprops = path.join(current, '.wskprops');
-        if (fs.existsSync(wskprops))
-            break;
-
-        // not found: look in parent directory
-        current = path.dirname(current);
-    }
-
-    return wskprops;
-}
-
-
-function readWskProps(config: types.Config) {
-    const wskprops = getWskPropsFile(config);
-    if (wskprops) {
-        const propertiesParser = require('properties-parser')
-        try {
-            return propertiesParser.read(wskprops);
-        } catch (e) {
-            return null;
-        }
-    }
-    return null;
-}

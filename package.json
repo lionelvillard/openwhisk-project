@@ -17,6 +17,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@types/fs-extra": "^4.0.2",
+    "@types/semver": "^5.4.0",
     "child-process-promise": "^2.2.1",
     "expand-home-dir": "0.0.3",
     "express": "^4.16.1",
@@ -31,6 +32,7 @@
     "properties-parser": "^0.3.1",
     "recursive-readdir": "^2.2.1",
     "request-promise": "^4.2.2",
+    "semver": "^5.4.1",
     "simple-git": "^1.76.0",
     "yamljs": "^0.3.0",
     "yeoman-environment": "^2.0.4"

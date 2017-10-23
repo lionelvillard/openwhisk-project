@@ -42,7 +42,7 @@ export function evaluate(config: types.Config, expr: string) {
 
 function resolveVariable(config, name) {
     for (const vs of config.variableSources) {
-        const value = vs(config, name);
+        const value = vs(name);
         if (value)
             return value;
     }

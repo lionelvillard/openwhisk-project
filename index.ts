@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import * as init from'./libs/init';
 import * as deploy from'./libs/deploy';
 import * as undeploy from'./libs/undeploy';
 import * as refresh from'./libs/refresh.js';
@@ -28,4 +29,4 @@ import * as interpolation from'./libs/interpolation';
 
 type IConfig = types.Config;
 
-export { deploy , undeploy, refresh, sync, env, yo, types, names, bx, controller, plugins, interpolation, IConfig };
+export { init, deploy , undeploy, refresh, sync, env, yo, types, names, bx, controller, plugins, interpolation, IConfig };

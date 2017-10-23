@@ -24,6 +24,7 @@ import * as types from './types';
 
 export async function apply(config) {
     await init.init(config);
+
     try {
         config.setProgress('deploying...');
 
@@ -37,7 +38,7 @@ export async function apply(config) {
         await deployRules(config);
         await deployApis(config);
 
-        config.setProgress('deployed');
+        config.setProgress('');
     } catch (e) {
         config.logger.error(e)
         return Promise.reject(e)
@@ -96,8 +97,11 @@ function deployPackage(ow, name, parameters, annotations, binding, publish) {
 function deployActions(config) {
     const manifest = config.manifest
     const graph = dependenciesGraph(manifest);
-    config.setProgress('deploying action (:current/:total)', Object.keys(graph).length);
-    return deployPendingActions(config, graph);
+    const keys = Object.keys(graph);
+    if (keys.length > 0) {
+        config.setProgress('deploying action (:current/:total)', Object.keys(graph).length);
+        return deployPendingActions(config, graph);
+    }
 }
 
 function deployPendingActions(ctx, graph) {
@@ -185,9 +189,9 @@ function deployRules(config: types.Config) {
         const trigger = rule.trigger;
         const action = rule.action;
         const status = rule.status;
-        
+
         const cmd = owr.change({ ruleName, trigger, action })
-            .then(() => status === 'active' ? owr.enable({ruleName}) : owr.disable({ruleName}))
+            .then(() => status === 'active' ? owr.enable({ ruleName }) : owr.disable({ ruleName }))
             .then(() => config.logger.info(`[RULE] [CREATED] ${ruleName}`));
 
         promises.push(cmd);
@@ -207,7 +211,7 @@ async function deployApis(config: types.Config) {
         const promises = [];
         for (const apiname in apis) {
             const swagger = apis[apiname];
-            const cmd = routes.change({swagger}).then(() => config.logger.info(`api ${apiname} deployed`));
+            const cmd = routes.change({ swagger }).then(() => config.logger.info(`api ${apiname} deployed`));
             promises.push(cmd);
         }
         return Promise.all(promises)

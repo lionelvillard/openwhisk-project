@@ -19,6 +19,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { exec } from 'child-process-promise';
 import * as types from './types';
+import * as parser from 'properties-parser';
 
 // @return true if Bluemix with wsk plugin is available on this system, false otherwise
 export const isBluemixCapable = async () => {
@@ -41,10 +42,12 @@ export interface Credential {
     home?: string
 }
 
+const wskProps = (cred: Credential) => `${cred.home}/.wskprops`;
+
 // Run bluemix command
 export const run = async (config: types.Config, cred: Credential, cmd: string) => {
     cred = fixupCredentials(config, cred);
-    const bx = `BLUEMIX_HOME=${cred.home} bx ${cmd}`;
+    const bx = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx ${cmd}`;
     config.logger.debug(`exec ${bx}`);
     return await exec(bx);
 }
@@ -58,6 +61,7 @@ export const login = async (config: types.Config, cred: Credential) => {
         try {
             await run(config, cred, 'target');
         } catch (e) {
+            config.setProgress('refresh Bluemix tokens');
             await run(config, cred, `login -a ${cred.endpoint} --apikey ${cred.apikey} -o ${cred.org} ${space}`);
         }
 
@@ -97,25 +101,24 @@ const fixupCredentials = (config: types.Config, cred: Credential) => {
     return cred;
 }
 
-// Get Wsk AUTH for given credential. If cred space does not exist, create it.
-export async function getAuthKeysForSpace(config: types.Config, cred: Credential): Promise<string | null> {
+// Get Wsk AUTH and APIGW_ACCESS_TOKEN for given credential. If cred space does not exist, create it.
+export async function getWskPropsForSpace(config: types.Config, cred: Credential) {
     config.setProgress(`setting space to ${cred.space}`);
     await run(config, cred, `account space-create ${cred.space}`);
     await run(config, cred, `target -s ${cred.space}`);
     config.setProgress(`retrieving wsk authentication`);
 
     await installWskPlugin(config, cred);
-    const io = await run(config, cred, `wsk property get --auth`);
-    if (io.stdout) {
-        const matched = io.stdout.trim().match(/^whisk auth\s*(.*)$/);
-        if (matched) {
-            config.logger.info('AUTH retrieved');
-            return matched[1];
-        }
+    await run(config, cred, 'wsk property get'); // forces .wskprops creation
+
+    try {
+        return parser.read(wskProps(cred));    
+    } catch (e) {
+        config.logger.error(e);
+        return null;    
     }
-    config.logger.info('AUTH not retrieved');
-    return null;
 };
+
 
 
 // // Retrieve authentication tokens from local file system

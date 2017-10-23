@@ -22,32 +22,46 @@ type Loader = (string) => Promise<Buffer>;
 // --- Common command configuration 
 
 export interface Config {
-    /** Option flags  */
+    /** Option flags */
     flags?: any;     
-     
+    
+    /** logger level ('ALL', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE', 'OFF') */
+    logger_level?: string;          
+
+    /** Logger instance */
+    logger?: Logger;         
+
     /** OpenWhisk client. */
     ow?: any;            
     
-    dryrun?: boolean;               // dry run (false by default)
+    /** Dry run operation */
+    dryrun?: boolean;       
 
-    manifest?: YAML | string;       // manifest used for deployment. Parsed or unparsed.
-    location?: string;              // manifest location. Ignored if manifest is provided
-
-    cache?: string;                 // cache location
-    force?: boolean;                // perform update operation when true. Default is 'false'
-
-    variableSources?: [VariableResolver];  // A list of variable resolvers. 
-
-    logger_level?: string;          // logger level ('ALL', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE', 'OFF')
-    logger?: Logger;                // logger
-
+    /** Absolute base path */
     basePath?: string;
-    envname?: string;                   // targeted environment name
+    
+    /** Project configuration location. Might be null */
+    location?: string;              
+    
+    /** Project configuration. Parsed or unparsed. */
+    manifest?: YAML | string;       
+    
+    /** Cache location */
+    cache?: string;                 
+
+    /** During deployment, whether to create or update resources. Defaut is false */
+    force?: boolean;                
+
+    /* A list of variable resolvers */
+    variableSources?: [VariableResolver];   
+
+    /** Environment name. When null, fallback to basic wsk behavior */
+    envname?: string;                  
 
     /* Set the command progress, e.g. loading foo.js */
-    setProgress?: (format: string, options?) => void;
+    setProgress?: (format?: string, options?) => void;
 
-    /* Current progress. Use progress.tick for update */
+    /* Current progress. Use `progress.tick` for update */
     progress?: any;
 
     /* Internal */
@@ -77,8 +91,8 @@ export interface Plugin {
     // Action builder contributor making the action artifacts to deploy.
     build?: ActionBuilder;
 
-    // A variable resolver.
-    resolveVariable?: VariableResolver;
+    // A variable resolver creator.
+    resolveVariableCreator?: VariableResolverCreator;
 
 }
 
@@ -86,7 +100,8 @@ export type ActionContributor = (Config, Project, pkgName: string, actionName: s
 export type ServiceContributor = (Config, pkgName: string, Package) => Contribution[];
 export type ApiContributor = (Config, Project, apiname: string, Api) => Contribution[];
 export type ActionBuilder = (Config, Action, Builder) => Promise<string>;
-export type VariableResolver = (Config, name: string) => any;
+export type VariableResolver = (name: string) => any;
+export type VariableResolverCreator = (Config) => Promise<(name: string) => any>;
 
 // A contribution to the deployment configuration 
 export type Contribution = ActionContribution | ApiContribution | PackageContribution;

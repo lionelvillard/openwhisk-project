@@ -27,6 +27,13 @@ import * as names from './names';
 import * as simpleGit from 'simple-git/promise';
 import * as stringify from 'json-stringify-safe';
 import * as progress from 'progress';
+import * as env from './env';
+
+
+/* Create basic configuration */
+export function newConfig(projectPath: string, logger_level: string = 'off', env?: string): types.Config {
+    return { logger_level, location: projectPath, basePath: '.', cache: '.openwhisk', envname: env };
+}
 
 export async function init(config: types.Config) {
     if (config._initialized)
@@ -40,23 +47,27 @@ export async function init(config: types.Config) {
     config.logger.level = config.logger_level;
     config.setProgress = setProgress(config);
 
-    if (!config.ow)
+    await resolveManifest(config);
+    await configCache(config);
+    await plugins.init(config);
+    await configVariableSources(config);
+    if (config.dryrun)
         config.ow = fakeow;
+    else
+        config.ow = await env.initWsk(config, config.flags);
 
     setOW(config, config.ow)
 
-    await plugins.init(config);
-    await resolveManifest(config);
-    await configCache(config);
-    configVariableSources(config);
-
     if (config.manifest) {
+        filter(config);
+
         await check(config);
 
         const buildir = path.join(config.cache, 'build');
         await fs.mkdirs(buildir);
         await fs.writeJSON(path.join(buildir, 'project.json'), config.manifest, { spaces: 2 });
     }
+
     config.logger.debug(stringify(config.manifest, null, 2));
     config.setProgress('');
 }
@@ -165,12 +176,12 @@ async function configCache(config: types.Config) {
     config.logger.debug(`caching directory set to ${config.cache}`);
 }
 
-function configVariableSources(config: types.Config) {
+async function configVariableSources(config: types.Config) {
     if (!config.variableSources) {
         // TODO: configurable
         config.variableSources = [
-            (config, name) => process.env[name],
-            plugins.getVariableSourcePlugin('wskprops').resolveVariable
+            (name) => process.env[name],
+            await (plugins.getVariableSourcePlugin('wskprops').resolveVariableCreator(config))
         ];
     }
 }
@@ -178,22 +189,39 @@ function configVariableSources(config: types.Config) {
 function setProgress(config) {
     return (format, options) => {
         if (config.progress)
-            config.progress.terminate;
+            config.progress.terminate();
 
-        const autotick = !options;
-        if (typeof (options) === 'number')
-            options = { total: options };
-        else
-            options = options || { total: 1 };
-        options.clear = true;
+        if (format) {
+            const autotick = !options;
+            if (typeof (options) === 'number')
+                options = { total: options };
+            else
+                options = options || { total: 1 };
+            options.clear = true;
 
-        config.progress = new progress(format, options);
-        if (autotick)
-            config.progress.tick();
+            config.progress = new progress(format, options);
+            config.progress.render();
+            // if (autotick)
+            //     config.progress.tick();
 
-        config.logger.info(format);
+            config.logger.info(`progress: ${format}`);
+        }
+
     }
 }
+
+// Remove resources not processed in the environment
+function filter(config: types.Config) {
+    // TODO: should be configurable
+    if (config.envname === 'api') {
+        const manifest = config.manifest;
+        delete manifest.packages;
+        delete manifest.actions;
+        delete manifest.rules;
+        delete manifest.triggers;
+    }
+}
+
 
 // perform:
 // - validation 
@@ -412,14 +440,11 @@ async function checkApis(config: types.Config, manifest) {
 
 async function checkApi(config: types.Config, manifest, apis, apiname: string, api: types.Api) {
     if (api.basePath) { // builtin api
-
         if (!api['x-ibm-configuration']) {
             api['x-ibm-configuration'] = generateAssembly(config, apiname, api);
         }
 
         api.info = { title: api.basePath };
-
-
     } else {
         delete apis[apiname];
 
@@ -444,7 +469,13 @@ function pathToOperationId(path: string) {
 }
 
 function getURL(config: types.Config, qname: string) {
-    const { namespace, pkg, name } = names.resolveQNameParts(qname, config.manifest.namespace, null);
+    let { namespace, pkg, name } = names.resolveQNameParts(qname, config.manifest.namespace, null);
+    if (config.envname === 'api') {
+        // redirect to prod
+        // TODO: apihost api != apihost prod
+        namespace = evaluate(config, '${vars.bluemix_org}_${self.name}-prod@${vars.PRODVERSION}');
+    }
+
     return `${utils.getAPIHost(config)}web/${namespace}/${pkg ? pkg : 'default'}/${name}.http`; // TODO: reponse type
 }
 
@@ -460,14 +491,15 @@ function generateAssembly(config: types.Config, apiname: string, api: types.Api)
 
                 const action = verbs[verb];
                 const operationId = `${verb.toLowerCase()}${pathToOperationId(path)}`;
+                const url = getURL(config, action);
 
-                verbs[verb] = { operationId, 'x-openwhisk': { action } };
+                verbs[verb] = { operationId, 'x-openwhisk': { namespace: '_', action, url } };
 
                 operations.push({
                     operations: [operationId],
                     execute: [{
                         invoke: {
-                            'target-url': getURL(config, action),
+                            'target-url': url,
                             verb: 'keep'
                         }
                     }]
