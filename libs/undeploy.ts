@@ -15,9 +15,8 @@
  */
 import { init } from './init';
 import * as types from './types';
-
-const names = require('./names');
-const utils = require('./utils');
+import * as names from './names';
+import * as utils from './utils';
 
 // remove all entities
 export async function all(config: types.Config) {
@@ -25,6 +24,8 @@ export async function all(config: types.Config) {
 }
 
 export async function apply(config: types.Config) {
+    await init(config);
+
     const manifest = config.manifest; // if null, then delete all!
     const service = manifest ? manifest.name : null; // only delete resources belonging to the service.
     const ow = config.ow;

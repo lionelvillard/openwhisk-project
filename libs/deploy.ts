@@ -19,11 +19,11 @@ import { getLogger } from 'log4js'
 import * as names from './names';
 import * as utils from './utils';
 import * as handlers from './handlers';
-import * as init from './init';
+import { init } from './init';
 import * as types from './types';
 
-export async function apply(config) {
-    await init.init(config);
+export async function apply(config: types.Config) {
+    await init(config); // TODO: deprecate
 
     try {
         config.setProgress('deploying');
