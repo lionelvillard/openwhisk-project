@@ -9,7 +9,7 @@ const before = ctx => async () => {
     fs.mkdirsSync('test-results');
     ctx.cacheDir = await fs.mkdtemp('test-results/test');
     const config = {};
-    await wskd.env.initWsk(config);
+    await wskd.init.init(config);
     await wskd.undeploy.all(config);
     ctx.ow = config.ow;
 }
