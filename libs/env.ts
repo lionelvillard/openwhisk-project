@@ -68,10 +68,14 @@ export interface IEnvironment {
 
 // Get all environments 
 export async function getEnvironments(config: types.Config): Promise<IEnvironment[]> {
-    const allpolicies = await getPolicies(config);
-    const versions = await getVersions(config);
+    try {
+        const allpolicies = await getPolicies(config);
+        const versions = await getVersions(config);
 
-    return allpolicies.map(policies => ({ policies, versions: versions[policies.name] }));
+        return allpolicies.map(policies => ({ policies, versions: versions[policies.name] }));
+    } catch (e) {
+        console.log(e);
+    }
 }
 
 export async function getPolicies(config: types.Config): Promise<IEnvPolicies[]> {
@@ -105,21 +109,22 @@ export async function setEnvironment(config: types.Config, persist: boolean = tr
         }
         await fs.copy(cached, '.wskprops', { overwrite: true });
     }
+    return true;
 }
 
 async function cacheEnvironment(config: types.Config) {
     const name = config.envname;
     const version = config.version;
-    config.setProgress(`refreshing ${name}${version ? `@${version}` : ''} cache`);
+    config.setProgress(`checking ${name}${version ? `@${version}` : ''} cache up-to-date`);
 
     const allPolicies = await getPolicies(config);
     const policies = allPolicies.find(v => v.name === name);
     if (!policies)
-        throw `Environment ${name} does not exist`;
+        throw `environment ${name} does not exist`;
 
     config.logger.info(`environment policies:${JSON.stringify(policies)}`);
     if (!version && policies.versioned) {
-        throw `Missing version for environment ${name}`;
+        throw `missing version for environment ${name}`;
     }
 
     // user-defined properties
@@ -135,7 +140,8 @@ async function cacheEnvironment(config: types.Config) {
     const cachedExists = await fs.pathExists(cached);
 
     const refreshCache = async () => {
-        const props = propertiesParser.createEditor(ALL_WSKPROPS);
+        config.logger.info('refreshing cache')
+        const props = propertiesParser.createEditor(allExists ? ALL_WSKPROPS : '');
         addAll(props, propertiesParser.read(filename));
         await resolveProps(config, name, version, filename, props);
         props.save(cached);
@@ -145,15 +151,14 @@ async function cacheEnvironment(config: types.Config) {
         if (exists) {
             // Just check cache is up-to-date
             const stat1 = await fs.stat(filename);
-            const stat2 = await fs.stat(ALL_WSKPROPS);
+            const stat2 = allExists ? await fs.stat(ALL_WSKPROPS) : null;
             const stat3 = await fs.stat(cached);
-            if (stat1.ctimeMs > stat3.ctimeMs || stat2.ctimeMs > stat3.ctimeMs) {
+            if (stat1.ctimeMs > stat3.ctimeMs || (stat2 && stat2.ctimeMs > stat3.ctimeMs)) {
                 await refreshCache();
             }
         } else {
             // no user-defined properties, so cached values are fine.
         }
-
     } else {
         // No cached properties.
 
@@ -165,16 +170,15 @@ async function cacheEnvironment(config: types.Config) {
         await refreshCache();
     }
 
-
-    config.progress.terminate();
     return cached;
 }
 
 // Create new environment
 export async function newEnvironment(config: types.Config, name: string, wskprops: IWskProps) {
+    config.logger.info(`creating environment ${name}`);
     const filename = `.${name}.wskprops`;
     if (await fs.pathExists(filename))
-        throw `Environment ${name} already exists`;
+        throw `environment ${name} already exists`;
 
     const props = propertiesParser.createEditor();
     Object.keys(wskprops).forEach(key => props.set(key, wskprops[key]));
@@ -199,12 +203,13 @@ export async function incVersion(config: types.Config, releaseType: semver.Relea
     await fs.writeFile(config.location, content, { encoding: 'utf-8' })
 }
 
-
 async function resolveProps(config: types.Config, env: string, version: string, filename: string, props) {
     config.logger.info('resolve wsk properties');
-    const apihost = props.get('APIHOST');
+    let apihost = props.get('APIHOST');
     if (!apihost) {
-        throw `missing APIHOST in ${filename}`;
+        config.logger.info('no api host. Use default openwhisk.ng.bluemix.net');
+        apihost = 'openwhisk.ng.bluemix.net';
+        props.set('APIHOST', apihost);
     }
 
     if (!props.get('AUTH') || !props.get('APIGW_ACCESS_TOKEN')) {
@@ -222,21 +227,20 @@ async function resolveAuthFromBluemix(config: types.Config, props, env: string, 
         throw 'bx is not installed';
     }
 
-    let bxorg = props.get('BLUEMIX_ORG');
+    let bxorg = process.env.BLUEMIX_ORG || props.get('BLUEMIX_ORG');
     if (!bxorg) {
-        config.logger.error('missing BLUEMIX_ORG in .wskprops');
-        throw 'missing BLUEMIX_ORG in .wskprops';
+        throw 'missing BLUEMIX_ORG';
     }
 
-    let bxspace = props.get('BLUEMIX_SPACE');
+    let bxspace = process.env.BLUEMIX_SPACE || props.get('BLUEMIX_SPACE');
     bxspace = bxspace ? bxspace.trim() : null;
     if (!bxspace) {
         // Generate space from manifest
         if (!config.manifest)
-            throw 'Cannot resolve AUTH: missing BLUEMIX_SPACE or project configuration';
+            throw 'cannot resolve AUTH: missing BLUEMIX_SPACE or project configuration';
         const name = config.manifest.name;
         if (!name)
-            throw `Cannot resolve AUTH from project configuration: missing 'name' property.`;
+            throw `cannot resolve AUTH from project configuration: missing 'name' property.`;
 
         if (version)
             bxspace = `${name}-${env}@${version}`;
@@ -256,6 +260,11 @@ async function resolveAuthFromBluemix(config: types.Config, props, env: string, 
     if (!wskprops.APIGW_ACCESS_TOKEN)
         throw `missing APIGW_ACCESS_TOKEN in .wskprops`;
 
+    props.set('ENVNAME', env);
+    if (version)
+        props.set('ENVVERSION', version);
+    props.set('BLUEMIX_ORG', bxorg);
+    props.set('BLUEMIX_SPACE', bxspace);
     props.set('AUTH', wskprops.AUTH);
     props.set('APIGW_ACCESS_TOKEN', wskprops.APIGW_ACCESS_TOKEN);
 }
@@ -263,14 +272,12 @@ async function resolveAuthFromBluemix(config: types.Config, props, env: string, 
 export async function getWskPropsFile(config: types.Config) {
     let wskprops = process.env.WSK_CONFIG_FILE;
     if (!wskprops || !fs.existsSync(wskprops)) {
-
         if (config.envname) {
             if (await setEnvironment(config, false))
                 return getCachedEnvFilename(config);
 
             return null;
         }
-
         const until = path.dirname(expandHome('~'));
         let current = process.cwd();
         while (current !== '/' && current !== until) {
@@ -288,11 +295,13 @@ export async function readWskProps(config: types.Config): Promise<IWskProps | nu
     const wskprops = await getWskPropsFile(config);
     if (wskprops) {
         try {
+            config.logger.info(`reading ${wskprops}`);
             return propertiesParser.read(wskprops);
         } catch (e) {
             return null;
         }
     }
+    config.logger.info('no wskprops found');
     return null;
 }
 
@@ -321,7 +330,7 @@ export async function resolveVariables(config: types.Config, options: any = {}) 
     variables.ignore_certs = options.ignore_certs || process.env.WHISK_IGNORE_CERTS || wskprops.IGNORE_CERTS || false;
     variables.apigw_token = options.apigw_token || process.env.WHISK_APIGW_ACCESS_TOKEN || wskprops.APIGW_ACCESS_TOKEN;
 
-    return variables
+    return variables;
 }
 
 export async function initWsk(config: types.Config = {}, options = {}) {
@@ -359,11 +368,12 @@ async function getVersions(config: types.Config) {
     // TODO: support for multiple org    
     if (props.BLUEMIX_ORG) {
         const cred = { org: props.BLUEMIX_ORG, space: `${name}-dev` };
+        await bx.login(config, cred);
         config.setProgress('getting environment versions');
         const io = await bx.run(config, cred, 'iam spaces');
         const stdout: string = io.stdout;
         const regex = new RegExp(`${name}-([\\w]+)@([\\w\\d.]+)`, 'g');
-        
+
         const versions = {};
         let match;
         while ((match = regex.exec(stdout)) !== null) {

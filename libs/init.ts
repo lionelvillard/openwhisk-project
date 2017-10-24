@@ -37,51 +37,57 @@ export function newConfig(projectPath: string, logger_level: string = 'off', env
 }
 
 export async function init(config: types.Config) {
-    if (config._initialized)
-        return;
-    config._initialized = true;
+    try {
+        if (config._initialized)
+            return;
+        config._initialized = true;
 
-    if (!config.logger)
-        config.logger = getLogger();
+        if (!config.logger)
+            config.logger = getLogger();
 
-    config.logger_level = config.logger_level || process.env.LOGGER_LEVEL || 'off';
-    config.logger.level = config.logger_level;
-    config.setProgress = setProgress(config);
+        config.logger_level = config.logger_level || process.env.LOGGER_LEVEL || 'off';
+        config.logger.level = config.logger_level;
+        config.setProgress = setProgress(config);
 
-    if (config.envname) {
-        const { name, version } = parseEnvName(config.envname);
-        config.envname = name;
-        config.version = version;
-    }
-
-    config.skipPhases = config.skipPhases || [];
-
-    await resolveManifest(config);
-    await configCache(config);
-
-    await plugins.init(config);
-    await configVariableSources(config);
-
-
-    if (config.dryrun)
-        config.ow = fakeow;
-    else
-        config.ow = await env.initWsk(config, config.flags);
-
-    setOW(config, config.ow)
-
-    if (config.manifest) {
-        filter(config);
-
-        if (!config.skipPhases.includes('validation')) {
-            await check(config);
-
-            const buildir = path.join(config.cache, 'build');
-            await fs.mkdirs(buildir);
-            await fs.writeJSON(path.join(buildir, 'project.json'), config.manifest, { spaces: 2 });
+        if (config.envname) {
+            const { name, version } = parseEnvName(config.envname);
+            config.envname = name;
+            config.version = version;
         }
 
-        config.logger.debug(stringify(config.manifest, null, 2));
+        config.skipPhases = config.skipPhases || [];
+
+        await resolveManifest(config);
+        await configCache(config);
+
+        await plugins.init(config);
+        await configVariableSources(config);
+
+
+        if (config.dryrun)
+            config.ow = fakeow;
+        else
+            config.ow = await env.initWsk(config, config.flags);
+
+        setOW(config, config.ow)
+
+        if (config.manifest) {
+            filter(config);
+
+            if (!config.skipPhases.includes('validation')) {
+                await check(config);
+
+                const buildir = path.join(config.cache, 'build');
+                await fs.mkdirs(buildir);
+                await fs.writeJSON(path.join(buildir, 'project.json'), config.manifest, { spaces: 2 });
+            }
+
+            config.logger.debug(stringify(config.manifest, null, 2));
+        }
+    } catch (e) {
+        if (config.logger)
+            config.logger.error(e);
+        throw e;
     }
 }
 
