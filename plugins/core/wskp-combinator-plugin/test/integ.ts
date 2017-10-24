@@ -21,11 +21,13 @@ import * as wskd from 'openwhisk-deploy';
 @suite
 class integration {
 
-    ctx;
+    ctx ;
 
     async before() {
-        this.ctx = { ow: await wskd.env.initWsk() };
-        await wskd.undeploy.all({ow: this.ctx.ow});
+        const config : wskd.IConfig = {};
+        await wskd.init.init(config);
+        await wskd.undeploy.all(config);
+        this.ctx = { ow:config.ow };
     }
 
     after() {

@@ -24,7 +24,9 @@ class copyUnit {
     ctx;
 
     async before() {
-        this.ctx = { ow: await wskd.env.initWsk() };
+        const config : wskd.IConfig = {};
+        await wskd.init.init(config);
+        this.ctx = { ow:config.ow };
     }
 
     @test('Copy remote eca code')
