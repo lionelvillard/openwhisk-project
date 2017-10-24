@@ -173,7 +173,7 @@ async function cacheEnvironment(config: types.Config) {
     return cached;
 }
 
-// Create new environment
+// Create new environment from template
 export async function newEnvironment(config: types.Config, name: string, wskprops: IWskProps) {
     config.logger.info(`creating environment ${name}`);
     const filename = `.${name}.wskprops`;
@@ -201,6 +201,24 @@ export async function incVersion(config: types.Config, releaseType: semver.Relea
     }
 
     await fs.writeFile(config.location, content, { encoding: 'utf-8' })
+}
+
+// Promote API environment to latest PROD
+export async function promote(config: types.Config) {
+    const versions = await getVersions(config);
+    if (versions && versions['prod'] && versions['prod'].length > 0) {
+        const prods = versions['prod'];
+        const latest = prods[prods.length - 1];
+
+        if (!(await fs.pathExists('.api.wskprops')))
+            await newEnvironment(config, 'api', BuiltinEnvs.find(obj => obj.name === 'api').props);
+
+            let content = await fs.readFile('.api.wskprops', 'utf-8');
+            content = content.replace(/(PRODVERSION[^=]*=).*/, `$1${latest}`);
+            await fs.writeFile('.api.wskprops', content, { encoding: 'utf-8' });
+            return true;
+    }
+    return false;
 }
 
 async function resolveProps(config: types.Config, env: string, version: string, filename: string, props) {
@@ -384,5 +402,5 @@ async function getVersions(config: types.Config) {
         }
         return versions;
     }
-    return [];
+    return {};
 } 
