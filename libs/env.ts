@@ -61,9 +61,21 @@ const BuiltinEnvs: IEnvPolicies[] = [
 const BuiltinEnvNames = BuiltinEnvs.map(e => e.name);
 const ALL_WSKPROPS = '.all.wskprops';
 
+export interface IEnvironment {
+    policies: IEnvPolicies;
+    versions: string[];
+}
+
 // Get all environments 
-export async function getEnvironments(config: types.Config): Promise<IEnvPolicies[]> {
-    config.logger.info('get project environments');
+export async function getEnvironments(config: types.Config): Promise<IEnvironment[]> {
+    const allpolicies = await getPolicies(config);
+    const versions = await getVersions(config);
+
+    return allpolicies.map(policies => ({ policies, versions: versions[policies.name] }));
+}
+
+export async function getPolicies(config: types.Config): Promise<IEnvPolicies[]> {
+    config.logger.info('get environments policies');
 
     const toenvname = file => path.basename(file, '.wskprops').substr(1).toLowerCase();
 
@@ -72,7 +84,7 @@ export async function getEnvironments(config: types.Config): Promise<IEnvPolicie
             return true;
         const name = path.basename(file);
         return name === '.wskprops' || !name.endsWith('.wskprops') || BuiltinEnvNames.includes(toenvname(file));
-    }
+    };
 
     try {
         const files: string[] = await readdir('.', [ignore]);
@@ -85,12 +97,23 @@ export async function getEnvironments(config: types.Config): Promise<IEnvPolicie
 
 // Set current environment.
 export async function setEnvironment(config: types.Config, persist: boolean = true) {
+    const cached = await cacheEnvironment(config);
+    if (persist) {
+        const exists = await fs.pathExists('.wskprops');
+        if (exists) {
+            await fs.copy('.wskprops', '.wskprops.bak', { overwrite: true });
+        }
+        await fs.copy(cached, '.wskprops', { overwrite: true });
+    }
+}
+
+async function cacheEnvironment(config: types.Config) {
     const name = config.envname;
     const version = config.version;
-    config.setProgress(`setting environment to ${name}${version ? `@${version}` : ''}`);
+    config.setProgress(`refreshing ${name}${version ? `@${version}` : ''} cache`);
 
-    const envs = await getEnvironments(config);
-    const policies = envs.find(v => v.name === name);
+    const allPolicies = await getPolicies(config);
+    const policies = allPolicies.find(v => v.name === name);
     if (!policies)
         throw `Environment ${name} does not exist`;
 
@@ -142,16 +165,9 @@ export async function setEnvironment(config: types.Config, persist: boolean = tr
         await refreshCache();
     }
 
-    if (persist) {
-        const exists = await fs.pathExists('.wskprops');
-        if (exists) {
-            await fs.copy('.wskprops', '.wskprops.bak', { overwrite: true });
-        }
-        await fs.copy(cached, '.wskprops', { overwrite: true });
-    }
 
     config.progress.terminate();
-    return true;
+    return cached;
 }
 
 // Create new environment
@@ -271,7 +287,6 @@ export async function getWskPropsFile(config: types.Config) {
 export async function readWskProps(config: types.Config): Promise<IWskProps | null> {
     const wskprops = await getWskPropsFile(config);
     if (wskprops) {
-        const propertiesParser = require('properties-parser');
         try {
             return propertiesParser.read(wskprops);
         } catch (e) {
@@ -328,3 +343,36 @@ function escapeNamespace(str: string) {
 function addAll(props, others) {
     Object.keys(others).forEach(key => props.set(key, others[key]));
 }
+
+// Retrieve all versions for all environment
+async function getVersions(config: types.Config) {
+    if (!await bx.isBluemixCapable())
+        throw 'bx is not installed';
+
+    const name = config.manifest.name;
+
+    const devCfg = { ...config };
+    devCfg.envname = 'dev';
+    const dev = await cacheEnvironment(devCfg);
+    const props = propertiesParser.read(dev);
+
+    // TODO: support for multiple org    
+    if (props.BLUEMIX_ORG) {
+        const cred = { org: props.BLUEMIX_ORG, space: `${name}-dev` };
+        config.setProgress('getting environment versions');
+        const io = await bx.run(config, cred, 'iam spaces');
+        const stdout: string = io.stdout;
+        const regex = new RegExp(`${name}-([\\w]+)@([\\w\\d.]+)`, 'g');
+        
+        const versions = {};
+        let match;
+        while ((match = regex.exec(stdout)) !== null) {
+            const env = match[1];
+            if (!versions[env])
+                versions[env] = [];
+            versions[env].push(match[2]);
+        }
+        return versions;
+    }
+    return [];
+} 

@@ -26,7 +26,7 @@ export async function apply(config) {
     await init.init(config);
 
     try {
-        config.setProgress('deploying...');
+        config.setProgress('deploying');
 
         // Renable when supporting multiple namespace deployment
         // await deployIncludes(args);
@@ -37,8 +37,6 @@ export async function apply(config) {
         await deployTriggers(config);
         await deployRules(config);
         await deployApis(config);
-
-        config.setProgress('');
     } catch (e) {
         config.logger.error(e)
         return Promise.reject(e)

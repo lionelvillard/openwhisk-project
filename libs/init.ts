@@ -83,8 +83,6 @@ export async function init(config: types.Config) {
 
         config.logger.debug(stringify(config.manifest, null, 2));
     }
-
-    config.setProgress('');
 }
 
 export function setOW(config: types.Config, ow) {
