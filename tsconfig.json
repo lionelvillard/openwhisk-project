@@ -4,7 +4,8 @@
         "target": "ES2016",
         "sourceMap": true,
         "rootDir": ".",
-        "outDir": "dist"
+        "outDir": "dist",
+        "experimentalDecorators": true
     },
     "exclude": [
         "node_modules",

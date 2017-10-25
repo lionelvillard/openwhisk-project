@@ -14,3 +14,4 @@ examples/*
 /index.js
 .openwhisk
 *.class
+.workdir.*

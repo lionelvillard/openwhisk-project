@@ -38,7 +38,6 @@ let loaded = false;
 export async function init(config: types.Config) {
     if (!loaded) {
         config.logger.info(`initializing plugins ${PLUGINS_ROOT} and ${EXT_PLUGINS_ROOT}`);
-        config.setProgress('registering plugins...');
         await registerAll(config);
         loaded = true;
     }

@@ -60,20 +60,44 @@ export interface Config {
     /* A list of variable resolvers */
     variableSources?: [VariableResolver];   
 
+    /** Application name. Must match manifest.name when not null */
+    appname?: string;                  
+
     /** Environment name. When null, fallback to basic wsk behavior */
     envname?: string;                  
 
     /** Environment version. Null when given environment does not support versioning. Should match manifest.version */
     version?: string;                  
     
-    /* Set the command progress, e.g. loading foo.js */
-    setProgress?: (format?: string, options?) => void;
+    // --- Progress management
 
+    /* Start progress, e.g. loading foo.js. Can be nested. */
+    startProgress?: (format?: string, options?) => void;
+
+    /* Terminate current progress (if any) */
+    terminateProgress?: () => void;
+    
+    /* Set current progress, e.g. loading foo.js */
+    setProgress?: (format?: string, options?) => void; 
+    
+    /* Clear all progresses */
+    clearProgress?: () => void;
+    
     /* Current progress. Use `progress.tick` for update */
     progress?: any;
 
-    /* Internal */
+    // ---- Error management
+
+    /** throw fatal error */
+    fatal? : (format, ...args) => never; 
+
+    // ---- Internal
+
+    /* Is config already initialized */
     _initialized? : boolean;
+
+    /* current progress formats and options */
+    _progresses? : { format: string, options: any }[];
 
     // deprecated
     load?: Loader;

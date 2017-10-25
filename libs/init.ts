@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { getLogger, configure } from 'log4js';
+import { getLogger } from 'log4js';
 import * as fs from 'fs-extra';
 import * as yaml from 'yamljs';
 import * as path from 'path';
@@ -29,7 +29,7 @@ import * as stringify from 'json-stringify-safe';
 import * as progress from 'progress';
 import * as env from './env';
 import * as semver from 'semver';
-
+import { format } from "util";
 
 /* Create basic configuration */
 export function newConfig(projectPath: string, logger_level: string = 'off', env?: string): types.Config {
@@ -37,32 +37,33 @@ export function newConfig(projectPath: string, logger_level: string = 'off', env
 }
 
 export async function init(config: types.Config) {
+    if (config._initialized)
+        return;
+    config._initialized = true;
+
+    if (!config.logger)
+        config.logger = getLogger();
+
+    config.logger_level = config.logger_level || process.env.LOGGER_LEVEL || 'off';
+    config.logger.level = config.logger_level;
+
+    config.fatal = fatal(config);
+
+    config._progresses = [];
+    config.setProgress = setProgress(config);
+    config.startProgress = startProgress(config);
+    config.terminateProgress = terminateProgress(config);
+    config.clearProgress = clearProgress(config);
+
+    config.skipPhases = config.skipPhases || [];
+
     try {
-        if (config._initialized)
-            return;
-        config._initialized = true;
-
-        if (!config.logger)
-            config.logger = getLogger();
-
-        config.logger_level = config.logger_level || process.env.LOGGER_LEVEL || 'off';
-        config.logger.level = config.logger_level;
-        config.setProgress = setProgress(config);
-
-        if (config.envname) {
-            const { name, version } = parseEnvName(config.envname);
-            config.envname = name;
-            config.version = version;
-        }
-
-        config.skipPhases = config.skipPhases || [];
-
         await resolveManifest(config);
         await configCache(config);
 
+        await initenv(config);
         await plugins.init(config);
         await configVariableSources(config);
-
 
         if (config.dryrun)
             config.ow = fakeow;
@@ -85,8 +86,8 @@ export async function init(config: types.Config) {
             config.logger.debug(stringify(config.manifest, null, 2));
         }
     } catch (e) {
-        if (config.logger)
-            config.logger.error(e);
+        config.clearProgress();
+        config.logger.error(e);
         throw e;
     }
 }
@@ -118,7 +119,7 @@ export function setOW(config: types.Config, ow) {
             const missing = ['relpath', 'operation', 'action'].filter(param => !(options || {}).hasOwnProperty(param))
 
             if (missing.length) {
-                throw new Error(`Missing mandatory parameters: ${missing.join(', ')}`)
+                throw new Error(`missing mandatory parameters: ${missing.join(', ')}`)
             }
         }
 
@@ -143,11 +144,11 @@ export function setOW(config: types.Config, ow) {
 
         return { apidoc }
     }
-
 }
 
 async function resolveManifest(config: types.Config) {
-    config.setProgress('loading project configuration');
+    config.startProgress('loading project configuration');
+
     if (config.manifest || config.manifest === '') {
         if (typeof config.manifest === 'string') {
             config.manifest = yaml.parse(config.manifest) || {};
@@ -165,14 +166,19 @@ async function resolveManifest(config: types.Config) {
     if (config.manifest) {
         if (config.manifest.basePath)
             config.basePath = path.resolve(config.basePath, config.manifest.basePath);
+
+        config.appname = config.manifest.name;
     }
 
     config.logger.debug(`base path set to ${config.basePath}`);
+    config.terminateProgress();
 }
 
 async function loadManifest(config: types.Config) {
+    config.startProgress(`reading ${config.location}`);
     const content = await fs.readFile(config.location);
-    config.manifest = yaml.parse(Buffer.from(content).toString());
+    config.manifest = yaml.parse(Buffer.from(content).toString()) || {};
+    config.clearProgress();
 }
 
 async function configCache(config: types.Config) {
@@ -190,6 +196,54 @@ async function configCache(config: types.Config) {
     config.logger.debug(`caching directory set to ${config.cache}`);
 }
 
+async function initenv(config: types.Config) {
+    let props;
+    if (config.envname) {
+        const { name, version } = env.parseEnvName(config.envname);
+        config.envname = name;
+        config.version = version;
+        props = await env.readWskProps(config); // reading from the cache.
+    } else {
+        props = await env.getCurrent(config);
+    }
+
+    if (props) {
+        if (props.ENVNAME) {
+            // wskprops is environment bound.
+            if (config.envname && config.envname !== props.ENVNAME)
+                config.fatal('corrupted cache. delete it and retry');
+
+            config.envname = props.ENVNAME;
+
+            if (config.appname && config.appname !== props.APPNAME)
+                config.fatal('mismatch application name. configured to be %s but found %s in the current environment', config.manifest.name, props.APPNAME);
+
+            config.appname = props.APPNAME;
+
+            if (!config.version)
+                config.version = props.ENVVERSION;
+                
+            // refresh 
+            await env.cacheEnvironment(config);
+        } else {
+            // wskprops is environment unbound. Fine.
+        }
+
+
+    } else {
+        if (config.envname) {
+            // no cache props. Need to refresh. Can only do it if appname is known!
+            if (!config.appname)
+                config.fatal('cannot resolve environment properties: missing application name');
+
+            await env.cacheEnvironment(config);
+        } else {
+            // no env, no props. Ignore and fail later when properties are needed
+        }
+    }
+
+}
+
 async function configVariableSources(config: types.Config) {
     if (!config.variableSources) {
         // TODO: configurable
@@ -200,27 +254,65 @@ async function configVariableSources(config: types.Config) {
     }
 }
 
-function setProgress(config) {
+function fatal(config: types.Config) {
+    return (fmt: string, ...args) => {
+        config.clearProgress();
+
+        // TODO: i8n
+        const msg = format(fmt, ...args);
+        config.logger.fatal(msg);
+        throw new Error(msg);
+    }
+}
+
+function startProgress(config: types.Config) {
     return (format, options) => {
-        if (config.progress)
-            config.progress.terminate();
+        config._progresses.push({ format, options });
+        renderProgress(config);
+    }
+}
 
-        if (format) {
-            const autotick = !options;
-            if (typeof (options) === 'number')
-                options = { total: options };
-            else
-                options = options || { total: 1 };
-            options.clear = true;
+function setProgress(config: types.Config) {
+    return (format, options) => {
+        if (config._progresses.length > 0)
+            config._progresses.pop();
 
-            config.progress = new progress(format, options);
-            config.progress.render();
-            // if (autotick)
-            //     config.progress.tick();
+        config._progresses.push({ format, options });
+        renderProgress(config);
+    }
+}
 
-            config.logger.info(`progress: ${format}`);
-        }
+function clearProgress(config: types.Config) {
+    return () => {
+        config._progresses = [];
+        renderProgress(config);
+    }
+}
 
+function terminateProgress(config: types.Config) {
+    return () => {
+        if (config._progresses.length > 0)
+            config._progresses.pop();
+
+        renderProgress(config);
+    }
+}
+
+function renderProgress(config: types.Config) {
+    if (config.progress) {
+        config.progress.terminate();
+        config.progress = null;
+    }
+
+    if (config._progresses.length > 0) {
+        const fullformat = config._progresses.map(v => v.format).join(' ... ');
+        const fulloptions = config._progresses.reduce((prev, cur) => ({ ...prev, ...cur.options }), { total: 1, clear: true });
+
+        config.progress = new progress(fullformat, fulloptions);
+        config.progress.render();
+        config.logger.debug(`progress: ${fullformat}`);
+    } else {
+        config.logger.debug('progress cleared');
     }
 }
 
@@ -914,13 +1006,3 @@ function resolveComponents(namespace, pkgName, sequence) {
     return actions.map(action => names.resolveQName(action, namespace, pkgName));
 }
 
-function parseEnvName(envname: string) {
-    const matched = envname.match(/^([\w]*)(@(.+))?$/);
-    if (matched) {
-        const version = matched[3];
-        if (version && !semver.valid(version))
-            throw `Malformed environment version ${version}`;
-        return { name: matched[1], version };
-    }
-    throw `Malformed environment name ${envname}`;
-}
