@@ -20,7 +20,7 @@ import * as path from 'path';
 import * as types from './types';
 import * as plugins from './pluginmgr';
 import * as expandHome from 'expand-home-dir';
-import { evaluate } from './interpolation';
+import { evaluate, evaluateAll } from './interpolation';
 import { parse } from 'url';
 import * as utils from './utils';
 import * as names from './names';
@@ -222,7 +222,7 @@ async function initenv(config: types.Config) {
 
             if (!config.version)
                 config.version = props.ENVVERSION;
-                
+
             // refresh 
             await env.cacheEnvironment(config);
         } else {
@@ -334,7 +334,7 @@ function filter(config: types.Config) {
 // - normalization (remove syntax sugar, resolve location)
 // - interpolation (evaluate ${..})
 async function check(config: types.Config) {
-    config.setProgress('validating project configuration')
+    config.startProgress('validating project configuration')
     const manifest = config.manifest;
 
     if (config.version && manifest.version) {
@@ -365,15 +365,19 @@ async function check(config: types.Config) {
             config.logger.warn(`property /${key} ignored`);
         }
     }
-    config.logger.debug('normalization done');
+    config.clearProgress();
 }
 
-async function checkDependencies(config: types.Config, manifest) {
-    const dependencies = manifest.dependencies;
+async function checkDependencies(config: types.Config, manifest: types.Project) {
+    let dependencies = manifest.dependencies;
     if (dependencies) {
+        // Evaluate expressions
+        dependencies = evaluateAll(config, dependencies);
+
+        // Inline dependencies
         for (const dependency of dependencies) {
             if (!dependency.location)
-                throw `Missing location in ${dependency}`;
+                throw new Error(`missing location in ${JSON.stringify(dependency)}`);
 
             let location = dependency.location.trim();
             if (location.startsWith('git+')) {
@@ -387,6 +391,12 @@ async function checkDependencies(config: types.Config, manifest) {
             const includedProject = yaml.load(location);
             const basePath = path.dirname(location);
             mergeProject(config, basePath, includedProject);
+
+            // Load plugins provided by the dependency
+            const pluginPath = path.join(basePath, 'plugin');
+            if (await fs.pathExists(pluginPath)) {
+                await plugins.registerFromPath(config, pluginPath);
+            }
         }
         delete manifest.dependencies;
     }
@@ -395,10 +405,12 @@ async function checkDependencies(config: types.Config, manifest) {
 async function checkPackages(config: types.Config, manifest) {
     const packages = manifest.packages;
 
+    // bindings
     for (const pkgName in packages) {
         await checkPackage(config, manifest, packages, pkgName, packages[pkgName], true);
     }
 
+    // non-bindings
     for (const pkgName in packages) {
         await checkPackage(config, manifest, packages, pkgName, packages[pkgName], false);
     }
@@ -441,7 +453,10 @@ async function checkActions(config: types.Config, manifest, pkgName: string, act
 }
 
 async function checkAction(config: types.Config, manifest, pkgName: string, actions, actionName: string, action: types.Action) {
-    // Expand unknown properties.
+    // 1. evaluate expressions
+    action = evaluateAll(config, action, ['.code']);
+
+    // 2. Expand unknown properties.
     for (const key in action) {
         if (!(key in types.actionProps)) {
             const plugin = plugins.getActionPlugin(action, key);
@@ -456,13 +471,10 @@ async function checkAction(config: types.Config, manifest, pkgName: string, acti
         }
     }
 
-    // At this point, all unkown properties have been expanded.
+    // 3. At this point, all unkown properties have been expanded.
 
     action._qname = names.resolveQName(actionName, manifest.namespace, pkgName);
-    evaluatesKV(config, action.inputs);
-    evaluatesKV(config, action.annos);
     checkBuilder(config, pkgName, actionName, action);
-
 
     if (action.hasOwnProperty('location')) { // builtin basic action
         action.location = resolveActionLocation(config.basePath, pkgName, actionName, action.location);
@@ -480,73 +492,53 @@ async function checkAction(config: types.Config, manifest, pkgName: string, acti
 
         // TODO
     } else {
-        throw `Invalid action ${actionName}: missing either location, sequence, code or image property`;
+        throw new Error(`Invalid action ${actionName}: missing either location, sequence, code or image property`);
     }
 }
 
-async function checkTriggers(config: types.Config, manifest) {
-    const triggers = manifest.triggers;
+async function checkTriggers(config: types.Config, manifest: types.Project) {
+    let triggers = manifest.triggers;
     if (triggers) {
-        for (const triggerName in triggers) {
-            const trigger = triggers[triggerName];
-            if (trigger) {
-                if (trigger.feed)
-                    trigger.feed = evaluate(config, trigger.feed);
+        // 1. evaluate expressions
+        triggers = evaluateAll(config, triggers);
 
-                evaluatesKV(config, trigger.inputs);
-                evaluatesKV(config, trigger.annos);
-            }
-        }
+        // 2. TODO: check
     }
 }
 
 async function checkRules(config: types.Config, manifest) {
-    const rules = manifest.rules;
+    let rules = manifest.rules;
     if (rules) {
+        rules = evaluateAll(config, rules);
+
         for (const ruleName in rules) {
             const rule = rules[ruleName];
 
             if (!rule)
-                throw `Invalid rule ${ruleName}: missing properties`;
+                throw new Error(`Invalid rule ${ruleName}: missing properties`);
 
             if (!rule.trigger)
-                throw `Invalid rule ${ruleName}: missing trigger property`;
+                throw new Error(`Invalid rule ${ruleName}: missing trigger property`);
             if (!rule.action)
-                throw `Invalid rule ${ruleName}: missing action property`;
+                throw new Error(`Invalid rule ${ruleName}: missing action property`);
             if (!rule.status)
                 rule.status = 'active';
 
-            rule.trigger = evaluate(config, rule.trigger);
-            rule.action = evaluate(config, rule.action);
-            rule.status = evaluate(config, rule.status);
-
             if (rule.status !== 'active' && rule.status !== 'inactive')
-                throw `Invalid rule ${ruleName}: status property must either be 'active' or 'inactive'. Got ${rule.status}`;
-
-            evaluatesKV(config, rule.inputs);
-            evaluatesKV(config, rule.annos);
-        }
-    }
-}
-
-function evaluatesKV(config: types.Config, kvs) {
-    if (kvs) {
-        for (const key in kvs) {
-            const value = kvs[key];
-            if (typeof value === 'string')
-                kvs[key] = evaluate(config, value);
+                throw new Error(`Invalid rule ${ruleName}: status property must either be 'active' or 'inactive'. Got ${rule.status}`);
         }
     }
 }
 
 async function checkApis(config: types.Config, manifest) {
-    const apis = manifest.apis;
-    if (!apis)
-        return;
+    let apis = manifest.apis;
+    if (apis) {
+        apis = evaluateAll(config, apis);
 
-    for (const apiname in apis) {
-        const api = apis[apiname];
-        await checkApi(config, manifest, apis, apiname, api);
+        for (const apiname in apis) {
+            const api = apis[apiname];
+            await checkApi(config, manifest, apis, apiname, api);
+        }
     }
 }
 

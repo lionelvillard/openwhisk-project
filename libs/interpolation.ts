@@ -17,6 +17,25 @@ import * as util from 'util';
 import * as types from './types';
 import * as vm from 'vm';
 
+// recursively evaluate expressions in obj
+export function evaluateAll(config: types.Config, obj: any, filter?: string[]) {
+    return evaluateAllI(config, obj, filter || [], '');
+}
+
+function evaluateAllI(config: types.Config, obj: any, filter: string[], path: string) {
+    switch (typeof obj) {
+        case 'string':
+            return filter.includes(path) ? obj : evaluate(config, obj);
+        case 'object':
+            for (const key in obj) {
+                obj[key] = evaluateAllI(config, obj[key], filter, `${path}.${key}`);
+            }
+            return obj;
+        default:
+            return obj;
+    }
+}
+
 export function evaluate(config: types.Config, expr: string) {
     expr = `\`${expr}\``;
     config.logger.info(`evaluate ${expr}`);
