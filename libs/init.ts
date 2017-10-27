@@ -349,7 +349,7 @@ async function check(config: types.Config) {
     }
     config.logger.info(`target namespace: ${manifest.namespace}`);
 
-    await checkIncludes(config, manifest);
+    await checkDependencies(config, manifest);
     await checkPackages(config, manifest);
 
     if (manifest.actions)
@@ -368,16 +368,16 @@ async function check(config: types.Config) {
     config.logger.debug('normalization done');
 }
 
-async function checkIncludes(config: types.Config, manifest) {
-    const includes = manifest.includes;
-    if (includes) {
-        for (const include of includes) {
-            if (!include.location)
-                throw `Missing location in ${include}`;
+async function checkDependencies(config: types.Config, manifest) {
+    const dependencies = manifest.dependencies;
+    if (dependencies) {
+        for (const dependency of dependencies) {
+            if (!dependency.location)
+                throw `Missing location in ${dependency}`;
 
-            let location = include.location.trim();
+            let location = dependency.location.trim();
             if (location.startsWith('git+')) {
-                location = await gitClone(config, include);
+                location = await gitClone(config, dependency);
             } else {
                 // File.
                 location = path.resolve(config.basePath, location);
@@ -388,7 +388,7 @@ async function checkIncludes(config: types.Config, manifest) {
             const basePath = path.dirname(location);
             mergeProject(config, basePath, includedProject);
         }
-        delete manifest.includes;
+        delete manifest.dependencies;
     }
 }
 

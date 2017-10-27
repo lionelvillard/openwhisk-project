@@ -202,7 +202,7 @@ export interface Builder {
     __exec?: ActionBuilder;
 }
 
-export enum projectProps { name = 'name', version = 'version', basepath = 'basePath', includes = 'includes', packages = 'packages', actions = 'actions', triggers = 'triggers', rules = 'rules', apis = 'apis', };
+export enum projectProps { name = 'name', version = 'version', basepath = 'basePath', dependencies = 'dependencies', packages = 'packages', actions = 'actions', triggers = 'triggers', rules = 'rules', apis = 'apis', };
 export enum actionProps {
     limits = 'limits', inputs = 'inputs', annotations = 'annotations', builder = 'builder',
     location = 'location', code = 'code', sequence = 'sequence', kind = 'kind', main = 'main',

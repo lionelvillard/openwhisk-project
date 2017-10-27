@@ -17,7 +17,7 @@ const assert = require('assert');
 const utils = require('./helpers/utils');
 const wskd = require('..');
 
-describe('testing includes', function () {
+describe('testing dependencies', function () {
 
     const ctx = {};
 
@@ -29,7 +29,7 @@ describe('testing includes', function () {
             ow: ctx.ow,
             cache: ctx.cacheDir,
             manifest: `
-                includes: 
+                dependencies: 
                   - location: git+https://github.com/lionelvillard/incubator-openwhisk-catalog.git/packages/utils/manifest.yaml`
         });
 

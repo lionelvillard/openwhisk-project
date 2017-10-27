@@ -54,27 +54,19 @@ rules:
 apis:
 ```
 
-## `includes` 
+## `dependencies` 
 
-An *array* of `include` *objects* representing the inclusion of an external project configuration  
-into this configuration. 
+An *array* of `dependency` *objects*. 
 
-All entities specified in the external configuration are merged with the 
-entities contained in the main configuration, potentially breaking some rules, such as unique package name
-
-## `include`
+## `dependency`
  
-A *object* representing a project configuration to include.
+A *object* representing an external project configuration.
 
-When the included project namespace is `_`, its configuration is merged into this configuration, as follows:
-- nested `includes` are currently not supported and an error is raised
-- an error is raised when attempting to include an entity with the same name as an entity (including packages)
+Limitation: nested `dependencies` are currently not supported.
 
 ### Properties
 
-- `location` (string, required): 
-    
-   URL to the project configuration file. 
+- `location` (string, required): the URL to the dependent project configuration file. 
    
    Supported format: 
      - git: `git+<protocol>://[<user>[:<password>]@]<hostname>[:<port>][:][/]<path>#<commit-ish>`, where `protocol` is one of `ssh`, `http`, `https`, or `file`. See [here](https://www.kernel.org/pub/software/scm/git/docs/gitrevisions.html#_specifying_revisions) for support commit-ish formats.
@@ -83,7 +75,7 @@ When the included project namespace is `_`, its configuration is merged into thi
 ### Example
 
 ```yaml
-includes:
+dependencies:
   - location: git+https://github.com/lionelvillard/openwhisk-deploy.git/project.yaml#master
 ```
 
