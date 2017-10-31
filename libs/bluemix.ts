@@ -44,32 +44,71 @@ export interface Credential {
 
 const wskProps = (cred: Credential) => `${cred.home}/.wskprops`;
 
-// Run bluemix command
-export const run = async (config: types.Config, cred: Credential, cmd: string) => {
+// Run bluemix command. Retries once if not logged in.
+export async function run(config: types.Config, cred: Credential, cmd: string) {
     cred = fixupCredentials(config, cred);
+    return doRun(config, cred, cmd);
+}
+
+async function doRun(config: types.Config, cred: Credential, cmd: string) {
     const bx = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx ${cmd}`;
     config.logger.debug(`exec ${bx}`);
-    return await exec(bx);
+    try {
+        return await exec(bx);
+    } catch (e) {
+        if (await doLogin(config, cred))
+            return doRun(config, cred, cmd); //  tokens have been refreshed. Retry command.
+        else
+            throw e; // something else happened. 
+    }
 }
 
 // Login to Bluemix
 export const login = async (config: types.Config, cred: Credential) => {
     cred = fixupCredentials(config, cred);
     try {
-        const space = cred.space ? `-s ${cred.space}` : '';
-        config.startProgress('login to Bluemix');
         try {
-            await run(config, cred, 'target');
+            await doRun(config, cred, 'target');
         } catch (e) {
-            config.setProgress('refreshing Bluemix tokens');
-            await run(config, cred, `login -a ${cred.endpoint} --apikey ${cred.apikey} -o ${cred.org} ${space}`);
+            await doLogin(config, cred);
         }
-        config.terminateProgress();
-
         return true;
     } catch (e) {
         return false;
     }
+}
+
+// Login to Bluemix. @return true if tokens have been refreshed.
+async function doLogin(config: types.Config, cred: Credential) {
+    try {
+        const target = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx target`;
+        await exec(target);
+        return false;
+    } catch (e) {
+        await refreshTokens(config, cred);
+        return true;
+    }
+}
+
+async function refreshTokens(config: types.Config, cred: Credential) {
+    config.startProgress('login to Bluemix');
+    const space = cred.space ? `-s ${cred.space}` : '';
+    const bx = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx login -a ${cred.endpoint} --apikey ${cred.apikey} -o ${cred.org} ${space}`;
+    try {
+        await exec(bx);
+    } catch (e) {
+        if (space && e.stdout && e.stdout.includes(`Space '${cred.space}' was not found.`)) {
+            // space does not exist and requested => create.
+            const newspace = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx account space-create ${cred.space}`;
+            await exec(newspace);
+        } else {
+            config.logger.error(e);
+            throw e;
+        }
+    } finally {
+        config.terminateProgress();
+    }
+    return true;
 }
 
 // Install Cloud function plugin
@@ -88,13 +127,13 @@ export function fixupCredentials(config: types.Config, cred: Credential) {
     cred.endpoint = cred.endpoint || 'api.ng.bluemix.net';
     cred.apikey = cred.apikey || process.env.BLUEMIX_API_KEY;
     if (!cred.apikey) {
-        throw 'Cannot login to Bluemix: missing apikey';
+        throw 'cannot login to Bluemix: missing apikey';
     }
     if (!cred.org) {
-        throw 'Cannot login to Bluemix: missing org';
+        throw 'cannot login to Bluemix: missing org';
     }
     if (!cred.space && !cred.home) {
-        throw 'Cannot login to Bluemix: missing either space or home';
+        throw 'cannot login to Bluemix: missing either space or home';
     }
     if (!cred.home) {
         cred.home = path.join(config.cache, '.bluemix', cred.endpoint, cred.org, cred.space);
@@ -104,21 +143,22 @@ export function fixupCredentials(config: types.Config, cred: Credential) {
 
 export async function ensureSpaceExists(config: types.Config, cred: Credential) {
     config.startProgress(`checking ${cred.space} space exists`);
-    await run(config, cred, `account space-create ${cred.space}`); // fast when already exists
-    await run(config, cred, `target -s ${cred.space}`);
+    cred = fixupCredentials(config, cred);
+
+    await doRun(config, cred, `account space-create ${cred.space}`); // fast when already exists
+    await doRun(config, cred, `target -s ${cred.space}`);
 
     await installWskPlugin(config, cred);
     await refreshWskProps(config, cred, 5); // refresh .wskprops
-
     config.terminateProgress();
 }
 
 async function refreshWskProps(config: types.Config, cred: Credential, retries: number) {
     if (retries <= 0)
         config.fatal('unable to obtain wsk authentication key. try again later.');
-    const io = await run(config, cred, 'wsk property get');
+    const io = await doRun(config, cred, 'wsk property get');
     if (io.stderr) {
-        await new Promise(resolve => setTimeout(() => refreshWskProps(config, cred, retries - 1), 500));
+        await new Promise(resolve => setTimeout(() => refreshWskProps(config, cred, retries - 1), 1000));
     }
 }
 
@@ -129,3 +169,20 @@ export async function getWskPropsForSpace(config: types.Config, cred: Credential
     config.terminateProgress();
     return parser.read(wskProps(cred));
 }
+
+// async function readiedBackend(config: types.Config, wskpropsFile: string) {
+//     const wskprops = propertiesParser.createEditor(wskpropsFile);
+
+//     if (wskprops.get('APIHOST').endsWith('.bluemix.net')) {
+//         const cred: bx.Credential = { org: wskprops.get('BLUEMIX_ORG'), space: wskprops.get('BLUEMIX_SPACE') };
+//         bx.fixupCredentials(config, cred);
+//         await bx.ensureSpaceExists(config, cred);
+
+//         // Patch APIGW_ACCESS_TOKEN
+//         const bxwskprops = propertiesParser.read(`${cred.home}/.wskprops`);
+//         if (wskprops.get('APIGW_ACCESS_TOKEN') !== bxwskprops.APIGW_ACCESS_TOKEN) {
+//             wskprops.set('APIGW_ACCESS_TOKEN', bxwskprops.APIGW_ACCESS_TOKEN);
+//             wskprops.save();
+//         }
+//     }
+// }

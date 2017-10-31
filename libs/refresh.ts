@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import * as types from './types';
-import { init } from './init';
+import { init, initOW } from './init';
 
 const names = require('./names');
 
@@ -26,6 +26,7 @@ export interface Config extends types.Config {
 
 export async function apply(config: Config) {
     await init(config);
+    await initOW(config);
 
     config.target = config.target || Targets.JSON;
 

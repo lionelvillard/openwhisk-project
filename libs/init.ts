@@ -57,20 +57,26 @@ export async function init(config: types.Config) {
 
     config.skipPhases = config.skipPhases || [];
 
+    // desugar envname
+    if (config.envname) {
+        const { name, version } = env.parseEnvName(config.envname);
+        config.envname = name;
+        config.version = version;
+    }
+    
     try {
         await resolveManifest(config);
         await configCache(config);
 
-        await initenv(config);
         await plugins.init(config);
         await configVariableSources(config);
 
-        if (config.dryrun)
-            config.ow = fakeow;
-        else
-            config.ow = await env.initWsk(config, config.flags);
+        // if (config.dryrun)
+        //     config.ow = fakeow;
+        // else
+        //     config.ow = await env.initWsk(config, config.flags);
 
-        setOW(config, config.ow)
+        // setOW(config, config.ow)
 
         if (config.manifest) {
             filter(config);
@@ -92,7 +98,72 @@ export async function init(config: types.Config) {
     }
 }
 
-export function setOW(config: types.Config, ow) {
+async function resolveManifest(config: types.Config) {
+    config.startProgress('loading project configuration');
+
+    if (config.manifest || config.manifest === '') {
+        if (typeof config.manifest === 'string') {
+            config.manifest = yaml.parse(config.manifest) || {};
+        }
+        config.basePath = config.basePath || process.cwd();
+    } else if (config.location) {
+        config.location = path.resolve(config.basePath || process.cwd(), config.location);
+        config.basePath = path.parse(config.location).dir;
+
+        await loadManifest(config);
+    } else {
+        config.logger.debug('no configuration found');
+    }
+
+    if (config.manifest) {
+        if (config.manifest.basePath)
+            config.basePath = path.resolve(config.basePath, config.manifest.basePath);
+
+        config.projectname = config.manifest.name;
+    }
+
+    config.logger.debug(`base path set to ${config.basePath}`);
+    config.terminateProgress();
+}
+
+async function loadManifest(config: types.Config) {
+    config.startProgress(`reading ${config.location}`);
+    const content = await fs.readFile(config.location);
+    config.manifest = yaml.parse(Buffer.from(content).toString()) || {};
+    config.clearProgress();
+}
+
+async function configCache(config: types.Config) {
+    if (!config.cache) {
+        if (config.basePath)
+            config.cache = `${config.basePath}/.openwhisk`
+        else
+            config.cache = expandHome('~/.openwhisk')
+
+        await fs.mkdirs(config.cache) // async since using fs-extra
+    } else {
+        config.cache = path.resolve(config.cache);
+    }
+
+    config.logger.debug(`caching directory set to ${config.cache}`);
+}
+
+
+// Initialize OpenWhisk SDK
+export async function initOW(config: types.Config) {
+    if (config.dryrun)
+        config.ow = fakeow;
+    else
+        config.ow = await env.initWsk(config, config.flags);
+
+    setOW(config, config.ow)
+}
+
+
+
+// --- helpers
+
+function setOW(config: types.Config, ow) {
     if (!config.force) {
         ow.packages.change = ow.packages.create;
         ow.triggers.change = ow.triggers.create;
@@ -146,54 +217,66 @@ export function setOW(config: types.Config, ow) {
     }
 }
 
-async function resolveManifest(config: types.Config) {
-    config.startProgress('loading project configuration');
 
-    if (config.manifest || config.manifest === '') {
-        if (typeof config.manifest === 'string') {
-            config.manifest = yaml.parse(config.manifest) || {};
-        }
-        config.basePath = config.basePath || process.cwd();
-    } else if (config.location) {
-        config.location = path.resolve(config.basePath || process.cwd(), config.location);
-        config.basePath = path.parse(config.location).dir;
 
-        await loadManifest(config);
-    } else {
-        config.logger.debug('no configuration found');
+// Mockup OpenWhisk client.
+const fakeow = {
+    actions: {
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
+    },
+    feeds: {
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
+    },
+    namespaces: {
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
+    },
+    packages: {
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
+    },
+    rules: {
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
+    },
+    routes: {
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
+    },
+    triggers: {
+        create: () => true,
+        list: () => [],
+        get: () => true,
+        invoke: () => true,
+        delete: () => true,
+        update: () => true
     }
-
-    if (config.manifest) {
-        if (config.manifest.basePath)
-            config.basePath = path.resolve(config.basePath, config.manifest.basePath);
-
-        config.appname = config.manifest.name;
-    }
-
-    config.logger.debug(`base path set to ${config.basePath}`);
-    config.terminateProgress();
-}
-
-async function loadManifest(config: types.Config) {
-    config.startProgress(`reading ${config.location}`);
-    const content = await fs.readFile(config.location);
-    config.manifest = yaml.parse(Buffer.from(content).toString()) || {};
-    config.clearProgress();
-}
-
-async function configCache(config: types.Config) {
-    if (!config.cache) {
-        if (config.basePath)
-            config.cache = `${config.basePath}/.openwhisk`
-        else
-            config.cache = expandHome('~/.openwhisk')
-
-        await fs.mkdirs(config.cache) // async since using fs-extra
-    } else {
-        config.cache = path.resolve(config.cache);
-    }
-
-    config.logger.debug(`caching directory set to ${config.cache}`);
 }
 
 async function initenv(config: types.Config) {
@@ -215,10 +298,10 @@ async function initenv(config: types.Config) {
 
             config.envname = props.ENVNAME;
 
-            if (config.appname && config.appname !== props.APPNAME)
-                config.fatal('mismatch application name. configured to be %s but found %s in the current environment', config.manifest.name, props.APPNAME);
+            if (config.projectname && config.projectname !== props.PROJECTNAME)
+                config.fatal('mismatch application name. configured to be %s but found %s in the current environment', config.manifest.name, props.PROJECTNAME);
 
-            config.appname = props.APPNAME;
+            config.projectname = props.PROJECTNAME;
 
             if (!config.version)
                 config.version = props.ENVVERSION;
@@ -232,16 +315,15 @@ async function initenv(config: types.Config) {
 
     } else {
         if (config.envname) {
-            // no cache props. Need to refresh. Can only do it if appname is known!
-            if (!config.appname)
-                config.fatal('cannot resolve environment properties: missing application name');
+            // no cache props. Need to refresh. Can only do it if projectname is known!
+            if (!config.projectname)
+                config.fatal('cannot resolve environment properties: missing project name');
 
             await env.cacheEnvironment(config);
         } else {
             // no env, no props. Ignore and fail later when properties are needed
         }
     }
-
 }
 
 async function configVariableSources(config: types.Config) {
@@ -776,66 +858,6 @@ function mergeActions(basePath: string, pkgName: string, pkg: types.Package, act
     }
 }
 
-
-// Mockup OpenWhisk client.
-const fakeow = {
-    actions: {
-        create: () => true,
-        list: () => [],
-        get: () => true,
-        invoke: () => true,
-        delete: () => true,
-        update: () => true
-    },
-    feeds: {
-        create: () => true,
-        list: () => [],
-        get: () => true,
-        invoke: () => true,
-        delete: () => true,
-        update: () => true
-    },
-    namespaces: {
-        create: () => true,
-        list: () => [],
-        get: () => true,
-        invoke: () => true,
-        delete: () => true,
-        update: () => true
-    },
-    packages: {
-        create: () => true,
-        list: () => [],
-        get: () => true,
-        invoke: () => true,
-        delete: () => true,
-        update: () => true
-    },
-    rules: {
-        create: () => true,
-        list: () => [],
-        get: () => true,
-        invoke: () => true,
-        delete: () => true,
-        update: () => true
-    },
-    routes: {
-        create: () => true,
-        list: () => [],
-        get: () => true,
-        invoke: () => true,
-        delete: () => true,
-        update: () => true
-    },
-    triggers: {
-        create: () => true,
-        list: () => [],
-        get: () => true,
-        invoke: () => true,
-        delete: () => true,
-        update: () => true
-    }
-}
 
 
 async function gitClone(config: types.Config, include) {

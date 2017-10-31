@@ -29,4 +29,4 @@ export async function resolveVariableCreator(config: types.Config) {
         }
         return value;
     }
-};
+}

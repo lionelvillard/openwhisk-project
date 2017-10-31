@@ -46,7 +46,7 @@ class envget {
             const envs = await env.getEnvironments(config);
             assert.ok(false);
         } catch (e) {
-            assert.strictEqual(e.message, 'cannot get the versions associated to the environments: missing application name');
+            assert.strictEqual(e.message, 'cannot get the versions associated to the project environments: missing project name');
             assert.ok(true);
         }
     }
@@ -72,38 +72,39 @@ class envget {
             const envs = await env.getEnvironments(config);
             assert.ok(false);
         } catch (e) {
-            assert.strictEqual(e.message, 'cannot get the versions associated to the environments: missing application name');
+            assert.strictEqual(e.message, 'cannot get the versions associated to the project environments: missing project name');
             assert.ok(true);
         }
     }
 
-    @test('list builtin environments, missing BLUEMIX_ORG')
-    async listAllNoOrg() {
-        const bxorg = process.env.BLUEMIX_ORG;
-        delete process.env.BLUEMIX_ORG;
-
-        const config = init.newConfig('app.yml', null, 'dev');
-        config.basePath = `${rootPath}/builtins`;
-        try {
-            await init.init(config);
-            assert.ok(false);
-        } catch (e) {
-            assert.strictEqual(e.message, 'cannot resolve AUTH and APIGW_ACCESS_TOKEN from Bluemix credential: missing BLUEMIX_ORG');
-        }
-        process.env.BLUEMIX_ORG = bxorg;
-    }
-
-    @test('list builtin environments. should output a table')
+    @test('list builtin environments. should output a table, without versions')
     async listAll() {
         const config = init.newConfig('app.yml', null, 'dev');
         config.basePath = `${rootPath}/builtins`;
         await init.init(config);
         const envs = await env.getEnvironments(config);
-        config.clearProgress();
         const local = envs.filter(env => env.policies.name === 'local');
         assert.equal(local.length, 1);
         const dev = envs.filter(env => env.policies.name === 'dev');
         assert.equal(local.length, 1);
+    }
+
+    @test('list builtin environments. should output a table, with versions')
+    async listAllWithVersion() {
+        const config = init.newConfig('app.yml', null, 'prod@0.0.0');
+        config.basePath = `${rootPath}/builtins`;
+        
+        await init.init(config);
+        const set = await env.setEnvironment(config);
+        assert.ok(set);
+        const envs = await env.getEnvironments(config);
+        const prod = envs.filter(env => env.policies.name === 'prod');
+        assert.equal(prod.length, 1);
+        assert.equal(prod[0].versions.length, 1);
+
+        await exec('bx account space-delete builtins-prod@0.0.0 -f');
+
+
     }
 }
 
@@ -128,9 +129,9 @@ class envset {
         config.basePath = `${rootPath}/builtins`;
         await init.init(config);
 
-        const result = await env.cacheEnvironment(config);
-        config.clearProgress();
-
+        const success = await env.cacheEnvironment(config);
+        assert.ok(success);
+        
         const wskprops = parser.read(`${bxroot}/builtins-dev/.wskprops`);
         const envprops = parser.read(`${cacheroot}/envs/.dev.wskprops`);
 
@@ -154,14 +155,13 @@ class envset {
         config.basePath = `${rootPath}/builtins`;
         await init.init(config);
 
-        const result = await env.setEnvironment(config);
+        const set = await env.setEnvironment(config);
+        assert.ok(set);
         assert.ok(await fs.pathExists('.wskprops'));
         const wskprops = parser.read('.wskprops');
         assert.equal(wskprops.ENVNAME, 'dev');
 
         // cleanup
-        await exec(`bx login -a api.ng.bluemix.net -o ${process.env.BLUEMIX_ORG}`);
-        await exec('bx account space-delete builtins-dev -f');
         await fs.remove('.wskprops');
     }
 
@@ -174,7 +174,8 @@ class envset {
         config.basePath = `${rootPath}/builtins`;
         await init.init(config);
 
-        await env.setEnvironment(config);
+        const set = await env.setEnvironment(config);
+        assert.ok(set);
         assert.ok(await fs.pathExists('.wskprops'));
         const wskprops = parser.read('.wskprops');
         assert.equal(wskprops.ENVNAME, 'dev');
@@ -182,7 +183,8 @@ class envset {
         const configprod = init.newConfig('app.yml', null, 'prod@0.0.0');
         configprod.basePath = `${rootPath}/builtins`;
         await init.init(configprod);
-        await env.setEnvironment(configprod);
+        const set2 = await env.setEnvironment(configprod);
+        assert.ok(set2);
 
         assert.ok(await fs.pathExists('.wskprops'));
         const wskpropsprod = parser.read('.wskprops');
@@ -190,8 +192,6 @@ class envset {
         assert.equal(wskpropsprod.ENVVERSION, '0.0.0');
 
         // cleanup
-        await exec(`bx login -a api.ng.bluemix.net -o ${process.env.BLUEMIX_ORG}`);
-        await exec('bx account space-delete builtins-dev -f');
         await exec('bx account space-delete builtins-prod@0.0.0 -f');
         await fs.remove('.wskprops');
     }

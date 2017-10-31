@@ -73,8 +73,7 @@ export async function getCurrent(config: types.Config) {
     return await readWskProps(subcfg);
 }
 
-
-// Get all environments along with versioms
+// Get all environments along with versions for the current project.
 export async function getEnvironments(config: types.Config): Promise<IEnvironment[]> {
     const allpolicies = await getPolicies(config);
     const versions = await getVersions(config);
@@ -102,25 +101,29 @@ export async function getPolicies(config: types.Config): Promise<IEnvPolicies[]>
     return [];
 }
 
-// Set current environment.
+// Set current environment. 
 export async function setEnvironment(config: types.Config) {
-    const cached = getCachedEnvFilename(config);
+    const cached = await cacheEnvironment(config);
+    if (!cached)
+        return false;
+
     const exists = await fs.pathExists('.wskprops');
     if (exists) {
         await fs.copy('.wskprops', '.wskprops.bak', { overwrite: true });
     }
     await fs.copy(cached, '.wskprops', { overwrite: true });
     return true;
+
 }
 
-// Refresh cached resolved environments, if needed and prepare backend.
+// Refresh cached resolved environments, if needed
 export async function cacheEnvironment(config: types.Config) {
     config.startProgress('checking cache up-to-date');
 
     await isValid(config);
     const name = config.envname;
     const version = config.version;
-    
+
     // user-defined properties
     const filename = `.${name}.wskprops`;
     const exists = await fs.pathExists(filename);
@@ -137,10 +140,18 @@ export async function cacheEnvironment(config: types.Config) {
         config.logger.debug('refreshing cache')
         const props = propertiesParser.createEditor(allExists ? ALL_WSKPROPS : '');
         addAll(props, propertiesParser.read(filename));
-        await resolveProps(config, name, version, filename, props);
+        try {
+            await resolveProps(config, name, version, filename, props); 
+        } catch (e) {
+            config.logger.error(e);
+            return false;
+        }
+
         props.save(cached);
+        return true;
     }
 
+    let success = true;
     if (cachedExists) {
         config.logger.debug('cache file exists');
 
@@ -150,7 +161,7 @@ export async function cacheEnvironment(config: types.Config) {
             const stat2 = allExists ? await fs.stat(ALL_WSKPROPS) : null;
             const stat3 = await fs.stat(cached);
             if (stat1.ctimeMs > stat3.ctimeMs || (stat2 && stat2.ctimeMs > stat3.ctimeMs)) {
-                await refreshCache();
+                success = await refreshCache();
             }
         } else {
             // no user-defined properties, so cached values are fine.
@@ -166,13 +177,11 @@ export async function cacheEnvironment(config: types.Config) {
             await newEnvironment(config, name, policies.props);
         }
 
-        await refreshCache();
+        success = await refreshCache();
     }
 
-    await readiedBackend(config, cached);
-
     config.terminateProgress();
-    return cached;
+    return success ? cached : null;
 }
 
 // Create new environment from template
@@ -253,28 +262,27 @@ async function resolveAuthFromBluemix(config: types.Config, props, env: string, 
     let bxspace = process.env.BLUEMIX_SPACE || props.get('BLUEMIX_SPACE');
     bxspace = bxspace ? bxspace.trim() : null;
     if (!bxspace) {
-        if (!config.appname)
-            config.fatal(`cannot resolve AUTH: missing application name.`);
+        if (!config.projectname)
+            config.fatal(`cannot resolve AUTH: missing project name.`);
 
         if (version)
-            bxspace = `${config.appname}-${env}@${version}`;
+            bxspace = `${config.projectname}-${env}@${version}`;
         else
-            bxspace = `${config.appname}-${env}`;
+            bxspace = `${config.projectname}-${env}`;
 
         bxspace = escapeNamespace(bxspace);
         config.logger.info(`targeting ${bxspace} space`);
     }
 
     const cred: bx.Credential = { org: bxorg, space: bxspace };
-    await bx.login(config, cred);
     const wskprops = await bx.getWskPropsForSpace(config, cred);
 
     if (!wskprops.AUTH)
-        throw `missing AUTH in .wskprops`;
+        config.fatal('missing AUTH in .wskprops');
     if (!wskprops.APIGW_ACCESS_TOKEN)
-        throw `missing APIGW_ACCESS_TOKEN in .wskprops`;
+        config.fatal('missing APIGW_ACCESS_TOKEN in .wskprops');
 
-    props.set('APPNAME', config.appname);
+    props.set('PROJECTNAME', config.projectname);
     props.set('ENVNAME', env);
     if (version)
         props.set('ENVVERSION', version);
@@ -287,9 +295,12 @@ async function resolveAuthFromBluemix(config: types.Config, props, env: string, 
 export async function getWskPropsFile(config: types.Config) {
     let wskprops = process.env.WSK_CONFIG_FILE;
     if (!wskprops || !fs.existsSync(wskprops)) {
+
+        // environment mode?
         if (config.envname)
             return getCachedEnvFilename(config);
 
+        // fallback to default resolution method
         const until = path.dirname(expandHome('~'));
         let current = process.cwd();
         while (current !== '/' && current !== until) {
@@ -368,22 +379,26 @@ function addAll(props, others) {
 // Retrieve all versions for all environments
 async function getVersions(config: types.Config) {
     if (!await bx.isBluemixCapable())
-        config.fatal('cannot get the versions associated to the environments: bx is not installed');
+        config.fatal('cannot get the versions associated to the project environments: bx is not installed');
 
-    config.startProgress('getting environment versions');
-
-    if (!config.appname)
-        config.fatal('cannot get the versions associated to the environments: missing application name');
+    if (!config.projectname)
+        config.fatal('cannot get the versions associated to the project environments: missing project name');
 
     const props = await readWskProps(config);
+    if (!props) {
+        return {};
+    }
+
     const versions = {};
+
     // TODO: support for multiple orgs    
-    if (props.BLUEMIX_ORG) {
+    if (props.BLUEMIX_ORG && props.BLUEMIX_SPACE) {
+        config.startProgress('getting environment versions');
+
         const cred = { org: props.BLUEMIX_ORG, space: props.BLUEMIX_SPACE };
-        await bx.login(config, cred);
         const io = await bx.run(config, cred, 'iam spaces'); // long! Consider caching result
         const stdout = io.stdout;
-        const regex = new RegExp(`${config.appname}-([\\w]+)@([\\w\\d.]+)`, 'g');
+        const regex = new RegExp(`${config.projectname}-([\\w]+)@([\\w\\d.]+)`, 'g');
 
         let match;
         while ((match = regex.exec(stdout)) !== null) {
@@ -392,27 +407,11 @@ async function getVersions(config: types.Config) {
                 versions[env] = [];
             versions[env].push(match[2]);
         }
+
+        config.terminateProgress();
     }
-    config.terminateProgress();
 
     return versions;
-}
-
-async function readiedBackend(config: types.Config, wskpropsFile: string) {
-    const wskprops = propertiesParser.createEditor(wskpropsFile);
-
-    if (wskprops.get('APIHOST').endsWith('.bluemix.net')) {
-        const cred: bx.Credential = { org: wskprops.get('BLUEMIX_ORG'), space: wskprops.get('BLUEMIX_SPACE') };
-        bx.fixupCredentials(config, cred);
-        await bx.ensureSpaceExists(config, cred);
-
-        // Patch APIGW_ACCESS_TOKEN
-        const bxwskprops = propertiesParser.read(`${cred.home}/.wskprops`);
-        if (wskprops.get('APIGW_ACCESS_TOKEN') !== bxwskprops.APIGW_ACCESS_TOKEN) {
-            wskprops.set('APIGW_ACCESS_TOKEN', bxwskprops.APIGW_ACCESS_TOKEN);
-            wskprops.save();
-        }
-    }
 }
 
 async function isValid(config: types.Config) {

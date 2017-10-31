@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 import * as fs from 'fs';
-import { getLogger } from 'log4js'
 
 import * as names from './names';
 import * as utils from './utils';
 import * as handlers from './handlers';
-import { init } from './init';
+import { init, initOW } from './init';
 import * as types from './types';
 
 export async function apply(config: types.Config) {
     await init(config); // TODO: deprecate
+    await initOW(config);
 
     try {
-        config.setProgress('deploying');
+        config.startProgress('deploying');
 
         // Renable when supporting multiple namespace deployment
         // await deployIncludes(args);
@@ -38,8 +38,8 @@ export async function apply(config: types.Config) {
         await deployRules(config);
         await deployApis(config);
     } catch (e) {
-        config.logger.error(e)
-        return Promise.reject(e)
+        config.terminateProgress();        
+        config.fatal(e);
     }
 }
 

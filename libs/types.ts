@@ -60,8 +60,8 @@ export interface Config {
     /* A list of variable resolvers */
     variableSources?: [VariableResolver];   
 
-    /** Application name. Must match manifest.name when not null */
-    appname?: string;                  
+    /** Project name. Must match manifest.name when not null */
+    projectname?: string;                  
 
     /** Environment name. When null, fallback to basic wsk behavior */
     envname?: string;                  
