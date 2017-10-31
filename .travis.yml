@@ -8,7 +8,7 @@ env:
     - LOGGER_LEVEL='INFO'
   matrix:
     - LOCALWSK=true
-#    - LOCALWSK=false
+    - LOCALWSK=false
 
 services:
   - docker

@@ -7,7 +7,7 @@ sudo ./install_bluemix_cli
 
 bx plugin install Cloud-Functions -r Bluemix
 
-bx login -a https://api.ng.bluemix.net -o $BLUEMIX_ORG
+bx login -a https://api.ng.bluemix.net -o $BLUEMIX_ORG -s $BLUEMIX_SPACE
 
 # generate .wskprops
 bx wsk property get
