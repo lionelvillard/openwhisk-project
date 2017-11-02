@@ -22,21 +22,32 @@ const after = ctx => () => {
 }
 exports.after = after;
 
-const invokeWebAction = async  (ctx, actionName, params, contentExt) => {
+const invokeWebAction = async (ctx, actionName, params, contentExt) => {
     const action = await ctx.ow.actions.get({ actionName });
     const namespace = action.namespace;
     if (actionName.includes('/'))
         actionName = actionName.substring(actionName.indexOf('/') + 1);
-    
+
     let query = Object.keys(params).map(key => `${key}=${encodeURIComponent(params[key])}`);
     const url = `${ctx.ow.actions.client.options.api}web/${namespace}/${actionName}${contentExt}?${query}`;
     return await rp(url);
-} 
+}
 exports.invokeWebAction = invokeWebAction;
-
 
 const delay = async ms => new Promise(resolve => {
     setTimeout(() => resolve(), ms);
 });
-
 exports.delay = delay;
+
+const httpGet = async (url, retry) => {
+    try {
+        return await rp(url);
+    } catch (e) {
+        if (retry <= 0) {
+            throw e;
+        }
+        await delay(1000);
+        return httpGet(url, retry - 1);
+    }
+}
+exports.httpGet = httpGet;

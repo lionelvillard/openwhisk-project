@@ -42,60 +42,62 @@ describe('testing refresh', function () {
     });
 
     it('data processing - bash', async function () {
-        this.timeout(30000);
+        if (process.env.LOCALWSK) {
+            await wskd.deploy.apply({
+                ow: ctx.ow,
+                basePath: 'test/fixtures/dataprocessing/',
+                cache: ctx.cacheDir,
+                location: 'openwhisk.yaml'
+            });
 
-        await wskd.deploy.apply({
-            ow: ctx.ow,
-            basePath: 'test/fixtures/dataprocessing/',
-            cache: ctx.cacheDir,
-            location: 'openwhisk.yaml'
-        });
+            const json = await wskd.refresh.apply({
+                ow: ctx.ow,
+                target: 1 // raw
+            });
 
-        const json = await wskd.refresh.apply({
-            ow: ctx.ow,
-            target: 1 // raw
-        });
+            // sanity checks.
+            assert.equal(json.packages.length, 1);
+            assert.equal(json.packages[0].name, 'data-processing');
+            assert.equal(json.actions.length, 3);
 
-        // sanity checks.
-        assert.equal(json.packages.length, 1);
-        assert.equal(json.packages[0].name, 'data-processing');
-        assert.equal(json.actions.length, 3);
+            const bash = await wskd.refresh.apply({
+                ow: ctx.ow,
+                target: 2 // bash
+            });
 
-        const bash = await wskd.refresh.apply({
-            ow: ctx.ow,
-            target: 2 // bash
-        });
+            await wskd.undeploy.all({ ow: ctx.ow });
+            const json2 = await wskd.refresh.apply({
+                ow: ctx.ow,
+                target: 1 // raw
+            });
+            assertNamespaceEmpty(json2);
 
-        await wskd.undeploy.all({ ow: ctx.ow });
-        const json2 = await wskd.refresh.apply({
-            ow: ctx.ow,
-            target: 1 // raw
-        });
-        assertNamespaceEmpty(json2);
+            // apply script
+            await fs.copy('test/fixtures/dataprocessing/', `${ctx.cacheDir}`);
+            await fs.writeFile(`${ctx.cacheDir}/deploy.sh`, bash);
+            await fs.chmod(`${ctx.cacheDir}/deploy.sh`, 0o755);
 
-        // apply script
-        await fs.copy('test/fixtures/dataprocessing/', `${ctx.cacheDir}`);
-        await fs.writeFile(`${ctx.cacheDir}/deploy.sh`, bash);
-        await fs.chmod(`${ctx.cacheDir}/deploy.sh`, 0o755);
+            const result = await exec('./deploy.sh', { cwd: ctx.cacheDir, shell: '/bin/bash' });
+            assert.ok(!result.error);
+            assert.equal(result.stderr, '');
 
-        const result = await exec('./deploy.sh', { cwd: ctx.cacheDir, shell: '/bin/bash' });
-        assert.ok(!result.error);
-        assert.equal(result.stderr, '');
+            const writeTo = await ctx.ow.actions.get({ name: 'data-processing/write-to-cloudant' });
+            const writeFrom = await ctx.ow.actions.get({ name: 'data-processing/write-from-cloudant' });
+            const writeFromSeq = await ctx.ow.actions.get({ name: 'data-processing/write-from-cloudant-sequence' });
 
-        const writeTo = await ctx.ow.actions.get({ name: 'data-processing/write-to-cloudant' });
-        const writeFrom = await ctx.ow.actions.get({ name: 'data-processing/write-from-cloudant' });
-        const writeFromSeq = await ctx.ow.actions.get({ name: 'data-processing/write-from-cloudant-sequence' });
-
-        assert.equal(writeTo.name, 'write-to-cloudant');
-        assert.equal(writeFrom.name, 'write-from-cloudant');
-        assert.equal(writeFromSeq.name, 'write-from-cloudant-sequence');
+            assert.equal(writeTo.name, 'write-to-cloudant');
+            assert.equal(writeFrom.name, 'write-from-cloudant');
+            assert.equal(writeFromSeq.name, 'write-from-cloudant-sequence');
+        } else {
+            this.skip();
+        }
     });
 
     it('data processing - yaml', async function () {
         this.timeout(30000);
-        
+
         await wskd.undeploy.all({ ow: ctx.ow });
-        
+
         await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/dataprocessing/',
@@ -107,7 +109,7 @@ describe('testing refresh', function () {
             ow: ctx.ow,
             target: 3 // yaml
         });
-        
+
         assert.ok(yaml.packages['data-processing']);
     })
 

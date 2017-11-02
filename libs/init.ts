@@ -129,9 +129,9 @@ async function loadManifest(config: types.Config) {
 async function configCache(config: types.Config) {
     if (!config.cache) {
         if (config.basePath)
-            config.cache = `${config.basePath}/.openwhisk`
+            config.cache = `${config.basePath}/.openwhisk`;
         else
-            config.cache = expandHome('~/.openwhisk')
+            config.cache = expandHome('~/.openwhisk');
 
         await fs.mkdirs(config.cache); // async since using fs-extra
     } else {
@@ -179,18 +179,18 @@ function setOW(config: types.Config, ow) {
             const missing = ['relpath', 'operation', 'action'].filter(param => !(options || {}).hasOwnProperty(param));
 
             if (missing.length) {
-                throw new Error(`missing mandatory parameters: ${missing.join(', ')}`)
+                throw new Error(`missing mandatory parameters: ${missing.join(', ')}`);
             }
         }
 
-        const body = this.route_swagger_definition(options)
-        const qs = this.qs(options, [])
-        return this.client.request('POST', this.routeMgmtApiPath('createApi'), { body, qs })
-    }
+        const body = this.route_swagger_definition(options);
+        const qs = this.qs(options, []);
+        return this.client.request('POST', this.routeMgmtApiPath('createApi'), { body, qs });
+    };
 
-    ow.routes.route_swagger_definition = function (params) {
+    ow.routes.route_swagger_definition = function(params) {
         if (params.hasOwnProperty('swagger')) {
-            return { apidoc: { namespace: '_', swagger: params.swagger } }
+            return { apidoc: { namespace: '_', swagger: params.swagger } };
         }
 
         const apidoc = {
@@ -200,10 +200,10 @@ function setOW(config: types.Config, ow) {
             gatewayMethod: params.operation,
             id: `API:_:${this.route_base_path(params)}`,
             action: this.route_swagger_action(params)
-        }
+        };
 
         return { apidoc };
-    }
+    };
 }
 
 // Mockup OpenWhisk client.
@@ -264,7 +264,7 @@ const fakeow = {
         delete: () => true,
         update: () => true
     }
-}
+};
 
 async function initenv(config: types.Config) {
     let props;
@@ -298,8 +298,6 @@ async function initenv(config: types.Config) {
         } else {
             // wskprops is environment unbound. Fine.
         }
-
-
     } else {
         if (config.envname) {
             // no cache props. Need to refresh. Can only do it if projectname is known!
@@ -331,14 +329,14 @@ function fatal(config: types.Config) {
         const msg = format(fmt, ...args);
         config.logger.fatal(msg);
         throw new Error(msg);
-    }
+    };
 }
 
 function startProgress(config: types.Config) {
     return (format, options) => {
         config._progresses.push({ format, options });
         renderProgress(config);
-    }
+    };
 }
 
 function setProgress(config: types.Config) {
@@ -348,14 +346,14 @@ function setProgress(config: types.Config) {
 
         config._progresses.push({ format, options });
         renderProgress(config);
-    }
+    };
 }
 
 function clearProgress(config: types.Config) {
     return () => {
         config._progresses = [];
         renderProgress(config);
-    }
+    };
 }
 
 function terminateProgress(config: types.Config) {
@@ -364,7 +362,7 @@ function terminateProgress(config: types.Config) {
             config._progresses.pop();
 
         renderProgress(config);
-    }
+    };
 }
 
 function renderProgress(config: types.Config) {
@@ -396,6 +394,3 @@ function filter(config: types.Config) {
         delete manifest.triggers;
     }
 }
-
-
-

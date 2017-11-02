@@ -41,15 +41,14 @@ describe('API gateway', function () {
         const info = api.value.apidoc.info;
         assert.deepStrictEqual(info.title, '/hello');
 
-        const gwApiUrl = api.value.gwApiUrl;        
-        await utils.delay(4000); // give some time to the API to settle
-        const result = await rp(`${gwApiUrl}/world`);
-        assert.deepStrictEqual(result, `{"payload":"Hello world Serverless API"}`);        
+        const gwApiUrl = api.value.gwApiUrl;
+        const result = await utils.httpGet(`${gwApiUrl}/world`, 10);
+        assert.deepStrictEqual(result, `{"payload":"Hello world Serverless API"}`);
     });
 
     it('hello world', async function () {
-        await wskd.undeploy.all({ow: ctx.ow});
-        
+        await wskd.undeploy.all({ ow: ctx.ow });
+
         await wskd.deploy.apply({
             ow: ctx.ow,
             basePath: 'test/fixtures/api',
@@ -66,10 +65,9 @@ describe('API gateway', function () {
         const info = api.value.apidoc.info;
         assert.deepStrictEqual(info.title, '/hello2');
 
-        const gwApiUrl = api.value.gwApiUrl;        
-        await utils.delay(4000); // give some time to the API to settle
-        const result = await rp(`${gwApiUrl}/world`);
-        assert.deepStrictEqual(result, `{"payload":"Hello world Serverless API"}`);        
+        const gwApiUrl = api.value.gwApiUrl;
+        const result = await utils.httpGet(`${gwApiUrl}/world`, 10);
+        assert.deepStrictEqual(result, `{"payload":"Hello world Serverless API"}`);
     });
 
 });
