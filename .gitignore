@@ -3,7 +3,7 @@ build
 admin
 dist
 node_modules
-test-results 
+test-results
 .wskd
 bin/test.sh
 docker/*
@@ -15,3 +15,4 @@ examples/*
 .openwhisk
 *.class
 .workdir.*
+.nyc_output

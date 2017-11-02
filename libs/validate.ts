@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import * as types from './types';
+import { IConfig, IProject, IPackage, IAction, IApi, ProjectProps, ActionProps, Contribution } from './types';
 import * as fs from 'fs-extra';
 import * as yaml from 'yamljs';
 import * as path from 'path';
@@ -29,11 +29,8 @@ import * as env from './env';
 import * as semver from 'semver';
 import { format } from "util";
 
-// perform:
-// - validation
-// - normalization (remove syntax sugar, resolve location)
-// - interpolation (evaluate ${..})
-export async function check(config: types.Config) {
+/* Expand and validate the project configuration file. */
+export async function check(config: IConfig) {
     config.startProgress('validating project configuration');
     const manifest = config.manifest;
 
@@ -49,7 +46,19 @@ export async function check(config: types.Config) {
     }
     config.logger.info(`target namespace: ${manifest.namespace}`);
 
+    // 1. load dependencies. They might contain plugins needed to valid the project
     await checkDependencies(config, manifest);
+
+    // 2. Expand unknown properties (not possible at the moment).
+    for (const key in manifest) {
+        if (!(key in ProjectProps)) {
+            config.fatal(`Invalid property ${key} in project`);
+            return;
+        }
+    }
+
+    // 3. Expand and check builtin properties
+
     await checkPackages(config, manifest);
 
     if (manifest.actions)
@@ -59,16 +68,10 @@ export async function check(config: types.Config) {
     await checkRules(config, manifest);
     await checkApis(config, manifest);
 
-    // check for invalid additional properties
-    for (const key in manifest) {
-        if (!(key in types.projectProps)) {
-            config.logger.warn(`property /${key} ignored`);
-        }
-    }
     config.clearProgress();
 }
 
-async function checkDependencies(config: types.Config, manifest: types.Project) {
+async function checkDependencies(config: IConfig, manifest: IProject) {
     let dependencies = manifest.dependencies;
     if (dependencies) {
         // Evaluate expressions
@@ -102,7 +105,7 @@ async function checkDependencies(config: types.Config, manifest: types.Project) 
     }
 }
 
-async function checkPackages(config: types.Config, manifest) {
+async function checkPackages(config: IConfig, manifest) {
     const packages = manifest.packages;
 
     // bindings
@@ -116,7 +119,7 @@ async function checkPackages(config: types.Config, manifest) {
     }
 }
 
-async function checkPackage(config: types.Config, manifest, packages, pkgName, pkg, binding: boolean) {
+async function checkPackage(config: IConfig, manifest, packages, pkgName, pkg, binding: boolean) {
     switch (typeof pkg) {
         case 'string':
             packages[pkgName] = await evaluate(config, pkg);
@@ -137,8 +140,6 @@ async function checkPackage(config: types.Config, manifest, packages, pkgName, p
                 if (contributions instanceof Promise) {
                     contributions = await contributions;
                     await applyContributions(config, manifest, contributions, plugin);
-                } else {
-
                 }
             } else {
                 if (!binding)
@@ -150,20 +151,20 @@ async function checkPackage(config: types.Config, manifest, packages, pkgName, p
     }
 }
 
-async function checkActions(config: types.Config, manifest, pkgName: string, actions) {
+async function checkActions(config: IConfig, manifest, pkgName: string, actions) {
     for (const actionName in actions) {
         const action = actions[actionName];
         await checkAction(config, manifest, pkgName, actions, actionName, action);
     }
 }
 
-async function checkAction(config: types.Config, manifest, pkgName: string, actions, actionName: string, action: types.Action) {
+async function checkAction(config: IConfig, manifest, pkgName: string, actions, actionName: string, action: IAction) {
     // 1. evaluate expressions
     action = evaluateAll(config, action, ['.code']);
 
     // 2. Expand unknown properties.
     for (const key in action) {
-        if (!(key in types.actionProps)) {
+        if (!(key in ActionProps)) {
             const plugin = plugins.getActionPlugin(action, key);
             if (!plugin) {
                 config.fatal(`Invalid property ${key} in action ${actionName}`);
@@ -201,7 +202,7 @@ async function checkAction(config: types.Config, manifest, pkgName: string, acti
     }
 }
 
-async function checkTriggers(config: types.Config, manifest: types.Project) {
+async function checkTriggers(config: IConfig, manifest: IProject) {
     let triggers = manifest.triggers;
     if (triggers) {
         // 1. evaluate expressions
@@ -211,7 +212,7 @@ async function checkTriggers(config: types.Config, manifest: types.Project) {
     }
 }
 
-async function checkRules(config: types.Config, manifest) {
+async function checkRules(config: IConfig, manifest) {
     let rules = manifest.rules;
     if (rules) {
         rules = evaluateAll(config, rules);
@@ -235,7 +236,7 @@ async function checkRules(config: types.Config, manifest) {
     }
 }
 
-async function checkApis(config: types.Config, manifest) {
+async function checkApis(config: IConfig, manifest) {
     let apis = manifest.apis;
     if (apis) {
         apis = evaluateAll(config, apis);
@@ -247,7 +248,7 @@ async function checkApis(config: types.Config, manifest) {
     }
 }
 
-async function checkApi(config: types.Config, manifest, apis, apiname: string, api: types.Api) {
+async function checkApi(config: IConfig, manifest, apis, apiname: string, api: IApi) {
     if (api.basePath) { // builtin api
         if (!api['x-ibm-configuration']) {
             api['x-ibm-configuration'] = generateAssembly(config, apiname, api);
@@ -277,7 +278,7 @@ function pathToOperationId(filepath: string) {
     return filepath.replace(/\/(.)/g, (_, $1) => $1.toUpperCase());
 }
 
-function getURL(config: types.Config, qname: string) {
+function getURL(config: IConfig, qname: string) {
     let { namespace, pkg, name } = names.resolveQNameParts(qname, config.manifest.namespace, null);
     if (config.envname === 'api') {
         // redirect to prod
@@ -288,7 +289,7 @@ function getURL(config: types.Config, qname: string) {
     return `${utils.getAPIHost(config)}web/${namespace}/${pkg ? pkg : 'default'}/${name}.http`; // TODO: reponse type
 }
 
-function generateAssembly(config: types.Config, apiname: string, api: types.Api) {
+function generateAssembly(config: IConfig, apiname: string, api: IApi) {
     const operations = [];
     if (api.paths) {
         const paths = api.paths;
@@ -329,7 +330,7 @@ function generateAssembly(config: types.Config, apiname: string, api: types.Api)
 
 // --- Plugin contributions
 
-async function applyContributions(config: types.Config, manifest: types.Project, contributions: types.Contribution[], plugin) {
+async function applyContributions(config: IConfig, manifest: IProject, contributions: Contribution[], plugin) {
     if (contributions) {
         for (const contrib of contributions) {
             switch (contrib.kind) {
@@ -377,7 +378,7 @@ async function applyContributions(config: types.Config, manifest: types.Project,
 
 // --- Project configuration merge
 
-function mergeProject(config: types.Config, basePath: string, project: types.Project) {
+function mergeProject(config: IConfig, basePath: string, project: IProject) {
     if (project.basePath)
         basePath = path.resolve(basePath, project.basePath);
 
@@ -387,7 +388,7 @@ function mergeProject(config: types.Config, basePath: string, project: types.Pro
 
     // -- includes
 
-    if (project.includes) {
+    if (project.dependencies) {
         config.fatal('Nested inclusion not supported yet');
     }
 
@@ -458,7 +459,7 @@ function mergeProject(config: types.Config, basePath: string, project: types.Pro
     }
 }
 
-function mergeActions(config: types.Config, basePath: string, pkgName: string, pkg: types.Package, actions: types.Action[], checkConflict: boolean) {
+function mergeActions(config: IConfig, basePath: string, pkgName: string, pkg: IPackage, actions: {[key: string]: IAction}, checkConflict: boolean) {
     if (!pkg.hasOwnProperty('actions'))
         pkg.actions = {};
 
@@ -474,7 +475,7 @@ function mergeActions(config: types.Config, basePath: string, pkgName: string, p
     }
 }
 
-async function gitClone(config: types.Config, include) {
+async function gitClone(config: IConfig, include) {
     const location = include.location.substr(4);
 
     const gitIdx = location.indexOf('.git');
@@ -524,7 +525,7 @@ async function gitClone(config: types.Config, include) {
     return path.join(localDir, projectFilePath);
 }
 
-function resolveActionLocation(config: types.Config, basePath: string, pkgName: string, actionName: string, location: string) {
+function resolveActionLocation(config: IConfig, basePath: string, pkgName: string, actionName: string, location: string) {
     if (path.isAbsolute(location))
         return location;
 
@@ -612,7 +613,7 @@ function resolveMain(action) {
     }
 }
 
-function checkBuilder(config: types.Config, pkgName, actionName, action) {
+function checkBuilder(config: IConfig, pkgName, actionName, action) {
     if (action.builder && action.builder.name) {
         if (!action.builder.dir)
             action.builder.dir = path.join(config.cache, 'build', pkgName, actionName);

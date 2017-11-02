@@ -19,7 +19,6 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as utils from './utils';
 import { IConfig, IPlugin, IProject, IContribution } from './types';
-//import * as scheduler from './scheduler';
 
 const PLUGINS_ROOT = path.join(__dirname, '../../plugins/core');
 const EXT_PLUGINS_ROOT = path.join(__dirname, '../../plugins/node_modules');

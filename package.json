@@ -6,8 +6,9 @@
   "scripts": {
     "pretest": "tsc",
     "compilenowatch": "tsc",
-    "test": "mocha",
-    "compile": "tsc -watch -p ./"
+    "test": "nyc mocha",
+    "compile": "tsc -watch -p ./",
+    "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov"
   },
   "author": "Lionel Villard",
   "repository": {
@@ -43,9 +44,11 @@
     "@types/request-promise": "^4.1.38",
     "@types/yamljs": "^0.2.30",
     "assert": "^1.4.1",
+    "codecov": "^3.0.0",
     "deep-diff": "^0.3.8",
     "mocha": "^3.5.0",
     "mocha-typescript": "^1.1.9",
+    "nyc": "^11.3.0",
     "typescript": "^2.5.3"
   }
 }

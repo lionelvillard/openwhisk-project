@@ -132,10 +132,10 @@ export interface IPlugin {
     __pluginName?: string;
 }
 
-export type ActionContributor = (Config, Project, pkgName: string, actionName: string, Action) => Contribution[] | Promise<Contribution[]>;
-export type ServiceContributor = (Config, pkgName: string, Package) => Contribution[] | Promise<Contribution[]>;
-export type ApiContributor = (Config, Project, apiname: string, Api) => Contribution[] | Promise<Contribution[]>;
-export type ActionBuilder = (Config, Action, Builder) => string | Promise<string>;
+export type ActionContributor = (IConfig, IProject, pkgName: string, actionName: string, IAction) => Contribution[] | Promise<Contribution[]>;
+export type ServiceContributor = (IConfig, pkgName: string, IPackage) => Contribution[] | Promise<Contribution[]>;
+export type ApiContributor = (IConfig, IProject, apiname: string, IApi) => Contribution[] | Promise<Contribution[]>;
+export type ActionBuilder = (IConfig, IAction, Builder) => string | Promise<string>;
 export type VariableResolver = (name: string) => any;
 export type VariableResolverCreator = (Config) => Promise<(name: string) => any>;
 
@@ -155,7 +155,7 @@ export interface ActionContribution {
     name: string;
 
     // action configuration
-    body: Action;
+    body: IAction;
 }
 
 
@@ -168,7 +168,7 @@ export interface PackageContribution {
     name: string;
 
     // package body
-    body: Package;
+    body: IPackage;
 }
 
 // An api contribution
@@ -180,19 +180,49 @@ export interface ApiContribution {
     name: string;
 
     // api configuration
-    body: Api;
+    body: IApi;
 }
 
 // --- Project configuration format
 
 // TODO!
 
-export type Deployment = any;
-export type IProject = Project;
-export type Project = Deployment;
-export type Action = any;
-export type Package = any;
-export type Api = any;
+export interface IProject {
+    /* Project name  */
+    name?: string;
+
+    /* target namespace  */
+    namespace?: string;
+
+    /* project version */
+    version?: string;
+
+    /* base path. Relative path are resolved against it  */
+    basePath?: string;
+
+    /* Dependencies */
+    dependencies?: Array<{[key: string]: any}>;
+
+    /* OpenWhisk packages */
+    packages?: {[key: string]: any};
+
+    /* OpenWhisk action in default package */
+    actions?: {[key: string]: any};
+
+    /* OpenWhisk apis */
+    apis?: {[key: string]: any};
+
+    /* OpenWhisk triggers */
+    triggers?: {[key: string]: any};
+
+    /* OpenWhisk rules */
+    rules?: {[key: string]: any};
+
+}
+
+export type IAction = any;
+export type IPackage = any;
+export type IApi = any;
 
 export interface Builder {
     // name
@@ -208,9 +238,14 @@ export interface Builder {
     __exec?: ActionBuilder;
 }
 
-export enum projectProps { name = 'name', version = 'version', basepath = 'basePath', dependencies = 'dependencies', packages = 'packages', actions = 'actions', triggers = 'triggers', rules = 'rules', apis = 'apis', };
-export enum actionProps {
+export enum ProjectProps {
+    name = 'name', version = 'version', basePath = 'basePath', dependencies = 'dependencies',
+    packages = 'packages', actions = 'actions', triggers = 'triggers', rules = 'rules', apis = 'apis',
+    namespace = 'namespace'
+}
+
+export enum ActionProps {
     limits = 'limits', inputs = 'inputs', annotations = 'annotations', builder = 'builder',
     location = 'location', code = 'code', sequence = 'sequence', kind = 'kind', main = 'main',
     image = 'image', _qname = '_qname'
-};
+}

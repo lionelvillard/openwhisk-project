@@ -29,33 +29,33 @@ apis:
   /hello:
     # below just swagger with OpenWhisk API gateway extensions
     basePath: /hello
-    info: 
+    info:
       title: /hello
     paths:
       /world:
         get:
           operationId: getWorld
-          x-openwhisk: 
+          x-openwhisk:
             action: hello
            # namespace: _
-           # package: 
-           # url: 
+           # package:
+           # url:
       /universe:
         get:
           operationId: getUniverse
-          x-openwhisk: 
+          x-openwhisk:
             action: hellouniverse
             # namespace: _
             # package:
             # url:
-    x-ibm-configuration: 
-      assembly: 
+    x-ibm-configuration:
+      assembly:
         execute:
           - operation-switch:
               case:
                 - operations:
                    - getWorld
-                  execute: 
+                  execute:
                     - invoke:
                         target-url: https://openwhisk.ng.bluemix.net/api/v1/web/villard@us.ibm.com_openwhisk-deploy-test/default/hello.http
                         verb: keep
@@ -65,4 +65,4 @@ apis:
                     - invoke:
                         target-url: https://openwhisk.ng.bluemix.net/api/v1/web/villard@us.ibm.com_openwhisk-deploy-test/default/hellouniverse.http
                         verb: keep
-                
+

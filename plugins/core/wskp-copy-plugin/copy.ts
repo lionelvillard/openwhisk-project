@@ -18,7 +18,7 @@ import * as dcopy from 'deep-copy';
 
 // --- Plugin export
 
-export async function actionContributor(config: wskd.IConfig, project: wskd.types.Project, pkgName: string, actionName: string, action: wskd.types.Action) {
+export async function actionContributor(config: wskd.IConfig, project: wskd.IProject, pkgName: string, actionName: string, action: wskd.IAction) {
     const copiedActionName = wskd.names.resolveQName(action.copy, project.namespace, pkgName);
 
     const copiedAction = findAction(project, copiedActionName);
@@ -48,7 +48,7 @@ export async function actionContributor(config: wskd.IConfig, project: wskd.type
                     newAction.code = remoteAction.exec.code;
             }
         } catch (e) {
-            throw `Action ${copiedActionName} does not exist`;
+            config.fatal('Action %s does not exist', copiedActionName);
         }
     }
 
@@ -66,7 +66,7 @@ export async function actionContributor(config: wskd.IConfig, project: wskd.type
     }];
 }
 
-// Look for the action of the given full-qualified name in the manifest. 
+// Look for the action of the given full-qualified name in the manifest.
 function findAction(project, actionName) {
     const parts = wskd.names.parseQName(actionName);
     const packages = project.packages;

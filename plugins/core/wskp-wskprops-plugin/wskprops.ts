@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { types, env } from 'openwhisk-deploy';
+import { IConfig, env } from 'openwhisk-deploy';
 import * as fs from 'fs-extra';
 import * as expandHomeDir from 'expand-home-dir';
 import * as path from 'path';
 
-export async function resolveVariableCreator(config: types.Config) {
+export async function resolveVariableCreator(config: IConfig) {
     const wskprops = await env.readWskProps(config);
     return (name: string) => {
         const lc = name.toLowerCase();
