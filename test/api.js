@@ -29,7 +29,7 @@ describe('API gateway', function () {
             ow: ctx.ow,
             basePath: 'test/fixtures/api',
             cache: ctx.cacheDir,
-            location: process.env.CI ? 'api-raw.yaml' : 'api-raw-local.yaml',
+            location: process.env.LOCALWSK === 'false' ? 'api-raw.yaml' : 'api-raw-local.yaml',
             force: true
         });
 

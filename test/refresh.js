@@ -42,7 +42,7 @@ describe('testing refresh', function () {
     });
 
     it('data processing - bash', async function () {
-        if (process.env.LOCALWSK) {
+        if (process.env.LOCALWSK === 'true') {
             await wskd.deploy.apply({
                 ow: ctx.ow,
                 basePath: 'test/fixtures/dataprocessing/',
