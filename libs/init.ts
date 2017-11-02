@@ -25,8 +25,9 @@ import * as names from './names';
 import * as stringify from 'json-stringify-safe';
 import * as progress from 'progress';
 import * as env from './env';
-import { format } from "util";
-import { check } from "./validate";
+import { format } from 'util';
+import { check } from './validate';
+import { setProxy } from './interpolation';
 
 /* Create basic configuration */
 export function newConfig(projectPath: string, logger_level: string = 'off', envname?: string): types.Config {
@@ -110,6 +111,8 @@ async function resolveManifest(config: types.Config) {
             config.basePath = path.resolve(config.basePath, config.manifest.basePath);
 
         config.projectname = config.manifest.name;
+
+        setProxy(config, 'manifest');
     }
 
     config.logger.debug(`base path set to ${config.basePath}`);
@@ -130,7 +133,7 @@ async function configCache(config: types.Config) {
         else
             config.cache = expandHome('~/.openwhisk')
 
-        await fs.mkdirs(config.cache) // async since using fs-extra
+        await fs.mkdirs(config.cache); // async since using fs-extra
     } else {
         config.cache = path.resolve(config.cache);
     }
@@ -290,7 +293,7 @@ async function initenv(config: types.Config) {
             if (!config.version)
                 config.version = props.ENVVERSION;
 
-            // refresh 
+            // refresh
             await env.cacheEnvironment(config);
         } else {
             // wskprops is environment unbound. Fine.

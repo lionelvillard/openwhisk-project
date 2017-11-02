@@ -25,7 +25,7 @@ const cacheroot = '.openwhisk';
 const bxroot = `.openwhisk/.bluemix/api.ng.bluemix.net/${process.env.BLUEMIX_ORG}`;
 
 @suite('testing environment - get')
-class envget {
+class Envget {
 
     static async before() {
         await fs.remove('.workdir.env');
@@ -93,7 +93,7 @@ class envget {
     async listAllWithVersion() {
         const config = init.newConfig('app.yml', null, 'prod@0.0.0');
         config.basePath = `${rootPath}/builtins`;
-        
+
         await init.init(config);
         const set = await env.setEnvironment(config);
         assert.ok(set);
@@ -109,7 +109,7 @@ class envget {
 }
 
 @suite('testing environment - set')
-class envset {
+class Envset {
 
     static async before() {
         await fs.remove('.workdir.env');
@@ -131,7 +131,7 @@ class envset {
 
         const success = await env.cacheEnvironment(config);
         assert.ok(success);
-        
+
         const wskprops = parser.read(`${bxroot}/builtins-dev/.wskprops`);
         const envprops = parser.read(`${cacheroot}/envs/.dev.wskprops`);
 

@@ -13,6 +13,10 @@
         "object-literal-sort-keys": false,
         "arrow-parens": false,
         "trailing-comma": false,
-        "prefer-const": false
+        "prefer-const": false,
+        "array-type": false,
+        "max-classes-per-file":false,
+        "member-access": false,
+        "no-console": false
     }
 }

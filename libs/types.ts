@@ -19,56 +19,57 @@ export type YAML = any;
 
 type Loader = (string) => Promise<Buffer>;
 
-export type Phase = 'validation'; 
+export type Phase = 'validation';
 
-// --- Common command configuration 
+// --- Common command configuration
 
-export interface Config {
+export type Config = IConfig;
+export interface IConfig {
     /** What phases to skip */
-    skipPhases?: Phase[];     
-    
+    skipPhases?: Phase[];
+
     /** Option flags */
-    flags?: any;     
-    
+    flags?: any;
+
     /** logger level ('ALL', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE', 'OFF') */
-    logger_level?: string;          
+    logger_level?: string;
 
     /** Logger instance */
-    logger?: Logger;         
+    logger?: Logger;
 
     /** OpenWhisk client. */
-    ow?: any;            
-    
+    ow?: any;
+
     /** Dry run operation */
-    dryrun?: boolean;       
+    dryrun?: boolean;
 
     /** Absolute base path */
     basePath?: string;
-    
+
     /** Project configuration location. Might be null */
-    location?: string;              
-    
+    location?: string;
+
     /** Project configuration. Parsed or unparsed. */
-    manifest?: YAML | string;       
-    
+    manifest?: YAML | string;
+
     /** Cache location */
-    cache?: string;                 
+    cache?: string;
 
     /** During deployment, whether to create or update resources. Defaut is false */
-    force?: boolean;                
+    force?: boolean;
 
     /* A list of variable resolvers */
-    variableSources?: [VariableResolver];   
+    variableSources?: [VariableResolver];
 
     /** Project name. Must match manifest.name when not null */
-    projectname?: string;                  
+    projectname?: string;
 
     /** Environment name. When null, fallback to basic wsk behavior */
-    envname?: string;                  
+    envname?: string;
 
     /** Environment version. Null when given environment does not support versioning. Should match manifest.version */
-    version?: string;                  
-    
+    version?: string;
+
     // --- Progress management
 
     /* Start progress, e.g. loading foo.js. Can be nested. */
@@ -76,28 +77,28 @@ export interface Config {
 
     /* Terminate current progress (if any) */
     terminateProgress?: () => void;
-    
+
     /* Set current progress, e.g. loading foo.js */
-    setProgress?: (format?: string, options?) => void; 
-    
+    setProgress?: (format?: string, options?) => void;
+
     /* Clear all progresses */
     clearProgress?: () => void;
-    
+
     /* Current progress. Use `progress.tick` for update */
     progress?: any;
 
     // ---- Error management
 
     /** throw fatal error */
-    fatal? : (format, ...args) => never; 
+    fatal?: (format, ...args) => never;
 
     // ---- Internal
 
     /* Is config already initialized */
-    _initialized? : boolean;
+    _initialized?: boolean;
 
     /* current progress formats and options */
-    _progresses? : { format: string, options: any }[];
+    _progresses?: { format: string, options: any }[];
 
     // deprecated
     load?: Loader;
@@ -108,8 +109,9 @@ export interface DeployConfig extends Config {
 
 // --- Plugins
 
-// OpenWhisk Plugin Interface 
-export interface Plugin {
+// OpenWhisk Plugin Interface
+export type Plugin = IPlugin;
+export interface IPlugin {
 
     // Action contributor returning a list of contributions to apply to the deployment configuration
     actionContributor?: ActionContributor;
@@ -126,16 +128,19 @@ export interface Plugin {
     // A variable resolver creator.
     resolveVariableCreator?: VariableResolverCreator;
 
+    // Plugin name (internal)
+    __pluginName?: string;
 }
 
-export type ActionContributor = (Config, Project, pkgName: string, actionName: string, Action) => Contribution[];
-export type ServiceContributor = (Config, pkgName: string, Package) => Contribution[];
-export type ApiContributor = (Config, Project, apiname: string, Api) => Contribution[];
-export type ActionBuilder = (Config, Action, Builder) => Promise<string>;
+export type ActionContributor = (Config, Project, pkgName: string, actionName: string, Action) => Contribution[] | Promise<Contribution[]>;
+export type ServiceContributor = (Config, pkgName: string, Package) => Contribution[] | Promise<Contribution[]>;
+export type ApiContributor = (Config, Project, apiname: string, Api) => Contribution[] | Promise<Contribution[]>;
+export type ActionBuilder = (Config, Action, Builder) => string | Promise<string>;
 export type VariableResolver = (name: string) => any;
 export type VariableResolverCreator = (Config) => Promise<(name: string) => any>;
 
-// A contribution to the deployment configuration 
+// A contribution to the project configuration
+export type IContribution = Contribution;
 export type Contribution = ActionContribution | ApiContribution | PackageContribution;
 
 // An action contribution
@@ -182,11 +187,12 @@ export interface ApiContribution {
 
 // TODO!
 
-export type Deployment = any
-export type Project = Deployment
-export type Action = any
-export type Package = any
-export type Api = any
+export type Deployment = any;
+export type IProject = Project;
+export type Project = Deployment;
+export type Action = any;
+export type Package = any;
+export type Api = any;
 
 export interface Builder {
     // name

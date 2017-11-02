@@ -17,8 +17,25 @@ const assert = require('assert');
 const utils = require('./helpers/utils');
 const expr = require('../dist/libs/interpolation');
 const log4j = require('log4js');
+const tasks = require('./../dist/libs/coordinator');
 
 describe('Interpolation', function () {
+
+    it('empty string expression ', async function () {
+        const config = {
+            logger: log4j.getLogger()
+        }
+        const value = expr.evaluate(config, '');
+        assert.deepStrictEqual(value, '');
+    });
+
+    it('constant expression string', async function () {
+        const config = {
+            logger: log4j.getLogger()
+        }
+        const value = expr.evaluate(config, 'a string');
+        assert.deepStrictEqual(value, 'a string');
+    });
 
     it('variable - custom', function () {
         const config = {
@@ -56,6 +73,107 @@ describe('Interpolation', function () {
 
         const value = expr.evaluate(config, '${vars.HOME}');
         assert.deepStrictEqual(value, '/myhome');
+    });
+
+
+    it('self string expression, alone', async function () {
+        const config = {
+            manifest: {
+                name: 'myname'
+            },
+            logger: log4j.getLogger()
+        }
+        expr.setProxy(config, 'manifest');
+        const value = expr.evaluate(config, '${self.name}');
+        assert.deepStrictEqual(value, 'myname');
+    });
+
+
+    it('self object expression, alone', async function () {
+        const config = {
+            manifest: {
+                name: { first: 'myname', second: 'mysecondname' }
+            },
+            logger: log4j.getLogger()
+        }
+        expr.setProxy(config, 'manifest');
+        const value = expr.evaluate(config, '${self.name}');
+        assert.deepStrictEqual(value, { first: 'myname', second: 'mysecondname' });
+    });
+
+    it('self string expression and constant strings', async function () {
+        const config = {
+            manifest: {
+                name: 'myname'
+            },
+            logger: log4j.getLogger()
+        }
+        expr.reset();
+        expr.setProxy(config, 'manifest');
+
+        const value = expr.evaluate(config, 'My name is ${self.name}');
+        assert.deepStrictEqual(value, 'My name is myname');
+    });
+
+    it('project configuration with promises at the top-level, intermediate results', async function () {
+        const config = {
+            manifest: {
+                name: tasks.task(resolve => resolve('myname'))
+            },
+            logger: log4j.getLogger()
+        }
+        expr.reset();
+        expr.setProxy(config, 'manifest', true);
+
+        const value = expr.evaluate(config, '${self.name}');
+        assert.deepStrictEqual(value.expr, '${proxy._0.name}');
+
+        // give control back to node.
+        await new Promise(resolve => setTimeout(() => {
+            const value2 = expr.evaluate(config, value.expr);
+            assert.deepStrictEqual(value2, 'myname');
+            resolve();
+        }, 1));
+
+    });
+
+    it('project configuration with nested promises, intermediate result', async function () {
+        const config = {
+            manifest: {
+                prop1: tasks.task(resolve => setTimeout(() => resolve({
+                    prop2: tasks.task(resolve => resolve('value'))
+                }), 100))
+            },
+            logger: log4j.getLogger()
+        }
+        expr.reset();
+        expr.setProxy(config, 'manifest');
+
+        const value = expr.evaluate(config, '${self.prop1}');
+        assert.deepStrictEqual(value.expr, '${proxy._0.prop1}');
+
+        // give control back to node
+        await new Promise(resolve => setTimeout(() => {
+            const value2 = expr.evaluate(config, value.expr);
+            assert.ok(value2.prop2);
+            resolve();
+        }, 200)); // 200 > 100
+
+    });
+
+    it('combining string expression and promises', async function () {
+        const config = {
+            manifest: {
+                name: 'myname',
+                service: tasks.task(resolve => setTimeout(() => resolve('redis'), 100))
+            },
+            logger: log4j.getLogger()
+        }
+        expr.reset();
+        expr.setProxy(config, 'manifest');
+
+        const value = await expr.fullyEvaluate(config, 'My name is ${self.name} with ${self.service}');
+        assert.deepStrictEqual(value, 'My name is myname with redis');
     });
 
 });

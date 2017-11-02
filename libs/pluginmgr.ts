@@ -17,7 +17,9 @@
 // Simple plugins manager
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import * as types from './types';
+import * as utils from './utils';
+import { IConfig, IPlugin, IProject, IContribution } from './types';
+//import * as scheduler from './scheduler';
 
 const PLUGINS_ROOT = path.join(__dirname, '../../plugins/core');
 const EXT_PLUGINS_ROOT = path.join(__dirname, '../../plugins/node_modules');
@@ -35,7 +37,7 @@ const RESERVED_API_KEYWORDS = [];
 let loaded = false;
 
 // Build plugin index.
-export async function init(config: types.Config) {
+export async function init(config: IConfig) {
     if (!loaded) {
         config.logger.info(`initializing plugins ${PLUGINS_ROOT} and ${EXT_PLUGINS_ROOT}`);
         await registerAll(config);
@@ -43,8 +45,8 @@ export async function init(config: types.Config) {
     }
 }
 
-// Register plugin at given location 
-export async function registerFromPath(config: types.Config, modulepath: string) {
+// Register plugin at given location
+export async function registerFromPath(config: IConfig, modulepath: string) {
     const pkgjson = path.join(modulepath, 'package.json');
     if (!(await fs.pathExists(pkgjson)))
         return;
@@ -62,8 +64,7 @@ export async function registerFromPath(config: types.Config, modulepath: string)
         if (!RESERVED_ACTION_KEYWORDS.includes(action)) {
             config.logger.info(`registering plugin ${plugininfo.name} action contribution ${action}`);
             actionPlugins[action] = modulepath;
-        }
-        else
+        } else
             config.logger.warn(`Skipping ${action}: it is a reserved action name`);
     }
 
@@ -90,8 +91,7 @@ export async function registerFromPath(config: types.Config, modulepath: string)
         if (!RESERVED_API_KEYWORDS.includes(action)) {
             config.logger.info(`registering plugin ${plugininfo.name} api contribution ${api}`);
             apiPlugins[api] = modulepath;
-        }
-        else
+        } else
             config.logger.warn(`Skipping ${api}: it is a reserved api name`);
     }
 
@@ -108,7 +108,7 @@ export async function registerFromPath(config: types.Config, modulepath: string)
     }
 }
 
-async function registerAll(config: types.Config) {
+async function registerAll(config: IConfig) {
     try {
         await registerFiles(config, PLUGINS_ROOT);
         if (await fs.pathExists(EXT_PLUGINS_ROOT))
@@ -118,7 +118,7 @@ async function registerAll(config: types.Config) {
     }
 }
 
-async function registerFiles(config: types.Config, root: string) {
+async function registerFiles(config: IConfig, root: string) {
     const files = await fs.readdir(root);
     for (const moduleid of files) {
         if (moduleid.match(/wskp-\w*-plugin/)) {
@@ -129,15 +129,15 @@ async function registerFiles(config: types.Config, root: string) {
     }
 }
 
-export function getActionPlugin(action, name?: string): types.Plugin | null {
+export function getActionPlugin(action, name?: string): IPlugin | null {
     return getPlugin(actionPlugins, action, name);
 }
 
-export function getPackagePlugin(pkg): types.Plugin | null {
+export function getPackagePlugin(pkg): IPlugin | null {
     return getPlugin(pkgPlugins, pkg);
 }
 
-export function getServicePlugin(name): types.Plugin | null {
+export function getServicePlugin(name): IPlugin | null {
     if (servicePlugins[name]) {
         const plugin = require(servicePlugins[name]);
         plugin.__pluginName = name;
@@ -146,11 +146,11 @@ export function getServicePlugin(name): types.Plugin | null {
     return null;
 }
 
-export function getApiPlugin(api): types.Plugin | null {
+export function getApiPlugin(api): IPlugin | null {
     return getPlugin(apiPlugins, api);
 }
 
-export function getActionBuilderPlugin(name): types.Plugin | null {
+export function getActionBuilderPlugin(name): IPlugin | null {
     if (actionBuilderPlugins[name]) {
         const plugin = require(actionBuilderPlugins[name]);
         plugin.__pluginName = name;
@@ -159,7 +159,7 @@ export function getActionBuilderPlugin(name): types.Plugin | null {
     return null;
 }
 
-export function getVariableSourcePlugin(name): types.Plugin | null {
+export function getVariableSourcePlugin(name): IPlugin | null {
     if (variableSourcePlugins[name]) {
         const plugin = require(variableSourcePlugins[name]);
         plugin.__pluginName = name;
@@ -168,7 +168,7 @@ export function getVariableSourcePlugin(name): types.Plugin | null {
     return null;
 }
 
-function getPlugin(index, obj, name?): types.Plugin | null {
+function getPlugin(index, obj, name?): IPlugin | null {
     if (name) {
         if (index[name]) {
             const plugin = require(index[name]);
@@ -187,3 +187,54 @@ function getPlugin(index, obj, name?): types.Plugin | null {
     }
     return null;
 }
+
+// --- Plugin contributions using task scheduler
+
+// export function scheduleContributions(config: IConfig, project: IProject, contributions: IContribution[], plugin: IPlugin) {
+//     if (!contributions)
+//         return;
+
+//     for (const contrib of contributions) {
+//         switch (contrib.kind) {
+//             case 'action':
+//                 const pkg = utils.getPackage(project, contrib.pkgName, true);
+//                 if (!pkg.actions)
+//                     pkg.actions = {};
+
+//                 if (pkg.actions[contrib.name]) {
+//                     config.fatal(`plugin ${plugin.__pluginName} overrides ${contrib.name}`);
+//                 }
+
+//                 pkg.actions[contrib.name] = contrib.body;
+//                 await checkAction(config, project, contrib.pkgName, pkg.actions, contrib.name, contrib.body);
+//                 break;
+//             case 'api':
+//                 if (!project.apis)
+//                     project.apis = {};
+//                 const apis = project.apis;
+
+//                 if (apis[contrib.name]) {
+//                     config.fatal(`plugin ${plugin.__pluginName} overrides ${contrib.name}`);
+//                 }
+
+//                 apis[contrib.name] = contrib.body;
+//                 await checkApi(config, project, apis, contrib.name, contrib.body);
+//                 break;
+//             case 'package':
+//                 if (!project.packages)
+//                     project.packages = {};
+//                 const pkgs = project.packages;
+
+//                 if (pkgs[contrib.name]) {
+//                     config.fatal(`plugin ${plugin.__pluginName} overrides ${contrib.name}`);
+//                 }
+
+//                 pkgs[contrib.name] = contrib.body;
+//                 await checkPackage(config, project, pkgs, contrib.name, contrib.body, true);
+//                 await checkPackage(config, project, pkgs, contrib.name, contrib.body, false);
+//                 break;
+//         }
+//     }
+
+// }
+

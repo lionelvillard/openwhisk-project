@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import * as types from './types';
 import * as fs from 'fs-extra';
 import * as yaml from 'yamljs';
@@ -134,8 +133,13 @@ async function checkPackage(config: types.Config, manifest, packages, pkgName, p
                     return;
                 }
 
-                const contributions = await plugin.serviceContributor(config, pkgName, pkg);
-                await applyConstributions(config, manifest, contributions, plugin);
+                let contributions = plugin.serviceContributor(config, pkgName, pkg);
+                if (contributions instanceof Promise) {
+                    contributions = await contributions;
+                    await applyContributions(config, manifest, contributions, plugin);
+                } else {
+
+                }
             } else {
                 if (!binding)
                     await checkActions(config, manifest, pkgName, pkg.actions);
@@ -166,7 +170,7 @@ async function checkAction(config: types.Config, manifest, pkgName: string, acti
             }
             delete actions[actionName];
             const contributions = await plugin.actionContributor(config, manifest, pkgName, actionName, action);
-            await applyConstributions(config, manifest, contributions, plugin); // will call check!
+            await applyContributions(config, manifest, contributions, plugin); // will call check!
 
             return;
         }
@@ -261,7 +265,7 @@ async function checkApi(config: types.Config, manifest, apis, apiname: string, a
         config.logger.debug(`getting contribution from plugin ${(plugin as any).__pluginName}`);
 
         const contributions = await plugin.apiContributor(config, manifest, apiname, api);
-        await applyConstributions(config, manifest, contributions, plugin);
+        await applyContributions(config, manifest, contributions, plugin);
     }
 }
 
@@ -325,7 +329,7 @@ function generateAssembly(config: types.Config, apiname: string, api: types.Api)
 
 // --- Plugin contributions
 
-async function applyConstributions(config: types.Config, manifest: types.Project, contributions: types.Contribution[], plugin) {
+async function applyContributions(config: types.Config, manifest: types.Project, contributions: types.Contribution[], plugin) {
     if (contributions) {
         for (const contrib of contributions) {
             switch (contrib.kind) {
