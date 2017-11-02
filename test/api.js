@@ -25,25 +25,29 @@ describe('API gateway', function () {
     after(utils.after(ctx));
 
     it('hello world - no sugar', async function () {
-        await wskd.deploy.apply({
-            ow: ctx.ow,
-            basePath: 'test/fixtures/api',
-            cache: ctx.cacheDir,
-            location: process.env.LOCALWSK === 'false' ? 'api-raw.yaml' : 'api-raw-local.yaml',
-            force: true
-        });
+        if (process.env.LOCALWSK !== 'false') {
+            await wskd.deploy.apply({
+                ow: ctx.ow,
+                basePath: 'test/fixtures/api',
+                cache: ctx.cacheDir,
+                location: process.env.LOCALWSK ? 'api-raw.yaml' : 'api-raw-local.yaml',
+                force: true
+            });
 
-        const all = await ctx.ow.routes.list();
-        const apis = all.apis;
-        assert.ok(apis);
-        assert.ok(apis.length === 1);
-        const api = apis[0];
-        const info = api.value.apidoc.info;
-        assert.deepStrictEqual(info.title, '/hello');
+            const all = await ctx.ow.routes.list();
+            const apis = all.apis;
+            assert.ok(apis);
+            assert.ok(apis.length === 1);
+            const api = apis[0];
+            const info = api.value.apidoc.info;
+            assert.deepStrictEqual(info.title, '/hello');
 
-        const gwApiUrl = api.value.gwApiUrl;
-        const result = await utils.httpGet(`${gwApiUrl}/world`, 10);
-        assert.deepStrictEqual(result, `{"payload":"Hello world Serverless API"}`);
+            const gwApiUrl = api.value.gwApiUrl;
+            const result = await utils.httpGet(`${gwApiUrl}/world`, 10);
+            assert.deepStrictEqual(result, `{"payload":"Hello world Serverless API"}`);
+        } else {
+            this.skip();
+        }
     });
 
     it('hello world', async function () {
