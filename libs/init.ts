@@ -175,7 +175,7 @@ function setOW(config: types.Config, ow) {
 
     // patch route to support sending swagger.
     // see openwhisk-client-js issue #69
-    ow.routes.change = function (options) {
+    ow.routes.change = function(options) {
         if (!options.hasOwnProperty('swagger')) {
             const missing = ['relpath', 'operation', 'action'].filter(param => !(options || {}).hasOwnProperty(param));
 
@@ -189,7 +189,7 @@ function setOW(config: types.Config, ow) {
         return this.client.request('POST', this.routeMgmtApiPath('createApi'), { body, qs });
     };
 
-    ow.routes.route_swagger_definition = function (params) {
+    ow.routes.route_swagger_definition = function(params) {
         if (params.hasOwnProperty('swagger')) {
             return { apidoc: { namespace: '_', swagger: params.swagger } };
         }
@@ -267,50 +267,50 @@ const fakeow = {
     }
 };
 
-async function initenv(config: types.Config) {
-    let props;
-    if (config.envname) {
-        const { name, version } = env.parseEnvName(config.envname);
-        config.envname = name;
-        config.version = version;
-        props = await env.readWskProps(config); // reading from the cache.
-    } else {
-        props = await env.getCurrent(config);
-    }
+// async function initenv(config: types.Config) {
+//     let props;
+//     if (config.envname) {
+//         const { name, version } = parseEnvName(config.envname);
+//         config.envname = name;
+//         config.version = version;
+//         props = await env.readWskProps(config); // reading from the cache.
+//     } else {
+//         props = await env.getCurrent(config);
+//     }
 
-    if (props) {
-        if (props.ENVNAME) {
-            // wskprops is environment bound.
-            if (config.envname && config.envname !== props.ENVNAME)
-                config.fatal('corrupted cache. delete it and retry');
+//     if (props) {
+//         if (props.ENVNAME) {
+//             // wskprops is environment bound.
+//             if (config.envname && config.envname !== props.ENVNAME)
+//                 config.fatal('corrupted cache. delete it and retry');
 
-            config.envname = props.ENVNAME;
+//             config.envname = props.ENVNAME;
 
-            if (config.projectname && config.projectname !== props.PROJECTNAME)
-                config.fatal('mismatch application name. configured to be %s but found %s in the current environment', config.manifest.name, props.PROJECTNAME);
+//             if (config.projectname && config.projectname !== props.PROJECTNAME)
+//                 config.fatal('mismatch application name. configured to be %s but found %s in the current environment', config.manifest.name, props.PROJECTNAME);
 
-            config.projectname = props.PROJECTNAME;
+//             config.projectname = props.PROJECTNAME;
 
-            if (!config.version)
-                config.version = props.ENVVERSION;
+//             if (!config.version)
+//                 config.version = props.ENVVERSION;
 
-            // refresh
-            await env.cacheEnvironment(config);
-        } else {
-            // wskprops is environment unbound. Fine.
-        }
-    } else {
-        if (config.envname) {
-            // no cache props. Need to refresh. Can only do it if projectname is known!
-            if (!config.projectname)
-                config.fatal('cannot resolve environment properties: missing project name');
+//             // refresh
+//             await env.cacheEnvironment(config);
+//         } else {
+//             // wskprops is environment unbound. Fine.
+//         }
+//     } else {
+//         if (config.envname) {
+//             // no cache props. Need to refresh. Can only do it if projectname is known!
+//             if (!config.projectname)
+//                 config.fatal('cannot resolve environment properties: missing project name');
 
-            await env.cacheEnvironment(config);
-        } else {
-            // no env, no props. Ignore and fail later when properties are needed
-        }
-    }
-}
+//             await env.cacheEnvironment(config);
+//         } else {
+//             // no env, no props. Ignore and fail later when properties are needed
+//         }
+//     }
+// }
 
 async function configVariableSources(config: types.Config) {
     if (!config.variableSources) {
