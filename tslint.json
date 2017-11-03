@@ -17,6 +17,7 @@
         "array-type": false,
         "max-classes-per-file":false,
         "member-access": false,
-        "no-shadowed-variable": false
+        "no-shadowed-variable": false,
+        "no-conditional-assignment": false
     }
 }

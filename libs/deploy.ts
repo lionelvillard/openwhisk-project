@@ -38,46 +38,46 @@ export async function apply(config: types.Config) {
         await deployRules(config);
         await deployApis(config);
     } catch (e) {
-        config.terminateProgress();        
+        config.terminateProgress();
         config.fatal(e);
     }
 }
 
 // Deploy packages (excluding bindings, and package content)
 function deployPackages(args, bindings) {
-    const manifest = args.manifest
+    const manifest = args.manifest;
     if (manifest.hasOwnProperty('packages')) {
-        const packages = manifest.packages
-        const promises = []
+        const packages = manifest.packages;
+        const promises = [];
         for (const name in packages) {
-            const pkg = packages[name] || {}
+            const pkg = packages[name] || {};
 
             // Skip package bindings when bindings is false
-            const hasBind = pkg.hasOwnProperty('bind')
+            const hasBind = pkg.hasOwnProperty('bind');
 
             if ((hasBind && bindings) || (!hasBind && !bindings)) {
-                let binding = {}
+                let binding = {};
                 if (bindings) {
-                    const qname = names.parseQName(pkg.bind)
+                    const qname = names.parseQName(pkg.bind);
 
                     binding = {
                         namespace: qname.namespace,
                         name: qname.name
-                    }
+                    };
                 }
-                const parameters = utils.getKeyValues(pkg.inputs)
-                const annotations = utils.getAnnotations(args, pkg.annotations)
-                const publish = pkg.hasOwnProperty('publish') ? pkg.publish : false
+                const parameters = utils.getKeyValues(pkg.inputs);
+                const annotations = utils.getAnnotations(args, pkg.annotations);
+                const publish = pkg.hasOwnProperty('publish') ? pkg.publish : false;
 
                 const cmd = deployPackage(args.ow, name, parameters, annotations, binding, publish);
 
-                promises.push(cmd)
+                promises.push(cmd);
             }
         }
-        if (promises.length != 0)
-            return Promise.all(promises)
+        if (promises.length !== 0)
+            return Promise.all(promises);
     }
-    return true
+    return true;
 }
 
 function deployPackage(ow, name, parameters, annotations, binding, publish) {
@@ -89,11 +89,11 @@ function deployPackage(ow, name, parameters, annotations, binding, publish) {
             annotations,
             binding
         }
-    })
+    });
 }
 
 function deployActions(config) {
-    const manifest = config.manifest
+    const manifest = config.manifest;
     const graph = dependenciesGraph(manifest);
     const keys = Object.keys(graph);
     if (keys.length > 0) {
@@ -105,27 +105,27 @@ function deployActions(config) {
 function deployPendingActions(ctx, graph) {
     const actions = pendingActions(graph);
     if (actions) {
-        const promises = []
+        const promises = [];
 
         for (const qname in actions) {
-            const entry = actions[qname]
-            const action = entry.action
-            const promise = handlers.lookupActionHandler(action).deploy(ctx, action)
-            promises.push(promise.then(() => ctx.progress.tick()))
+            const entry = actions[qname];
+            const action = entry.action;
+            const promise = handlers.lookupActionHandler(action).deploy(ctx, action);
+            promises.push(promise.then(() => ctx.progress.tick()));
         }
 
         commitActions(actions);
 
-        return Promise.all(promises).then(() => deployPendingActions(ctx, graph))
+        return Promise.all(promises).then(() => deployPendingActions(ctx, graph));
     }
 
-    const remaining = remainingActions(graph)
+    const remaining = remainingActions(graph);
     if (remaining) {
-        const keys = Object.keys(remaining).join(', ')
-        return Promise.reject(`Error: cyclic dependencies detected (${keys})`)
+        const keys = Object.keys(remaining).join(', ');
+        return Promise.reject(`Error: cyclic dependencies detected (${keys})`);
     }
 
-    return Promise.resolve([])
+    return Promise.resolve([]);
 }
 
 function deployTriggers(config) {
@@ -140,9 +140,9 @@ function deployTriggers(config) {
         const trigger = triggers[triggerName] || {};
         const feed = trigger.feed;
 
-        const parameters = utils.getKeyValues(trigger.inputs)
-        const annotations = utils.getAnnotations(config, trigger.annotations)
-        const publish = trigger.hasOwnProperty('publish') ? trigger.publish : false
+        const parameters = utils.getKeyValues(trigger.inputs);
+        const annotations = utils.getAnnotations(config, trigger.annotations);
+        const publish = trigger.hasOwnProperty('publish') ? trigger.publish : false;
 
         const triggerBody: any = { annotations, publish };
 
@@ -150,17 +150,17 @@ function deployTriggers(config) {
             // this will help for deleting the feed
             annotations.feed = trigger.feed;
         } else {
-            triggerBody.parameters = parameters
+            triggerBody.parameters = parameters;
         }
 
         let promise = ow.triggers.change({ triggerName, trigger: triggerBody, parameters, annotations })
             .then(() => config.logger.info(`[TRIGGER] [CREATED] ${triggerName}`));
 
         if (feed) {
-            // transform parameters { .. : key , : value } to { key: value } 
+            // transform parameters { .. : key , : value } to { key: value }
             let params = {};
             for (const p of parameters) {
-                params[p.key] = p.value
+                params[p.key] = p.value;
             }
             promise = promise.then(() => config.ow.feeds.change({ name: feed, trigger: triggerName, params }))
                 .then(() => config.logger.info(`[FEED] [CREATED] ${feed}`))
@@ -199,8 +199,6 @@ function deployRules(config: types.Config) {
 
 // --- Apis
 
-//enum API_VERBS { GET, PUT, POST, DELETE, PATCH, HEAD, OPTIONS };
-
 async function deployApis(config: types.Config) {
     const manifest = config.manifest;
     const apis = manifest.apis;
@@ -212,7 +210,7 @@ async function deployApis(config: types.Config) {
             const cmd = routes.change({ swagger }).then(() => config.logger.info(`api ${apiname} deployed`));
             promises.push(cmd);
         }
-        return Promise.all(promises)
+        return Promise.all(promises);
     }
     return true;
 }
@@ -220,15 +218,15 @@ async function deployApis(config: types.Config) {
 // -- Dependency graph
 
 /* Compute a dependency graph of the form
-   
+
    {
-       "/ns/pkgname/actionname": { 
+       "/ns/pkgname/actionname": {
            action,
            deployed: false|true,
            dependencies: [ actionqname ]
        }
        ...
-   } 
+   }
 
    /_/pkgname/actionname can be deployed when all its dependencies have been marked as deployed
 */
@@ -255,7 +253,6 @@ function dependenciesGraph(manifest) {
 
     return graph;
 }
-
 
 // Add action to graph.
 function extendGraph(graph, ns, pkgName, actionName, action) {
@@ -303,7 +300,7 @@ function remainingActions(graph) {
     const actions = {};
     let hasActions = false;
     for (const qname in graph) {
-        const entry = graph[qname]
+        const entry = graph[qname];
         if (!entry.deployed) {
             actions[qname] = entry;
             hasActions = true;

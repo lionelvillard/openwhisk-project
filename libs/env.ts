@@ -26,31 +26,31 @@ import * as openwhisk from 'openwhisk';
 import * as semver from 'semver';
 
 export interface IWskProps {
-    APIHOST?: string,
-    AUTH?: string,
-    IGNORE_CERTS?: boolean,
-    APIGW_ACCESS_TOKEN?: string,
-    [key: string]: any
+    APIHOST?: string;
+    AUTH?: string;
+    IGNORE_CERTS?: boolean;
+    APIGW_ACCESS_TOKEN?: string;
+    [key: string]: any;
 }
 
 export interface IEnvPolicies {
     /* Environment name */
-    name: string,
+    name: string;
 
     /* Writable? */
-    writable: boolean,
+    writable: boolean;
 
     /* Versioned? */
-    versioned: boolean,
+    versioned: boolean;
 
     /* What kind of entities the env manages */
-    entities: string,
+    entities: string;
 
     /* Default wsk props */
-    props?: IWskProps
+    props?: IWskProps;
 }
 
-// TODO: 
+// TODO:
 const BuiltinEnvs: IEnvPolicies[] = [
     { name: 'local', writable: true, versioned: false, entities: 'all', props: { APIHOST: '172.17.0.1' } },
     { name: 'dev', writable: true, versioned: false, entities: 'all', props: { APIHOST: 'openwhisk.ng.bluemix.net' } },
@@ -101,7 +101,7 @@ export async function getPolicies(config: types.Config): Promise<IEnvPolicies[]>
     return [];
 }
 
-// Set current environment. 
+// Set current environment.
 export async function setEnvironment(config: types.Config) {
     const cached = await cacheEnvironment(config);
     if (!cached)
@@ -137,11 +137,11 @@ export async function cacheEnvironment(config: types.Config) {
     const cachedExists = await fs.pathExists(cached);
 
     const refreshCache = async () => {
-        config.logger.debug('refreshing cache')
+        config.logger.debug('refreshing cache');
         const props = propertiesParser.createEditor(allExists ? ALL_WSKPROPS : '');
         addAll(props, propertiesParser.read(filename));
         try {
-            await resolveProps(config, name, version, filename, props); 
+            await resolveProps(config, name, version, filename, props);
         } catch (e) {
             config.logger.error(e);
             return false;
@@ -149,7 +149,7 @@ export async function cacheEnvironment(config: types.Config) {
 
         props.save(cached);
         return true;
-    }
+    };
 
     let success = true;
     if (cachedExists) {
@@ -189,7 +189,7 @@ export async function newEnvironment(config: types.Config, name: string, wskprop
     config.logger.info(`creating environment ${name}`);
     const filename = `.${name}.wskprops`;
     if (await fs.pathExists(filename))
-        throw `environment ${name} already exists`;
+        config.fatal(`environment ${name} already exists`);
 
     const props = propertiesParser.createEditor();
     Object.keys(wskprops).forEach(key => props.set(key, wskprops[key]));
@@ -199,7 +199,7 @@ export async function newEnvironment(config: types.Config, name: string, wskprop
 // Increment project version
 export async function incVersion(config: types.Config, releaseType: semver.ReleaseType) {
     if (!['major', 'premajor', 'minor', 'preminor', 'patch', 'prepatch', 'prerelease'].includes(releaseType))
-        throw `${releaseType} is not a valid release type`;
+        config.fatal(`${releaseType} is not a valid release type`);
 
     let version = config.manifest.version || '0.1.0';
     version = semver.inc(version, releaseType);
@@ -210,14 +210,14 @@ export async function incVersion(config: types.Config, releaseType: semver.Relea
         content = content.replace(/(version[^:]*:).*/, `$1 ${version}`);
     }
 
-    await fs.writeFile(config.location, content, { encoding: 'utf-8' })
+    await fs.writeFile(config.location, content, { encoding: 'utf-8' });
 }
 
 // Promote API environment to latest PROD
 export async function promote(config: types.Config) {
     const versions = await getVersions(config);
-    if (versions && versions['prod'] && versions['prod'].length > 0) {
-        const prods = versions['prod'];
+    if (versions && versions.prod && versions.prod.length > 0) {
+        const prods = versions.prod;
         const latest = prods[prods.length - 1];
 
         if (!(await fs.pathExists('.api.wskprops')))
@@ -329,7 +329,7 @@ export async function readWskProps(config: types.Config): Promise<IWskProps | nu
 }
 
 const auth = async (config: types.Config) => {
-    const wskprops = await readWskProps(config)
+    const wskprops = await readWskProps(config);
 
     if (wskprops) {
         return {
@@ -337,11 +337,11 @@ const auth = async (config: types.Config) => {
             apihost: wskprops.APIHOST,
             ignore_certs: wskprops.IGNORE_CERTS || false,
             apigw_token: wskprops.APIGW_ACCESS_TOKEN
-        }
+        };
     }
 
     return null;
-}
+};
 
 // Resolve variables by merging command line options with .wskprops content
 export async function resolveVariables(config: types.Config, options: any = {}) {
@@ -377,7 +377,7 @@ function addAll(props, others) {
 }
 
 // Retrieve all versions for all environments
-async function getVersions(config: types.Config) {
+async function getVersions(config: types.Config): Promise<{[key: string]: any}> {
     if (!await bx.isBluemixCapable())
         config.fatal('cannot get the versions associated to the project environments: bx is not installed');
 
@@ -391,7 +391,7 @@ async function getVersions(config: types.Config) {
 
     const versions = {};
 
-    // TODO: support for multiple orgs    
+    // TODO: support for multiple orgs
     if (props.BLUEMIX_ORG && props.BLUEMIX_SPACE) {
         config.startProgress('getting environment versions');
 
@@ -418,7 +418,7 @@ async function isValid(config: types.Config) {
     const name = config.envname;
     const version = config.version;
 
-    // no cache for envname. Check it's valid 
+    // no cache for envname. Check it's valid
     const allpolicies = await getPolicies(config);
     const policies = allpolicies.find(policies => policies.name === name);
     if (!policies)
@@ -435,15 +435,4 @@ async function isValid(config: types.Config) {
         if (!config.version)
             config.fatal('missing version');
     }
-}
-
-export function parseEnvName(envname: string) {
-    const matched = envname.match(/^([\w]*)(@(.+))?$/);
-    if (matched) {
-        const version = matched[3];
-        if (version && !semver.valid(version))
-            throw `Malformed environment version ${version}`;
-        return { name: matched[1], version };
-    }
-    throw `Malformed environment name ${envname}`;
 }

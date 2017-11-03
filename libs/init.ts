@@ -28,6 +28,7 @@ import * as env from './env';
 import { format } from 'util';
 import { check } from './validate';
 import { setProxy } from './interpolation';
+import * as semver from 'semver';
 
 /* Create basic configuration */
 export function newConfig(projectPath: string, logger_level: string = 'off', envname?: string): types.Config {
@@ -57,7 +58,7 @@ export async function init(config: types.Config) {
 
     // desugar envname
     if (config.envname) {
-        const { name, version } = env.parseEnvName(config.envname);
+        const { name, version } = parseEnvName(config.envname);
         config.envname = name;
         config.version = version;
     }
@@ -174,7 +175,7 @@ function setOW(config: types.Config, ow) {
 
     // patch route to support sending swagger.
     // see openwhisk-client-js issue #69
-    ow.routes.change = function(options) {
+    ow.routes.change = function (options) {
         if (!options.hasOwnProperty('swagger')) {
             const missing = ['relpath', 'operation', 'action'].filter(param => !(options || {}).hasOwnProperty(param));
 
@@ -188,7 +189,7 @@ function setOW(config: types.Config, ow) {
         return this.client.request('POST', this.routeMgmtApiPath('createApi'), { body, qs });
     };
 
-    ow.routes.route_swagger_definition = function(params) {
+    ow.routes.route_swagger_definition = function (params) {
         if (params.hasOwnProperty('swagger')) {
             return { apidoc: { namespace: '_', swagger: params.swagger } };
         }
@@ -393,4 +394,15 @@ function filter(config: types.Config) {
         delete manifest.rules;
         delete manifest.triggers;
     }
+}
+
+function parseEnvName(envname: string) {
+    const matched = envname.match(/^([\w]*)(@(.+))?$/);
+    if (matched) {
+        const version = matched[3];
+        if (version && !semver.valid(version))
+            throw `Malformed environment version ${version}`;
+        return { name: matched[1], version };
+    }
+    throw `Malformed environment name ${envname}`;
 }
