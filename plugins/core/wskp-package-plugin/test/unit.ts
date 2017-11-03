@@ -21,7 +21,7 @@ import * as path from 'path';
 import * as fs from 'fs-extra';
 
 @suite('Package - Unit Tests')
-class copyUnit {
+class CopyUnit {
 
     ctx;
     builddir: string;
@@ -45,19 +45,18 @@ class copyUnit {
         assert(await fs.pathExists(loc));
     }
 
-
     @test('Zip nodejs action - sugar')
     async zip_nodejs_sugar() {
         const contribution = await pkg.actionContributor(this.ctx, {}, 'pkg', 'zip-action', { package: { excludes: ['*.ts'] } });
         assert.deepStrictEqual(contribution,
             [{
-                "kind": "action",
-                "pkgName": "pkg",
-                "name": "zip-action",
-                "body": {
-                    "builder": {
-                        "name": "package",
-                        "excludes": [
+                kind: "action",
+                pkgName: "pkg",
+                name: "zip-action",
+                body: {
+                    builder: {
+                        name: "package",
+                        excludes: [
                             "*.ts"
                         ]
                     }

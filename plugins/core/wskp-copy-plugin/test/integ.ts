@@ -19,15 +19,15 @@ import * as assert from 'assert';
 import * as wskd from 'openwhisk-deploy';
 
 @suite('Copy - Integration Tests')
-class copyInteg {
+class CopyInteg {
 
     ctx;
 
     async before() {
-        const config : wskd.IConfig = {};
+        const config: wskd.IConfig = {};
         await wskd.init.init(config);
         await wskd.undeploy.all(config);
-        this.ctx = { ow:config.ow };
+        this.ctx = { ow: config.ow };
     }
 
     @test('Copy remote cat code')
@@ -72,7 +72,7 @@ class copyInteg {
             blocking: true
         });
         assert.deepEqual(action.response.result, { msg: 'base' });
-    
+
         action = await this.ctx.ow.actions.invoke({
             actionName: 'plugin-copy-local/local-copy',
             blocking: true

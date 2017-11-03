@@ -20,74 +20,72 @@ import * as wskd from 'openwhisk-deploy';
 import * as path from 'path';
 
 @suite('Package - Integration Tests')
-class integration {
+class Integration {
 
     ctx;
     cache;
 
     async before() {
-        this.cache = path.join(__dirname, '..', '..', '..', '..', '..', '.openwhisk', 'build', 'package-plugin'); 
-        const config : wskd.IConfig = {};
+        this.cache = path.join(__dirname, '..', '..', '..', '..', '..', '.openwhisk', 'build', 'package-plugin');
+        const config: wskd.IConfig = {};
         await wskd.init.init(config);
         await wskd.undeploy.all(config);
-        this.ctx = { ow:config.ow };
+        this.ctx = { ow: config.ow };
     }
 
-    after() {
-    }
 
     @test('Zip nodejs action - all')
     async zip_nodejs() {
         await wskd.deploy.apply({
-            ow: this.ctx.ow, 
+            ow: this.ctx.ow,
             basePath: 'test/nodejs-zip',
             cache: this.cache,
             location: 'manifest.yaml',
             force: true
         });
-    
+
         const cat = await this.ctx.ow.actions.invoke({
             actionName: 'nodejs-zip/cat',
             params: { lines: ['first', 'second'] },
             blocking: true
-        })
+        });
         assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' })
     }
 
     @test('Zip nodejs action - all - sugar')
     async zip_nodejs_sugar() {
         await wskd.deploy.apply({
-            ow: this.ctx.ow, 
+            ow: this.ctx.ow,
             basePath: 'test/nodejs-zip',
             cache: this.cache,
             location: 'sugar.yaml',
             force: true
         });
-    
+
         const cat = await this.ctx.ow.actions.invoke({
             actionName: 'nodejs-zip-sugar/cat',
             params: { lines: ['first', 'second'] },
             blocking: true
-        })
+        });
         assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' })
     }
 
     @test('Zip nodejs action - follow links')
     async zip_nodejs_follow() {
         await wskd.deploy.apply({
-            ow: this.ctx.ow, 
+            ow: this.ctx.ow,
             basePath: 'test/nodejs-zip-symlinks',
             cache: this.cache,
             location: 'manifest.yaml',
             force: true
         });
-    
+
         const cat = await this.ctx.ow.actions.invoke({
             actionName: 'nodejs-zip-symlinks/cat',
             params: { lines: ['first', 'second'] },
             blocking: true
-        })
+        });
         assert.deepEqual(cat.response.result, { lines: ['first', 'second'], payload: 'first\nsecond' })
     }
- 
+
 }

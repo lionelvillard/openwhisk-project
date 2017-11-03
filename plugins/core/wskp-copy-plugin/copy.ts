@@ -36,7 +36,7 @@ export async function actionContributor(config: wskd.IConfig, project: wskd.IPro
                 inputs: indexKeyValues(remoteAction.parameters),
                 annotations: indexKeyValues(remoteAction.annotations),
                 limits: remoteAction.limits
-            }
+            };
             switch (remoteAction.exec.kind) {
                 case 'sequence':
                     newAction.sequence = remoteAction.exec.components;

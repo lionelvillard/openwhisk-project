@@ -23,26 +23,28 @@ import * as archiver from 'archiver';
 // --- Plugin export
 
 export function actionContributor(config: wskd.IConfig, project, pkgName: string, actionName: string, action) {
-    const newaction = {...action, 
+    const newaction = {
+        ...action,
         builder: {
-          name: 'package',
-          ...action.package
+            name: 'package',
+            ...action.package
         }
-    }
+    };
+
     delete newaction.package;
     return [
-            {
-                kind: "action",
-                pkgName,
-                name: actionName,
-                body: newaction
-            }
+        {
+            kind: "action",
+            pkgName,
+            name: actionName,
+            body: newaction
+        }
     ];
 }
 
 export async function build(config: wskd.IConfig, action, builder): Promise<string> {
     let basePath = path.dirname(action.location);
-    const ziplocInCache = path.join(builder.dir, 'action.zip')
+    const ziplocInCache = path.join(builder.dir, 'action.zip');
     await fs.mkdirs(builder.dir);
 
     await zip(config, ziplocInCache, basePath, builder);
@@ -57,11 +59,11 @@ const zip = (config, targetZip, basePath, builder) => new Promise((resolve, reje
     });
 
     output.on('close', () => {
-        resolve()
+        resolve();
     });
 
     archive.on('error', err => {
-        reject(err)
+        reject(err);
     });
 
     archive.on('warning', err => {
@@ -72,34 +74,23 @@ const zip = (config, targetZip, basePath, builder) => new Promise((resolve, reje
         }
     });
 
-
     // pipe archive data to the file
     archive.pipe(output);
 
-    // append files 
+    // append files
     const ignore = builder.excludes || [];
     const follow = builder.follow || false;
     const includes = builder.includes || '**';
-    const globs = typeof includes == 'string' ? [includes] : includes;
+    const globs = typeof includes === 'string' ? [includes] : includes;
     for (const glob of globs) {
         archive.glob(glob, {
             cwd: basePath,
             ignore,
-            follow
+            follow,
+            mark: true
         });
     }
 
     // finalize the archive (ie we are done appending files but streams have to finish yet)
     archive.finalize();
-})
-
-
-// async function npmInstall(src) {
-//     const execOptions = {
-//         cwd: src
-//     }
-
-//     // see https://github.com/npm/npm/pull/7249 for extra etc directory
-
-//     exec(`npm  install --production --prefix .`, execOptions)
-// }
+});

@@ -19,27 +19,27 @@ import * as assert from 'assert';
 import * as wskd from 'openwhisk-deploy';
 
 @suite('Copy - Unit Tests')
-class copyUnit {
+class CopyUnit {
 
-    ctx;
+    config;
 
     async before() {
-        const config : wskd.IConfig = {};
-        await wskd.init.init(config);
-        this.ctx = { ow:config.ow };
+        this.config = {};
+        await wskd.init.init(this.config);
+        await wskd.init.initOW(this.config);
     }
 
     @test('Copy remote eca code')
     async copy_eca() {
-        const result = await copy.actionContributor(this.ctx, { namespace: '_' }, 'pkg', 'test', { copy: '/whisk.system/combinators/eca' });
-        assert.ok(result)
+        const result = await copy.actionContributor(this.config, { namespace: '_' }, 'pkg', 'test', { copy: '/whisk.system/combinators/eca' });
+        assert.ok(result);
         assert.equal(result[0].body.code.substr(0, 11), '// Licensed');
     }
 
     @test('Copy remote eca code - overwrite annotation ')
     async copy_eca_anno() {
-        const result = await copy.actionContributor(this.ctx, { namespace: '_' }, 'pkg', 'test', { copy: '/whisk.system/combinators/eca', annotations: {description:'overwritten'} });
-        assert.ok(result)
+        const result = await copy.actionContributor(this.config, { namespace: '_' }, 'pkg', 'test', { copy: '/whisk.system/combinators/eca', annotations: { description: 'overwritten' } });
+        assert.ok(result);
         assert.equal(result[0].body.annotations.description, 'overwritten');
     }
 }
