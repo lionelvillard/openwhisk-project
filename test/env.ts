@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { suite, test, slow, timeout } from 'mocha-typescript';
+import { suite, test, slow, timeout, skip } from 'mocha-typescript';
 import * as assert from 'assert';
 import { env, init } from '..';
 import { exec } from 'child-process-promise';
@@ -39,6 +39,9 @@ class Envget {
 
     @test('list environments without a config file. should output an error.')
     async listAllWithoutConfig() {
+        if (process.env.LOCALWSK === 'true')
+            return skip(this);
+
         const config = init.newConfig(null);
         config.basePath = `${rootPath}/noconfig`;
         try {
@@ -52,6 +55,9 @@ class Envget {
     }
     @test('list environments config file does not exist. should output an error.')
     async listAllConfigDoesNotExit() {
+        if (process.env.LOCALWSK === 'true')
+            return skip(this);
+
         const config = init.newConfig('app.yml');
         config.basePath = `${rootPath}/noconfig`;
         try {
@@ -65,6 +71,9 @@ class Envget {
 
     @test('list environments with config file, no app name. should output an error')
     async listAllNoName() {
+        if (process.env.LOCALWSK === 'true')
+            return skip(this);
+
         const config = init.newConfig('app.yml', null, 'dev');
         config.basePath = `${rootPath}/confignoname`;
         try {
@@ -79,6 +88,9 @@ class Envget {
 
     @test('list builtin environments. should output a table, without versions')
     async listAll() {
+        if (process.env.LOCALWSK === 'true')
+            return skip(this);
+
         const config = init.newConfig('app.yml', null, 'dev');
         config.basePath = `${rootPath}/builtins`;
         await init.init(config);
@@ -91,6 +103,9 @@ class Envget {
 
     @test('list builtin environments. should output a table, with versions')
     async listAllWithVersion() {
+        if (process.env.LOCALWSK === 'true')
+            return skip(this);
+
         const config = init.newConfig('app.yml', null, 'prod@0.0.0');
         config.basePath = `${rootPath}/builtins`;
 
@@ -123,6 +138,9 @@ class Envset {
 
     @test('set environment to dev, not persisting')
     async setEnvDev() {
+        if (process.env.LOCALWSK === 'true')
+            return skip(this);
+
         process.env.BLUEMIX_HOME = `${bxroot}/builtins-dev`;
 
         const config = init.newConfig('app.yml', null, 'dev');
@@ -149,6 +167,9 @@ class Envset {
 
     @test('set environment to dev, persisting')
     async setEnvDevPersisting() {
+        if (process.env.LOCALWSK === 'true')
+            return skip(this);
+
         assert.ok(!await fs.pathExists('.wskprops'));
 
         const config = init.newConfig('app.yml', null, 'dev');
@@ -165,9 +186,11 @@ class Envset {
         await fs.remove('.wskprops');
     }
 
-
     @test('change current environment from dev to prod')
     async setEnvFromDevToProd() {
+        if (process.env.LOCALWSK === 'true')
+            return skip(this);
+
         assert.ok(!await fs.pathExists('.wskprops'));
 
         const config = init.newConfig('app.yml', null, 'dev');

@@ -6,7 +6,7 @@
   "scripts": {
     "pretest": "tsc",
     "compilenowatch": "tsc",
-    "test": "nyc mocha",
+    "test": "nyc mocha && nyc mocha dist/test",
     "compile": "tsc -watch -p ./",
     "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov"
   },
