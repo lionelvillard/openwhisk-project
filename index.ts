@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+export * from './libs/types';
+export * from './libs/coordinator';
+
 import * as init from './libs/init';
 import * as deploy from './libs/deploy';
 import * as undeploy from './libs/undeploy';
@@ -20,11 +23,11 @@ import * as refresh from './libs/refresh.js';
 import * as sync from './libs/sync.js';
 import * as env from './libs/env.js';
 import * as yo from './libs/yo.js';
-export * from './libs/types';
 import * as names from './libs/names';
 import * as bx from './libs/bluemix';
 import * as controller from './libs/controller';
 import * as plugins from './libs/pluginmgr';
 import * as interpolation from './libs/interpolation';
+import * as utils from './libs/utils';
 
-export { init, deploy, undeploy, refresh, sync, env, yo, names, bx, controller, plugins, interpolation };
+export { init, deploy, undeploy, refresh, sync, env, yo, names, bx, controller, plugins, interpolation, utils };

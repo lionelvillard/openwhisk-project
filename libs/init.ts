@@ -175,7 +175,7 @@ function setOW(config: types.Config, ow) {
 
     // patch route to support sending swagger.
     // see openwhisk-client-js issue #69
-    ow.routes.change = function(options) {
+    ow.routes.change = function (options) {
         if (!options.hasOwnProperty('swagger')) {
             const missing = ['relpath', 'operation', 'action'].filter(param => !(options || {}).hasOwnProperty(param));
 
@@ -189,7 +189,7 @@ function setOW(config: types.Config, ow) {
         return this.client.request('POST', this.routeMgmtApiPath('createApi'), { body, qs });
     };
 
-    ow.routes.route_swagger_definition = function(params) {
+    ow.routes.route_swagger_definition = function (params) {
         if (params.hasOwnProperty('swagger')) {
             return { apidoc: { namespace: '_', swagger: params.swagger } };
         }
@@ -314,11 +314,14 @@ const fakeow = {
 
 async function configVariableSources(config: types.Config) {
     if (!config.variableSources) {
+
         // TODO: configurable
         config.variableSources = [
             (name) => process.env[name],
-            await (plugins.getVariableSourcePlugin('wskprops').resolveVariableCreator(config))
         ];
+        const wskprops = plugins.getVariableSourcePlugin('wskprops');
+        if (wskprops)
+            config.variableSources.push(await wskprops.resolveVariableCreator(config));
     }
 }
 

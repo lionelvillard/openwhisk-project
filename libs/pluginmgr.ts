@@ -18,17 +18,22 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as utils from './utils';
-import { IConfig, IPlugin, IProject, IContribution } from './types';
+import { IConfig, IPlugin, IProject, IPackage, IAction, IContribution, IApi, ISyntaxContribution } from './types';
 
 const PLUGINS_ROOT = path.join(__dirname, '../../plugins/core');
 const EXT_PLUGINS_ROOT = path.join(__dirname, '../../plugins/node_modules');
 
+const syntaxPlugins = {};
 const actionPlugins = {};
-const pkgPlugins = {};
-const servicePlugins = {};
-const apiPlugins = {};
 const actionBuilderPlugins = {};
 const variableSourcePlugins = {};
+
+const plugins = {
+    package: {},
+    service: {},
+    serviceBindings: {},
+    api: {}
+};
 
 const RESERVED_ACTION_KEYWORDS = ['location', 'code', 'limits', 'inputs', 'kind', 'annotations', 'sequence', 'extra', 'actionName', 'packageName', 'docker'];
 const RESERVED_API_KEYWORDS = [];
@@ -58,6 +63,13 @@ export async function registerFromPath(config: IConfig, modulepath: string) {
         return;
     }
 
+    const _path = contributions.syntax;
+    if (_path) {
+        config.logger.info(`registering plugin ${plugininfo.name} project contribution ${_path}`);
+        // TODO: should really be a path!
+        syntaxPlugins[_path] = modulepath;
+    }
+
     const action = contributions.action;
     if (action) {
         if (!RESERVED_ACTION_KEYWORDS.includes(action)) {
@@ -67,32 +79,10 @@ export async function registerFromPath(config: IConfig, modulepath: string) {
             config.logger.warn(`Skipping ${action}: it is a reserved action name`);
     }
 
-    const pkg = contributions.package;
-    if (pkg) {
-        const pkgs = (typeof pkg === 'string') ? [pkg] : pkg;
-        for (const name of pkgs) {
-            config.logger.info(`registering plugin ${plugininfo.name} package contribution ${name}`);
-            pkgPlugins[name] = modulepath;
-        }
-    }
-
-    const service = contributions.service;
-    if (service) {
-        const names = (typeof pkg === 'string') ? [service] : service;
-        for (const name of names) {
-            config.logger.info(`registering plugin ${plugininfo.name} service contribution ${name}`);
-            servicePlugins[name] = modulepath;
-        }
-    }
-
-    const api = contributions.api;
-    if (api) {
-        if (!RESERVED_API_KEYWORDS.includes(action)) {
-            config.logger.info(`registering plugin ${plugininfo.name} api contribution ${api}`);
-            apiPlugins[api] = modulepath;
-        } else
-            config.logger.warn(`Skipping ${api}: it is a reserved api name`);
-    }
+    registerContributionsForPlugin(config, plugininfo.name, modulepath, contributions, 'package');
+    registerContributionsForPlugin(config, plugininfo.name, modulepath, contributions, 'service');
+    registerContributionsForPlugin(config, plugininfo.name, modulepath, contributions, 'serviceBindings');
+    registerContributionsForPlugin(config, plugininfo.name, modulepath, contributions, 'api');
 
     const builder = contributions.builder;
     if (builder) {
@@ -108,13 +98,9 @@ export async function registerFromPath(config: IConfig, modulepath: string) {
 }
 
 async function registerAll(config: IConfig) {
-    try {
-        await registerFiles(config, PLUGINS_ROOT);
-        if (await fs.pathExists(EXT_PLUGINS_ROOT))
-            await registerFiles(config, EXT_PLUGINS_ROOT);
-    } catch (e) {
-        config.logger.error(JSON.stringify(e, null, 2));
-    }
+    await registerFiles(config, PLUGINS_ROOT);
+    if (await fs.pathExists(EXT_PLUGINS_ROOT))
+        await registerFiles(config, EXT_PLUGINS_ROOT);
 }
 
 async function registerFiles(config: IConfig, root: string) {
@@ -128,25 +114,35 @@ async function registerFiles(config: IConfig, root: string) {
     }
 }
 
-export function getActionPlugin(action, name?: string): IPlugin | null {
-    return getPlugin(actionPlugins, action, name);
-}
-
-export function getPackagePlugin(pkg): IPlugin | null {
-    return getPlugin(pkgPlugins, pkg);
-}
-
-export function getServicePlugin(name): IPlugin | null {
-    if (servicePlugins[name]) {
-        const plugin = require(servicePlugins[name]);
-        plugin.__pluginName = name;
-        return plugin;
+function registerContributionsForPlugin(config: IConfig, pluginName: string, modulepath, contribs, kind: string) {
+    if (contribs && contribs[kind]) {
+        const contrib = contribs[kind];
+        const names = (typeof contrib === 'string') ? [contrib] : contrib;
+        for (const name of names) {
+            config.logger.info(`registering plugin ${pluginName} ${kind} contribution ${name}`);
+            plugins[kind][name] = modulepath;
+        }
     }
-    return null;
 }
 
-export function getApiPlugin(api): IPlugin | null {
-    return getPlugin(apiPlugins, api);
+export function getActionPlugin(action: IAction, name?: string): IPlugin | null {
+    return name ? getPluginByName(actionPlugins, name) : lookupPlugin(actionPlugins, action);
+}
+
+export function getPackagePlugin(pkg: IPackage): IPlugin | null {
+    return lookupPlugin(plugins.package, pkg);
+}
+
+export function getServicePlugin(name: string): IPlugin | null {
+    return getPluginByName(plugins.service, name);
+}
+
+export function getServiceBindingPlugin(name: string): IPlugin | null {
+    return getPluginByName(plugins.serviceBindings, name);
+}
+
+export function getApiPlugin(api: IApi): IPlugin | null {
+    return lookupPlugin(plugins.api, api);
 }
 
 export function getActionBuilderPlugin(name): IPlugin | null {
@@ -167,73 +163,48 @@ export function getVariableSourcePlugin(name): IPlugin | null {
     return null;
 }
 
-function getPlugin(index, obj, name?): IPlugin | null {
-    if (name) {
-        if (index[name]) {
-            const plugin = require(index[name]);
-            if (plugin)
-                plugin.__pluginName = name;
+export function getSyntaxPlugin(name): IPlugin | null {
+    if (syntaxPlugins[name]) {
+        const plugin = require(syntaxPlugins[name]);
+        plugin.__pluginName = name;
+        return plugin;
+    }
+    return null;
+}
+
+function getPluginByName(index, name): IPlugin | null {
+    if (index[name]) {
+        const plugin = require(index[name]);
+        if (plugin)
+            plugin.__pluginName = name;
+        return plugin;
+    }
+    return null;
+}
+
+function lookupPlugin(index, obj): IPlugin | null {
+    for (const n in index) {
+        if (obj.hasOwnProperty(n)) {
+            const plugin = require(index[n]);
+            plugin.__pluginName = n;
             return plugin;
-        }
-    } else {
-        for (const n in index) {
-            if (obj.hasOwnProperty(n)) {
-                const plugin = require(index[n]);
-                plugin.__pluginName = n;
-                return plugin;
-            }
         }
     }
     return null;
 }
 
-// --- Plugin contributions using task scheduler
+// --- Plugin contributions aware of async proxy
 
-// export function scheduleContributions(config: IConfig, project: IProject, contributions: IContribution[], plugin: IPlugin) {
-//     if (!contributions)
-//         return;
+export async function applySyntaxContributions(config: IConfig, contributions: ISyntaxContribution[], plugin: IPlugin) {
+    if (!contributions)
+        return;
+    const project = config.manifest;
 
-//     for (const contrib of contributions) {
-//         switch (contrib.kind) {
-//             case 'action':
-//                 const pkg = utils.getPackage(project, contrib.pkgName, true);
-//                 if (!pkg.actions)
-//                     pkg.actions = {};
+    for (const contrib of contributions) {
+        const parent = utils.getObject(project, contrib.path, true);
+        if (parent.hasOwnProperty(contrib.name))
+            config.fatal(`plugin ${plugin.__pluginName} overrides ${contrib.path}`);
 
-//                 if (pkg.actions[contrib.name]) {
-//                     config.fatal(`plugin ${plugin.__pluginName} overrides ${contrib.name}`);
-//                 }
-
-//                 pkg.actions[contrib.name] = contrib.body;
-//                 await checkAction(config, project, contrib.pkgName, pkg.actions, contrib.name, contrib.body);
-//                 break;
-//             case 'api':
-//                 if (!project.apis)
-//                     project.apis = {};
-//                 const apis = project.apis;
-
-//                 if (apis[contrib.name]) {
-//                     config.fatal(`plugin ${plugin.__pluginName} overrides ${contrib.name}`);
-//                 }
-
-//                 apis[contrib.name] = contrib.body;
-//                 await checkApi(config, project, apis, contrib.name, contrib.body);
-//                 break;
-//             case 'package':
-//                 if (!project.packages)
-//                     project.packages = {};
-//                 const pkgs = project.packages;
-
-//                 if (pkgs[contrib.name]) {
-//                     config.fatal(`plugin ${plugin.__pluginName} overrides ${contrib.name}`);
-//                 }
-
-//                 pkgs[contrib.name] = contrib.body;
-//                 await checkPackage(config, project, pkgs, contrib.name, contrib.body, true);
-//                 await checkPackage(config, project, pkgs, contrib.name, contrib.body, false);
-//                 break;
-//         }
-//     }
-
-// }
-
+        parent[contrib.name] = contrib.body;
+    }
+}

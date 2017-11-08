@@ -1,38 +1,40 @@
 # Deployment Configuration Specification
 
-This document formally described the deployment configuration format and semantic used by `OpenWhisk Deploy`. 
+This document formally described the deployment configuration format and semantic used by `wskp`.
 
-The deployment configuration are written in `YAML`. Since `JSON` and `YAML` are closely related, 
-we use JSON schema to define the constraints imposed on the deployment configurations. These constraints are presented below, along with some examples. 
+The deployment configuration are written in `YAML`. Since `JSON` and `YAML` are closely related,
+we use JSON schema to define the constraints imposed on the deployment configurations. These constraints are presented below, along with some examples.
 
 ## `project` (top-level schema)
 
-A *project* is an *object* representing a collection of OpenWhisk entities (actions, packages, rules, triggers and apis).
+A *project* is an *object* representing a collection of OpenWhisk entities (actions, packages, rules, triggers and apis)
+and related services
 
 ### Properties
 
-- `name` (string, optional) : the name associated to the entities described in the deployment. When set, do not change this without proper review as commands like `undeploy` may not work as expected.   
-  
+- `name` (string, optional) : the name associated to the entities described in the deployment. When set, do not change this without proper review as commands like `undeploy` may not work as expected.
+
   When specified, deployed entities are *fully managed*.
-  
-  *Unmanaged* entities are entities deployed using a tool other than OpenWhisk Deploy, such as `wsk`. 
-  
-  *Partially managed* entities are entities described in deployment files and deployed using OpenWhisk Deploy.
-  
+
+  *Unmanaged* entities are entities deployed using a tool other than `wskp`, such as `wsk`.
+
+  *Partially managed* entities are entities described in deployment files and deployed using `wskp`.
+
   Compare to partially managed entities, fully managed deployments provide these additional guarantees:
-  - during deployment: 
-     - entities removed from deployment files are also undeployed 
-     - external (not managed by this deployment) entities are not overwritten. (Conflict detection) 
+  - during deployment:
+     - entities removed from deployment files are also undeployed
+     - external (not managed by this deployment) entities are not overwritten. (Conflict detection)
   - during undeployment:
      - all entities are undeployed, independently of changes in deployment files.
 
   Internally, a fully managed entity contains the annotation called `managed`.
 
-- `basePath` (string, optional): the relative or absolute base path used to resolve relative location. 
+- `basePath` (string, optional): the relative or absolute base path used to resolve relative location.
 
 - `version` (string, optional): project version following semver format.
 
-- [`includes`](#includes) (array, optional): includes external project configurations
+- [`dependencies`](#dependencies) (array, optional): includes external project configurations
+- [`services`](#services) (array, optional): related services
 - [`packages`](#packages) (object, optional)
 - [`actions`](#actions) (object, optional)
 - [`triggers`](#triggers) (object, optional)
@@ -46,29 +48,29 @@ name: example
 version: 0.1.0
 basePath: .
 
-includes:  # includes other project configuration
+dependencies:  # includes other project configuration
 actions:   # actions in the default package
 packages:  # actions in packages and package bindings
-triggers:  
+triggers:
 rules:
 apis:
 ```
 
-## `dependencies` 
+## `dependencies`
 
-An *array* of `dependency` *objects*. 
+An *array* of `dependency` *objects*.
 
 ## `dependency`
- 
+
 A *object* representing an external project configuration.
 
 Limitation: nested `dependencies` are currently not supported.
 
 ### Properties
 
-- `location` (string, required): the URL to the dependent project configuration file. 
-   
-   Supported format: 
+- `location` (string, required): the URL to the dependent project configuration file.
+
+   Supported format:
      - git: `git+<protocol>://[<user>[:<password>]@]<hostname>[:<port>][:][/]<path>#<commit-ish>`, where `protocol` is one of `ssh`, `http`, `https`, or `file`. See [here](https://www.kernel.org/pub/software/scm/git/docs/gitrevisions.html#_specifying_revisions) for support commit-ish formats.
      - file: `./<path>` or `/<path>`
 
@@ -79,10 +81,21 @@ dependencies:
   - location: git+https://github.com/lionelvillard/openwhisk-deploy.git/project.yaml#master
 ```
 
+## `services`
+
+An array of `service` *objects*
+
+## `service`
+
+An *objects* representing a service.
+
+### Properties
+
+
 ## `packages`
 
-An *object* representing a list of packages. Package name must be unique among the set of package names within a namespace 
- 
+An *object* representing a list of packages. Package name must be unique among the set of package names within a namespace
+
 ### Properties
 
 - `{package-name}` ([`binding`](#binding) | [`packageContent`](#packageContent) | [`interpolation`](#interpolation), optional)
@@ -103,7 +116,7 @@ An *object* representing a package binding
 ```yaml
 packages:
   utils-binding:
-    bind: /whisk.system/utils 
+    bind: /whisk.system/utils
 ```
 ## `packageContent`
 
@@ -118,10 +131,10 @@ An *object* representing the content of a package.
 
 ## `actions`
 
-An *object* representing a list of `action`s. 
+An *object* representing a list of `action`s.
 
 Actions can be specified in any order, e.g. actions composing sequences can be specified after sequences.
-An error is raised when a cyclic dependency is detected.  
+An error is raised when a cyclic dependency is detected.
 
 ### Properties
 
@@ -138,21 +151,21 @@ An *object* representing an action. Extends [`baseAction`](#baseaction)
 ### Properties
 
 - `location` (string, required): the action code location. Either a folder or a file.
-   
-   Relative paths are resolved by using the in-scope `basePath` value. 
 
-- `kind` (enum, optional): the action kind. Determined automatically (see below)  
+   Relative paths are resolved by using the in-scope `basePath` value.
+
+- `kind` (enum, optional): the action kind. Determined automatically (see below)
 
   | Actual kind | Specified Kind | Default When |
   |----------------|-------------|--------------|
   | [nodejs:6](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#javascript-runtime-environments) | nodejs <br/> nodejs:6 <br/> nodejs:default |file extension is `.js` <br/> file name is `package.json` </br> folder contains `package.json`|
   | [python:2](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#python-2-actions)  | python <br/> python:2 | file extension is `.py`
-  | [python:3](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#python-3-actions)  | python:3 |  
-  | [java](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-and-invoking-an-action-1) | java | file extension is `.jar` <br/> | 
-  | [php:7.1](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-and-invoking-an-action-1) | php <br/> php:7.1 | file extension is `.php` <br/> | 
-  | [swift:3.1.1](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#swift-actions) | swift <br/> swift:3.1.1 | file extension is `.swift` | 
-  | [swift:3](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#swift-actions) | swift <br/> swift:3 |   | 
-  | [docker](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-docker-actions) | blackbox | file  is `Dockefile` <br/> folder contains `Dockerfile` <br/> action has `image` property | 
+  | [python:3](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#python-3-actions)  | python:3 |
+  | [java](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-and-invoking-an-action-1) | java | file extension is `.jar` <br/> |
+  | [php:7.1](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-and-invoking-an-action-1) | php <br/> php:7.1 | file extension is `.php` <br/> |
+  | [swift:3.1.1](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#swift-actions) | swift <br/> swift:3.1.1 | file extension is `.swift` |
+  | [swift:3](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#swift-actions) | swift <br/> swift:3 |   |
+  | [docker](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-docker-actions) | blackbox | file  is `Dockefile` <br/> folder contains `Dockerfile` <br/> action has `image` property |
 
 - `main` (string, optional): the action entry point. Only valid for [Java](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-java-actions) (no default), [PHP](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-and-invoking-a-php-action) (default is `main`) and [Python](https://github.com/apache/incubator-openwhisk/blob/master/docs/actions.md#creating-and-invoking-a-python-action) (default is `main`).
 
@@ -190,9 +203,9 @@ actions:
     image: openwhisk/dockerskeleton
 ```
 
-## `copy`  
+## `copy`
 
-An *object* representing an action to copy. 
+An *object* representing an action to copy.
 
 Extends [`baseAction`](#baseaction)
 
@@ -203,45 +216,45 @@ Extends [`baseAction`](#baseaction)
     Copy `parameters`, `annotations`, `limits` and the action executable content.
     Can be overridden or extended with [`inputs`](#parameters), [`annotations`](#annotations), [`limits`](#limits)
 
-    The action to copy can either be locally defined (in the same manifest) 
+    The action to copy can either be locally defined (in the same manifest)
     or already deployed.
 
-  
+
 ### Example
 
 ```yaml
 packages:
   utils:
     actions:
-      mycat:  # Copy deployed 'cat' action 
+      mycat:  # Copy deployed 'cat' action
         copy: /whisk.system/utils/cat
         inputs:
           lines: Hello Gentle World
-      
-      mycat2: # Copy locally defined 'mycat' action 
+
+      mycat2: # Copy locally defined 'mycat' action
         copy: mycat
 ```
 
-## `inline` 
+## `inline`
 
-An *object* representing an action with inlined code.  
+An *object* representing an action with inlined code.
 
 Extends [`baseAction`](#baseaction)
 
 ### Properties
 
-- `code` (string, required): the action textual code.       
+- `code` (string, required): the action textual code.
 - `kind` ([`baseAction`](#baseaction) enum, required): the required action kind
-   
+
 ### Example
 
 ```yaml
 packages:
   utils:
     actions:
-      myecho:   
+      myecho:
         kind: nodejs
-        code: |  
+        code: |
           function main(params) {
             console.log(params);
             return params || {};
@@ -253,11 +266,11 @@ An *object* representing a sequence action. Extends [`baseAction`](#baseaction)
 
 ### Properties
 
-- `sequence` (string, required): a comma-separated list of action names. 
-     
-   Non-fully qualified action names are resolved as described [here](#entity-name-resolution)  
-     
- 
+- `sequence` (string, required): a comma-separated list of action names.
+
+   Non-fully qualified action names are resolved as described [here](#entity-name-resolution)
+
+
 ### Example
 
 ```yaml
@@ -277,12 +290,12 @@ A common set of action properties.
 - `limits` ([`limits`](#limits), optional): the action limits
 - `inputs` ([`parameters`](#parameters), optional): action parameters
 - `annotations` ([`annotations`](#annotations), optional)
-  
+
   Builtin annotations:
   - [`web-export`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md) (true|false): enable/disable web action
   - [`raw-http`](https://github.com/apache/incubator-openwhisk/blob/master/docs/webactions.md#raw-http-handling) (true|false): enable/disable raw HTTP handling
 
-- `builder` ([`builder`](#builder), optional): the action builder. 
+- `builder` ([`builder`](#builder), optional): the action builder.
 
 ## `triggers`
 
@@ -340,9 +353,9 @@ An `object` representing a rule.
 ### Properties
 
 - trigger (string, required): the trigger name. Resolved as described [here](#entity-name-resolution)
-- action (string, required): the action name. Resolved as described [here](#entity-name-resolution) 
+- action (string, required): the action name. Resolved as described [here](#entity-name-resolution)
 - status (enum `active`|`inactive`, optional): whether the rule is `active` or `inactive`. Default is `active`
-     
+
 ### Example
 
 ```yaml
@@ -360,17 +373,17 @@ An `object` representing a list of `api`s.
 
 ### Properties
 
-- `{apiname}` ([`api`](#api), optional): 
+- `{apiname}` ([`api`](#api), optional):
 
 ## `api`
 
-An `object` representing an api. The format loosely follows the [OpenAPI](https://www.openapis.org/) format. 
+An `object` representing an api. The format loosely follows the [OpenAPI](https://www.openapis.org/) format.
 
 ### Properties
 
 - basePath (string, required): the API base path. LIMITATION: currently it **must** be the same as the api name
-- paths ([`apiPaths`](#apiPaths), optional): the list of relative paths   
-     
+- paths ([`apiPaths`](#apiPaths), optional): the list of relative paths
+
 **Plugin extensions**:
 - [`swagger`](https://github.com/lionelvillard/openwhisk-project/blob/master/plugins/core/wskp-swagger-plugin/README.md): describes routes in Swagger.
 
@@ -391,11 +404,11 @@ An `object` representing a list of relative api `path`s.
 
 ### Properties
 
-- `{relpath}` ([`apiPath`](#apiPath), optional): 
+- `{relpath}` ([`apiPath`](#apiPath), optional):
 
 ## `apiPath`
 
-An `object` representing a path. 
+An `object` representing a path.
 
 ### Properties
 
@@ -445,11 +458,11 @@ An *object* representing action limits
 
 - `memory` (integer, optional, default: 256): the maximum memory limit in MB for the action
 - `logsize` (integer, optional, default:10): the maximum log size limit in MB for the action
-- `timeout` (integer, optional, default:60000): the timeout limit in milliseconds after which the action is terminated 
+- `timeout` (integer, optional, default:60000): the timeout limit in milliseconds after which the action is terminated
 
 ### Properties
 
-- `plugin` (string, required): the name of the plugin 
+- `plugin` (string, required): the name of the plugin
 
 ## `builder`
 
@@ -459,7 +472,7 @@ Extensible: see [`builder`](../plugins/README.md#) contribution point.
 
 ### Properties
 
-- `name`  (string, required): the name of the builder plugin. 
+- `name`  (string, required): the name of the builder plugin.
 - `{key}` (any): the plugin input parameters
 
 ### Example
@@ -481,11 +494,11 @@ A *string* of the form `${ expr }` where `expr` is interpreted as a Javascript e
 - `vars`: an *object* containing *resolved* variable values in addition to built-in variables.
 
 The built-in variables are:
-- `envname`: name of the current environment 
+- `envname`: name of the current environment
 
 ## Entity name resolution
 
 Non-fully qualified entity names are resolved as follows:
   - partially qualified names (`packageName/actionName`) are resolved using the enclosing namespace
-  - unqualified names (`actionName`) are resolved using the enclosing package name (if any) and namespace. 
+  - unqualified names (`actionName`) are resolved using the enclosing package name (if any) and namespace.
 

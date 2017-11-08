@@ -1,3 +1,4 @@
+export type ProjectContributor = (IConfig, IProject) => Contribution[] | Promise<Contribution[]>;
 /*
  * Copyright 2017 IBM Corporation
  *
@@ -104,23 +105,23 @@ export interface IConfig {
     load?: Loader;
 }
 
-export interface DeployConfig extends Config {
-}
-
 // --- Plugins
 
 // OpenWhisk Plugin Interface
 export type Plugin = IPlugin;
 export interface IPlugin {
 
-    // Action contributor returning a list of contributions to apply to the deployment configuration
+    // Action contributor (/actions, packages/<name>/actions)
     actionContributor?: ActionContributor;
 
-    // API contributor returning a list of contributions to apply to the deployment configuration
+    // API contributor (/api)
     apiContributor?: ApiContributor;
 
-    // service contributor returning a list of contributions to apply to the deployment configuration
+    // service contributor (/services/<name>/type: <type>)
     serviceContributor?: ServiceContributor;
+
+    // service binding contributor (/packages/<name>/service: <name>)
+    serviceBindingContributor?: ServiceBindingContributor;
 
     // Action builder contributor making the action artifacts to deploy.
     build?: ActionBuilder;
@@ -128,12 +129,18 @@ export interface IPlugin {
     // A variable resolver creator.
     resolveVariableCreator?: VariableResolverCreator;
 
+    // Syntax contributor returning a list of syntax contributions
+    syntaxContributor?: SyntaxContributor;
+
     // Plugin name (internal)
     __pluginName?: string;
 }
 
+export type SyntaxContributor = (IConfig, name: string, value: any) => ISyntaxContribution[];
+
 export type ActionContributor = (IConfig, IProject, pkgName: string, actionName: string, IAction) => Contribution[] | Promise<Contribution[]>;
-export type ServiceContributor = (IConfig, pkgName: string, IPackage) => Contribution[] | Promise<Contribution[]>;
+export type ServiceContributor = (IConfig, string, IService) => Contribution[];
+export type ServiceBindingContributor = (IConfig, pkgName: string, IPackage) => Contribution[];
 export type ApiContributor = (IConfig, IProject, apiname: string, IApi) => Contribution[] | Promise<Contribution[]>;
 export type ActionBuilder = (IConfig, IAction, Builder) => string | Promise<string>;
 export type VariableResolver = (name: string) => any;
@@ -141,12 +148,27 @@ export type VariableResolverCreator = (Config) => Promise<(name: string) => any>
 
 // A contribution to the project configuration
 export type IContribution = Contribution;
-export type Contribution = ActionContribution | ApiContribution | PackageContribution;
+export type Contribution = IActionContribution | IApiContribution | IPackageContribution | IServiceContribution;
+
+// A syntax contribution
+export interface ISyntaxContribution {
+    // kind of contribution
+    kind: 'syntax';
+
+    // The path pointing to the object where to insert the contribution
+    path: string;
+
+    // The property name
+    name: string;
+
+    // contribution body
+    body: any;
+}
 
 // An action contribution
-export interface ActionContribution {
+export interface IActionContribution {
     // kind of contribution
-    kind: "action";
+    kind: 'action';
 
     // action package
     pkgName: string | null;
@@ -158,11 +180,10 @@ export interface ActionContribution {
     body: IAction;
 }
 
-
-// An package contribution
-export interface PackageContribution {
+// An package (including package binding) contribution
+export interface IPackageContribution {
     // kind of contribution
-    kind: "package";
+    kind: 'package';
 
     // package name (or null-kind for default package)
     name: string;
@@ -172,15 +193,27 @@ export interface PackageContribution {
 }
 
 // An api contribution
-export interface ApiContribution {
+export interface IApiContribution {
     // kind of contribution
-    kind: "api";
+    kind: 'api';
 
     // api name
     name: string;
 
     // api configuration
     body: IApi;
+}
+
+// A service contribution
+export interface IServiceContribution {
+    // kind of contribution
+    kind: "service";
+
+    // service id
+    id: string;
+
+    // service configuration
+    body: IService;
 }
 
 // --- Project configuration format
@@ -191,14 +224,17 @@ export interface IProject {
     /* Project name  */
     name?: string;
 
-    /* target namespace  */
+    /* Target namespace  */
     namespace?: string;
 
-    /* project version */
+    /* Project version */
     version?: string;
 
-    /* base path. Relative path are resolved against it  */
+    /* Base path. Relative path are resolved against it  */
     basePath?: string;
+
+    /* Related services */
+    services?: Array<{[key: string]: IService}>;
 
     /* Dependencies */
     dependencies?: Array<{[key: string]: any}>;
@@ -217,14 +253,24 @@ export interface IProject {
 
     /* OpenWhisk rules */
     rules?: {[key: string]: any};
-
 }
 
 export type IAction = any;
 export type IPackage = any;
 export type IApi = any;
 
-export interface Builder {
+export interface IService {
+    /* Service name. By default same as service id */
+    name?: string;
+
+    /* Service type */
+    type: string;
+
+    // service parameters
+    [key: string]: any;
+}
+
+export interface IBuilder {
     // name
     name: string;
 

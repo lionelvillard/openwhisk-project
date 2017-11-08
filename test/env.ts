@@ -101,7 +101,7 @@ class Envget {
         assert.equal(local.length, 1);
     }
 
-    @test('list builtin environments. should output a table, with versions')
+    @test.only('list builtin environments. should output a table, with versions')
     async listAllWithVersion() {
         if (process.env.LOCALWSK === 'true')
             return skip(this);
@@ -118,8 +118,6 @@ class Envget {
         assert.equal(prod[0].versions.length, 1);
 
         await exec('bx account space-delete builtins-prod@0.0.0 -f');
-
-
     }
 }
 

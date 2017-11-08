@@ -13,7 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { IConfig, IProject, IPackage, IAction, IApi, ProjectProps, ActionProps, Contribution } from './types';
+import {
+    IConfig, IProject, IPackage, IAction, IApi, ProjectProps, ActionProps, Contribution,
+    ISyntaxContribution
+} from './types';
+
 import * as fs from 'fs-extra';
 import * as yaml from 'yamljs';
 import * as path from 'path';
@@ -46,24 +50,20 @@ export async function check(config: IConfig) {
     }
     config.logger.info(`target namespace: ${manifest.namespace}`);
 
-    // 1. load dependencies. They might contain plugins needed to valid the project
+    // 1. load dependencies. They might contain plugins needed to validate the project
     await checkDependencies(config, manifest);
 
-    // 2. Expand unknown properties (not possible at the moment).
+    // 2. Check for unknown properties
     for (const key in manifest) {
         if (!(key in ProjectProps)) {
-            config.fatal(`Invalid property ${key} in project`);
-            return;
+            config.fatal('Invalid project property %s', key);
         }
     }
 
     // 3. Expand and check builtin properties
-
+    await checkServices(config, manifest);
     await checkPackages(config, manifest);
-
-    if (manifest.actions)
-        await checkActions(config, manifest, '', manifest.actions);
-
+    await checkActions(config, manifest, '', manifest.actions);
     await checkTriggers(config, manifest);
     await checkRules(config, manifest);
     await checkApis(config, manifest);
@@ -71,38 +71,58 @@ export async function check(config: IConfig) {
     config.clearProgress();
 }
 
-async function checkDependencies(config: IConfig, manifest: IProject) {
-    let dependencies = manifest.dependencies;
-    if (dependencies) {
-        // Evaluate expressions
-        dependencies = evaluateAll(config, dependencies);
+async function checkServices(config: IConfig, manifest: IProject) {
+    const services = evaluateAll(config, manifest.services);
+    if (!services)
+        return;
 
-        // Inline dependencies
-        for (const dependency of dependencies) {
-            if (!dependency.location)
-                throw new Error(`missing location in ${JSON.stringify(dependency)}`);
+    for (const id in services) {
+        const service = services[id];
 
-            let location = dependency.location.trim();
-            if (location.startsWith('git+')) {
-                location = await gitClone(config, dependency);
-            } else {
-                // File.
-                location = path.resolve(config.basePath, location);
-            }
+        if (!service.hasOwnProperty('type'))
+            config.fatal('missing property type for service id %s', id);
 
-            // Currently only support one namespace so merge and resolve path!
-            const includedProject = yaml.load(location);
-            const basePath = path.dirname(location);
-            mergeProject(config, basePath, includedProject);
+        delete services[id];
 
-            // Load plugins provided by the dependency
-            const pluginPath = path.join(basePath, 'plugin');
-            if (await fs.pathExists(pluginPath)) {
-                await plugins.registerFromPath(config, pluginPath);
-            }
-        }
-        delete manifest.dependencies;
+        const plugin = plugins.getServicePlugin(id);
+        if (!plugin)
+            config.fatal('no plugin found for service %s', id);
+
+        const contributions = plugin.serviceContributor(config, id, service);
+        await applyContributions(config, manifest, contributions, plugin);
     }
+}
+
+async function checkDependencies(config: IConfig, manifest: IProject) {
+    const dependencies = evaluateAll(config, manifest.dependencies);
+    if (!dependencies)
+        return;
+
+    // Inline dependencies
+    for (const dependency of dependencies) {
+        if (!dependency.location)
+            config.fatal('missing location in %s', dependency);
+
+        let location = dependency.location.trim();
+        if (location.startsWith('git+')) {
+            location = await gitClone(config, dependency);
+        } else {
+            // File.
+            location = path.resolve(config.basePath, location);
+        }
+
+        // Currently only support one namespace so merge and resolve path!
+        const includedProject = yaml.load(location);
+        const basePath = path.dirname(location);
+        mergeProject(config, basePath, includedProject);
+
+        // Load plugins provided by the dependency
+        const pluginPath = path.join(basePath, 'plugin');
+        if (await fs.pathExists(pluginPath)) {
+            await plugins.registerFromPath(config, pluginPath);
+        }
+    }
+    delete manifest.dependencies;
 }
 
 async function checkPackages(config: IConfig, manifest) {
@@ -128,19 +148,15 @@ async function checkPackage(config: IConfig, manifest, packages, pkgName, pkg, b
             if (pkg.bind) {
                 // TODO
             } else if (pkg.service) {
+                // Service bindings are implemented as plugins.
                 delete packages[pkgName];
 
-                const plugin = plugins.getServicePlugin(pkg.service);
-                if (!plugin) {
-                    config.logger.warn(`no plugin found for service ${pkg.service}. Ignored`);
-                    return;
-                }
+                const plugin = plugins.getServiceBindingPlugin(pkg.service);
+                if (!plugin)
+                    config.fatal('no plugin found for service binding %s', pkg.service);
 
-                let contributions = plugin.serviceContributor(config, pkgName, pkg);
-                if (contributions instanceof Promise) {
-                    contributions = await contributions;
-                    await applyContributions(config, manifest, contributions, plugin);
-                }
+                const contributions = plugin.serviceBindingContributor(config, pkgName, pkg);
+                await applyContributions(config, manifest, contributions, plugin);
             } else {
                 if (!binding)
                     await checkActions(config, manifest, pkgName, pkg.actions);
@@ -151,7 +167,10 @@ async function checkPackage(config: IConfig, manifest, packages, pkgName, pkg, b
     }
 }
 
-async function checkActions(config: IConfig, manifest, pkgName: string, actions) {
+async function checkActions(config: IConfig, manifest, pkgName: string, actions: IAction) {
+    if (!actions)
+        return;
+
     for (const actionName in actions) {
         const action = actions[actionName];
         await checkAction(config, manifest, pkgName, actions, actionName, action);
@@ -198,7 +217,7 @@ async function checkAction(config: IConfig, manifest, pkgName: string, actions, 
 
         // TODO
     } else {
-        throw new Error(`Invalid action ${actionName}: missing either location, sequence, code or image property`);
+        config.fatal('Invalid action %s: missing either location, sequence, code or image property', actionName);
     }
 }
 
@@ -371,6 +390,9 @@ async function applyContributions(config: IConfig, manifest: IProject, contribut
                     await checkPackage(config, manifest, pkgs, contrib.name, contrib.body, true);
                     await checkPackage(config, manifest, pkgs, contrib.name, contrib.body, false);
                     break;
+                case 'service':
+                    break;
+
             }
         }
     }
@@ -459,7 +481,7 @@ function mergeProject(config: IConfig, basePath: string, project: IProject) {
     }
 }
 
-function mergeActions(config: IConfig, basePath: string, pkgName: string, pkg: IPackage, actions: {[key: string]: IAction}, checkConflict: boolean) {
+function mergeActions(config: IConfig, basePath: string, pkgName: string, pkg: IPackage, actions: { [key: string]: IAction }, checkConflict: boolean) {
     if (!pkg.hasOwnProperty('actions'))
         pkg.actions = {};
 

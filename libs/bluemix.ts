@@ -34,12 +34,13 @@ export const isBluemixCapable = async () => {
     return false;
 }
 
-export interface Credential {
-    endpoint?: string,
-    apikey?: string,
-    org?: string,
-    space?: string,
-    home?: string
+export type Credential = ICredential;
+export interface ICredential {
+    endpoint?: string;
+    apikey?: string;
+    org?: string;
+    space?: string;
+    home?: string;
 }
 
 const wskProps = (cred: Credential) => `${cred.home}/.wskprops`;
@@ -58,8 +59,9 @@ async function doRun(config: types.Config, cred: Credential, cmd: string) {
     } catch (e) {
         if (await doLogin(config, cred))
             return doRun(config, cred, cmd); //  tokens have been refreshed. Retry command.
-        else
-            throw e; // something else happened. 
+        else {
+            throw e; // something else happened.
+        }
     }
 }
 
@@ -76,12 +78,13 @@ export const login = async (config: types.Config, cred: Credential) => {
     } catch (e) {
         return false;
     }
-}
+};
 
 // Login to Bluemix. @return true if tokens have been refreshed.
 async function doLogin(config: types.Config, cred: Credential) {
     try {
         const target = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx target`;
+        config.logger.debug(`exec ${target}`);
         await exec(target);
         return false;
     } catch (e) {
@@ -127,13 +130,13 @@ export function fixupCredentials(config: types.Config, cred: Credential) {
     cred.endpoint = cred.endpoint || 'api.ng.bluemix.net';
     cred.apikey = cred.apikey || process.env.BLUEMIX_API_KEY;
     if (!cred.apikey) {
-        throw 'cannot login to Bluemix: missing apikey';
+        config.fatal('cannot login to Bluemix: missing apikey');
     }
     if (!cred.org) {
-        throw 'cannot login to Bluemix: missing org';
+        config.fatal('cannot login to Bluemix: missing org');
     }
     if (!cred.space && !cred.home) {
-        throw 'cannot login to Bluemix: missing either space or home';
+        config.fatal('cannot login to Bluemix: missing either space or home');
     }
     if (!cred.home) {
         cred.home = path.join(config.cache, '.bluemix', cred.endpoint, cred.org, cred.space);

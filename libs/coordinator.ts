@@ -14,54 +14,92 @@
  * limitations under the License.
  */
 
-// Convenient promisee executor type
+// Convenient promise executor type
 type Executor<T> = (resolve: (value?: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void;
 
-// enum TaskStatus { RUNNING, COMPLETED, FAILED }
+const filteringTags = [];
 
-export function task<T>(executor: Executor<T>, tags: string[] = []): Task<T> {
-    const tsk = new Task(executor, tags);
-    tsk.then(() => tsk.completed());
-    return tsk;
+// Tells which tasks should not run.
+export function filterTasks(tags: string[]) {
+    filteringTags.push(tags);
 }
 
-/* A task is a Promise with additional properties */
-export class Task<T> extends Promise<T> {
+// All tasks currently running
+const tasks = new Set<Task<any>>();
 
-    // Pending tasks
-    static pendingTasks = new Set<Task<any>>();
+// Errored tasks
+export const errored = new Array<Task<any>>();
 
-    //  public status: TaskStatus = TaskStatus.RUNNING;
+// Register new task
+export function task<T>(executor: Executor<T>, tags: string[] = []): Task<T> {
+    return ptask(() => new Promise(executor), tags);
+}
 
-    /* Whether the patcher function has been set */
-    public patcher;
+// Register new task
+export function ptask<T>(delayedPromise: () => Promise<T>, tags: string[] = []): Task<T> {
+    if (accept(tags)) {
+        const tsk = new Task(delayedPromise());
+        tasks.add(tsk);
+        tsk.then(() => tasks.delete(tsk));
+        return tsk;
+    }
+    return null;
+}
+
+// Wait for the fullfilment of all currently running tasks.
+export async function allTasks(): Promise<void> {
+    await Promise.all(tasks.values());
+}
+
+/* A task. Basically a promise exposing the resolved/rejected value */
+export class Task<T> {
+
+    /* Resolved value */
+    public resolved: T;
+
+    /* Pending awaiters */
+    private awaiters = [];
 
     constructor(
-        /* Promise executor */
-        public executor: Executor<T>,
-
-        /* General purpose tags. Can be used for filtering and task ordering */
-        public tags: string[]
+        /* Promise */
+        public promise: Promise<T>,
     ) {
-        super(executor);
-
-        Task.pendingTasks.add(this);
+        promise
+            .then(v => { this.resolved = v; this.notify(); })
+            .catch(e => { errored.push(this); });
     }
 
-    public completed() {
-        Task.pendingTasks.delete(this);
+    public then(onfulfilled?: (T) => any, onrejected?: (any) => any) {
+        this.notifyAwaiter({ onfulfilled, onrejected });
+    }
+
+    private notifyAwaiter(awaiter) {
+        if (this.resolved)
+            awaiter.onfulfilled(this.resolved);
+       // else if (this.reason)
+         //   awaiter.onrejected(this.reason);
+        else
+            this.awaiters.push(awaiter);
+
+    }
+
+    private notify() {
+        while (this.awaiters.length > 0) {
+            this.notifyAwaiter(this.awaiters.shift());
+        }
     }
 
 }
 
-// /* Task composition */
-// export class CompoundTask<T> extends Task<T> {
+// -- helpers
 
-//     constructor(
-//         public dependsOn: Task<any>[],
-//         public tags: string[]
-//     ) {
-//         super();
-//     }
+function accept(tags: string[]) {
+    if (!tags)
+        return true;
 
-// }
+    for (const tag of tags) {
+        if (filteringTags.includes(tag))
+            return false;
+    }
+    return true;
+}

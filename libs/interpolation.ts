@@ -21,7 +21,7 @@ import { Task } from './coordinator';
 
 // recursively evaluate expressions in obj
 export function evaluateAll(config: types.Config, obj: any, filter?: string[]) {
-    return evaluateAllI(config, obj, filter || [], '');
+    return obj ? evaluateAllI(config, obj, filter || [], '') : obj;
 }
 
 function evaluateAllI(config: types.Config, obj: any, filter: string[], path: string) {
@@ -62,7 +62,7 @@ export async function fullyEvaluate(config: types.Config, expr: string) {
     if (!value.tasks)
         return value;
 
-    return Task.all(value.tasks).then(v => fullyEvaluate(config, value.expr));
+    return Promise.all(value.tasks).then(v => fullyEvaluate(config, value.expr));
 }
 
 function resolveVariable(config, name) {
@@ -82,7 +82,7 @@ function convert(strings, ...exprs) {
     if (exprs.length === 1 && strings.length <= 2 && strings.join('') === '') {
         const expr = exprs[0];
         if (expr.task) {
-            return { expr: expr.expr, tasks: [ expr.task ] };
+            return { expr: expr.expr, task: [expr.task] };
         }
         return exprs[0]; // preserve expression type.
     }
@@ -152,32 +152,20 @@ class AsyncHandler {
         if (!target.hasOwnProperty(name))
             return target[name];
 
-        const value = target[name];
+        let value = target[name];
         if (value instanceof Task) {
-            this.installPatcher(target, name, value);
-
-            // return partially evaluated expression. Can be evaluated when task is completed.
-            return { expr: `\${proxy.${this.id}.${name}}`, task: value };
-        } else {
-            // Make sure proxy is set.
-            setProxy(target, name);
+            if (value.resolved) {
+                value = target[name] = value.resolved;
+            } else {
+                // return partially evaluated expression. Can be evaluated when task is completed.
+                return { expr: `\${proxy.${this.id}.${name}}`, task: value };
+            }
         }
+
+        // Make sure proxy is set.
+        setProxy(target, name);
 
         return value;
-    }
-
-    private installPatcher(target, name, value: Task<any>) {
-        if (!value.patcher) {
-            value.then(v => {
-                // Replace task by actual value (which could be another task)
-                target[name] = v;
-
-                // Install proxy (for object)
-                setProxy(target, name);
-            });
-
-            value.patcher = true;
-        }
     }
 }
 

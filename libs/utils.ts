@@ -44,7 +44,7 @@ export const initFromBaseAction = baseAction => {
 
 // --- Conversion functions from manifest format to rest params
 
-export const getAnnotations = (config, annotations) : any => {
+export const getAnnotations = (config, annotations): any => {
     const converted = getKeyValues(annotations);
     if (config.manifest.name) {
         converted.push({ key: 'managed', value: config.manifest.name });
@@ -67,7 +67,7 @@ export const indexKeyValues = kvs => {
     return index
 }
 
-// TODO: support ${} format 
+// TODO: support ${} format
 const resolveValue = (value, args) => {
     if (typeof value === 'string' && value.startsWith('$')) {
         const key = value.substr(1)
@@ -103,6 +103,35 @@ export function getAPIHost(config: types.Config) {
 }
 
 // --- Helper functions managing openwhisk configuration files
+
+/*
+  Get the object represented by the path. Create missing intermediate values.
+  The path syntax is:
+  - '.name': select the object 'name'. Create if it does not exist
+  - '.name[]': append an object in the array 'name'.
+*/
+export function getObject(project: types.IProject, path: string, create = false) {
+    let current: any = project;
+    const segments = path.split('.');
+    for (const segment of segments) {
+        const array = segment.endsWith('[]');
+        const name = array ? segment.substr(0, segment.length - 2) : segment;
+
+        if (!current.hasOwnProperty(name)) {
+            if (!create)
+                return null;
+
+            current[name] = array ? [] : {};
+        }
+        current = current.name;
+        if (array) {
+            const obj = {};
+            current.push(obj);
+            current = obj;
+        }
+    }
+    return current;
+}
 
 export const getPackage = (manifest, packageName, create = false) => {
     let pkgCfg;
