@@ -15,7 +15,7 @@
  */
 import { suite, test, slow, timeout, skip } from 'mocha-typescript';
 import * as assert from 'assert';
-import { env, init } from '..';
+import { env, init, bx } from '..';
 import { exec } from 'child-process-promise';
 import * as fs from 'fs-extra';
 import * as parser from 'properties-parser';
@@ -101,7 +101,7 @@ class Envget {
         assert.equal(local.length, 1);
     }
 
-    @test.only('list builtin environments. should output a table, with versions')
+    @test('list builtin environments. should output a table, with versions')
     async listAllWithVersion() {
         if (process.env.LOCALWSK === 'true')
             return skip(this);
@@ -117,7 +117,7 @@ class Envget {
         assert.equal(prod.length, 1);
         assert.equal(prod[0].versions.length, 1);
 
-        await exec('bx account space-delete builtins-prod@0.0.0 -f');
+        await bx.run(config, { space: 'builtins-prod@0.0.0' }, 'account space-delete builtins-prod@0.0.0 -f');
     }
 }
 
@@ -144,23 +144,27 @@ class Envset {
         const config = init.newConfig('app.yml', null, 'dev');
         config.basePath = `${rootPath}/builtins`;
         await init.init(config);
+        try {
+            const success = await env.cacheEnvironment(config);
+            assert.ok(success);
 
-        const success = await env.cacheEnvironment(config);
-        assert.ok(success);
+            const wskprops = parser.read(`${bxroot}/builtins-dev/.wskprops`);
+            const envprops = parser.read(`${cacheroot}/envs/.dev.wskprops`);
 
-        const wskprops = parser.read(`${bxroot}/builtins-dev/.wskprops`);
-        const envprops = parser.read(`${cacheroot}/envs/.dev.wskprops`);
+            assert.strictEqual(envprops.AUTH, envprops.AUTH);
+            assert.strictEqual(envprops.APIGW_ACCESS_TOKEN, envprops.APIGW_ACCESS_TOKEN);
+            assert.strictEqual(envprops.APIHOST, envprops.APIHOST);
+            assert.ok(!await fs.pathExists('.wskprops'));
 
-        assert.strictEqual(envprops.AUTH, envprops.AUTH);
-        assert.strictEqual(envprops.APIGW_ACCESS_TOKEN, envprops.APIGW_ACCESS_TOKEN);
-        assert.strictEqual(envprops.APIHOST, envprops.APIHOST);
-        assert.ok(!await fs.pathExists('.wskprops'));
-
-        // cleanup
-        await exec(`bx login -a api.ng.bluemix.net -o ${process.env.BLUEMIX_ORG}`);
-        await exec('bx iam space-delete builtins-dev -f');
-        await fs.remove('.wskprops');
-        delete process.env.BLUEMIX_HOME;
+            // cleanup
+            await exec(`bx login -a api.ng.bluemix.net -o ${process.env.BLUEMIX_ORG}`);
+            await exec('bx iam space-delete builtins-dev -f');
+            await fs.remove('.wskprops');
+            delete process.env.BLUEMIX_HOME;
+        } catch (e) {
+            config.logger.error(e);
+            assert.ok(false);
+        }
     }
 
     @test('set environment to dev, persisting')
@@ -174,14 +178,19 @@ class Envset {
         config.basePath = `${rootPath}/builtins`;
         await init.init(config);
 
-        const set = await env.setEnvironment(config);
-        assert.ok(set);
-        assert.ok(await fs.pathExists('.wskprops'));
-        const wskprops = parser.read('.wskprops');
-        assert.equal(wskprops.ENVNAME, 'dev');
+        try {
+            const set = await env.setEnvironment(config);
+            assert.ok(set);
+            assert.ok(await fs.pathExists('.wskprops'));
+            const wskprops = parser.read('.wskprops');
+            assert.equal(wskprops.ENVNAME, 'dev');
 
-        // cleanup
-        await fs.remove('.wskprops');
+            // cleanup
+            await fs.remove('.wskprops');
+        } catch (e) {
+            config.logger.error(e);
+            assert.ok(false);
+        }
     }
 
     @test('change current environment from dev to prod')
@@ -195,25 +204,30 @@ class Envset {
         config.basePath = `${rootPath}/builtins`;
         await init.init(config);
 
-        const set = await env.setEnvironment(config);
-        assert.ok(set);
-        assert.ok(await fs.pathExists('.wskprops'));
-        const wskprops = parser.read('.wskprops');
-        assert.equal(wskprops.ENVNAME, 'dev');
+        try {
+            const set = await env.setEnvironment(config);
+            assert.ok(set);
+            assert.ok(await fs.pathExists('.wskprops'));
+            const wskprops = parser.read('.wskprops');
+            assert.equal(wskprops.ENVNAME, 'dev');
 
-        const configprod = init.newConfig('app.yml', null, 'prod@0.0.0');
-        configprod.basePath = `${rootPath}/builtins`;
-        await init.init(configprod);
-        const set2 = await env.setEnvironment(configprod);
-        assert.ok(set2);
+            const configprod = init.newConfig('app.yml', null, 'prod@0.0.0');
+            configprod.basePath = `${rootPath}/builtins`;
+            await init.init(configprod);
+            const set2 = await env.setEnvironment(configprod);
+            assert.ok(set2);
 
-        assert.ok(await fs.pathExists('.wskprops'));
-        const wskpropsprod = parser.read('.wskprops');
-        assert.equal(wskpropsprod.ENVNAME, 'prod');
-        assert.equal(wskpropsprod.ENVVERSION, '0.0.0');
+            assert.ok(await fs.pathExists('.wskprops'));
+            const wskpropsprod = parser.read('.wskprops');
+            assert.equal(wskpropsprod.ENVNAME, 'prod');
+            assert.equal(wskpropsprod.ENVVERSION, '0.0.0');
 
-        // cleanup
-        await exec('bx account space-delete builtins-prod@0.0.0 -f');
-        await fs.remove('.wskprops');
+            // cleanup
+            await bx.run(config, { space: 'builtins-prod@0.0.0' }, 'account space-delete builtins-prod@0.0.0 -f');
+            await fs.remove('.wskprops');
+        } catch (e) {
+            config.logger.error(e);
+            assert.ok(false);
+        }
     }
 }

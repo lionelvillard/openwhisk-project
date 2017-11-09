@@ -132,6 +132,7 @@ export function fixupCredentials(config: types.Config, cred: Credential) {
     if (!cred.apikey) {
         config.fatal('cannot login to Bluemix: missing apikey');
     }
+    cred.org = cred.org || process.env.BLUEMIX_ORG;
     if (!cred.org) {
         config.fatal('cannot login to Bluemix: missing org');
     }
