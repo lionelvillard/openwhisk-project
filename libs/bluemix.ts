@@ -154,7 +154,7 @@ export async function ensureSpaceExists(config: types.Config, cred: Credential) 
     await doRun(config, cred, `target -s ${cred.space}`);
 
     await installWskPlugin(config, cred);
-    await refreshWskProps(config, cred, 5); // refresh .wskprops
+    await refreshWskProps(config, cred, 10); // refresh .wskprops
     config.terminateProgress();
 }
 

@@ -67,10 +67,10 @@ export interface IEnvironment {
 }
 
 // Get properties in current environment
-export async function getCurrent(config: types.Config) {
+export async function getCurrent(config: types.Config) : Promise<IWskProps | null> {
     const subcfg = { ...config };
     delete subcfg.envname;
-    return await readWskProps(subcfg);
+    return readWskProps(subcfg);
 }
 
 // Get all environments along with versions for the current project.
@@ -321,6 +321,7 @@ export async function readWskProps(config: types.Config): Promise<IWskProps | nu
             config.logger.info(`reading ${wskprops}`);
             return propertiesParser.read(wskprops);
         } catch (e) {
+            config.logger.debug(e);
             return null;
         }
     }
