@@ -18,7 +18,7 @@ import { init, initOW } from './init';
 
 const names = require('./names');
 
-enum Targets { JSON = 1, BASH, YAML };
+export enum Targets { JSON = 1, BASH, YAML };
 
 export interface Config extends types.Config {
     target?: Targets;
@@ -105,13 +105,13 @@ function toBash(json) {
 }
 
 function writePackages(pkgs) {
-    let bashPkgs = 
+    let bashPkgs =
 `#!/usr/bin/env bash
 
 WSK=wsk
 
 if [ "$OPENWHISK_HOME" != "" ]; then
-  WSK=$OPENWHISK_HOME/bin/wsk 
+  WSK=$OPENWHISK_HOME/bin/wsk
 fi
 
 WSK="$WSK $OPENWHISK_INSECURE"
@@ -317,8 +317,8 @@ function retrieveLocation(actionQName, annos) {
         return file;
 
     const parts = names.parseQName(actionQName);
-    if (parts.pkg) 
+    if (parts.pkg)
         return `packages/${parts.pkg}/actions/${parts.name}.js`;
-    
+
     return `actions/${parts.name}.js`;
 }

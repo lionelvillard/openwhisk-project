@@ -19,6 +19,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { exec } from 'child-process-promise';
 import * as types from './types';
+import { delay } from './utils';
 import * as parser from 'properties-parser';
 
 // @return true if Bluemix with wsk plugin is available on this system, false otherwise
@@ -162,7 +163,8 @@ async function refreshWskProps(config: types.Config, cred: Credential, retries: 
         config.fatal('unable to obtain wsk authentication key. try again later.');
     const io = await doRun(config, cred, 'wsk property get');
     if (io.stderr) {
-        await new Promise(resolve => setTimeout(() => refreshWskProps(config, cred, retries - 1), 1000));
+        await delay(1000);
+        await refreshWskProps(config, cred, retries - 1);
     }
 }
 

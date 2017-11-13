@@ -18,7 +18,7 @@ import { Logger } from 'log4js';
 
 export type YAML = any;
 
-type Loader = (string) => Promise<Buffer>;
+export type Loader = (string) => Promise<Buffer>;
 
 export type Phase = 'validation';
 
@@ -213,7 +213,7 @@ export interface IServiceContribution {
     id: string;
 
     // service configuration
-    body: IService;
+    body: IResource;
 }
 
 // --- Project configuration format
@@ -233,8 +233,8 @@ export interface IProject {
     /* Base path. Relative path are resolved against it  */
     basePath?: string;
 
-    /* Related services */
-    services?: Array<{[key: string]: IService}>;
+    /* External resources */
+    resources?: Array<{[key: string]: IResource}>;
 
     /* Dependencies */
     dependencies?: Array<{[key: string]: any}>;
@@ -259,7 +259,7 @@ export type IAction = any;
 export type IPackage = any;
 export type IApi = any;
 
-export interface IService {
+export interface IResource {
     /* Service name. By default same as service id */
     name?: string;
 

@@ -54,14 +54,16 @@ export async function check(config: IConfig) {
     await checkDependencies(config, manifest);
 
     // 2. Check for unknown properties
+    manifest.resources = manifest.resources || {};
     for (const key in manifest) {
         if (!(key in ProjectProps)) {
-            config.fatal('Invalid project property %s', key);
+            manifest.resources[key] = manifest[key];
+            delete manifest[key];
         }
     }
 
     // 3. Expand and check builtin properties
-    await checkServices(config, manifest);
+    await checkResources(config, manifest);
     await checkPackages(config, manifest);
     await checkActions(config, manifest, '', manifest.actions);
     await checkTriggers(config, manifest);
@@ -71,25 +73,18 @@ export async function check(config: IConfig) {
     config.clearProgress();
 }
 
-async function checkServices(config: IConfig, manifest: IProject) {
-    const services = evaluateAll(config, manifest.services);
-    if (!services)
+async function checkResources(config: IConfig, manifest: IProject) {
+    const resources = evaluateAll(config, manifest.resources);
+    if (!resources)
         return;
 
-    for (const id in services) {
-        const service = services[id];
+    for (const id in resources) {
+        const service = resources[id];
 
         if (!service.hasOwnProperty('type'))
-            config.fatal('missing property type for service id %s', id);
+            config.fatal('missing property type for resource id %s', id);
 
-        delete services[id];
-
-        const plugin = plugins.getServicePlugin(id);
-        if (!plugin)
-            config.fatal('no plugin found for service %s', id);
-
-        const contributions = plugin.serviceContributor(config, id, service);
-        await applyContributions(config, manifest, contributions, plugin);
+        delete resources[id];
     }
 }
 

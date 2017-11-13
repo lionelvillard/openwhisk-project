@@ -231,3 +231,11 @@ export const getApi = (manifest, apiName, create = false) => {
 
 
 
+
+// --- misc
+
+export async function delay(ms) {
+    return new Promise(resolve => {
+        setTimeout(() => resolve(), ms);
+    });
+}
