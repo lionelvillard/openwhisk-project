@@ -18,7 +18,6 @@ const utils = require('./helpers/utils');
 const deployer = require('..');
 
 describe('docker', function () {
-    this.timeout(60000);
 
     const ctx = {};
 
@@ -27,7 +26,7 @@ describe('docker', function () {
 
     it('deploy docker skeleton', async function () {
         const result = await deployer.deploy.apply({
-            ow: ctx.ow, 
+            ow: ctx.ow,
             basePath: 'test/fixtures/docker/',
             cache: ctx.cacheDir,
             location: 'manifest.yaml',
@@ -43,4 +42,4 @@ describe('docker', function () {
         }
         catch (e) { }
     });
-}) 
+})

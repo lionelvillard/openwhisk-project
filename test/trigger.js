@@ -18,7 +18,6 @@ const utils = require('./helpers/utils');
 const deployer = require('..');
 
 describe('testing trigger', function () {
-    this.timeout(5000);
     const ctx = {};
 
     before(utils.before(ctx));
@@ -26,7 +25,7 @@ describe('testing trigger', function () {
 
     it('deploy a trigger', async function () {
         const result = await deployer.deploy.apply({
-            ow: ctx.ow, 
+            ow: ctx.ow,
             basePath: 'test/fixtures/triggers/',
             cache: ctx.cacheDir,
             location: 'manifest.yaml',
@@ -35,11 +34,11 @@ describe('testing trigger', function () {
 
         const trigger = await ctx.ow.triggers.get({name: 'trigger'});
         assert.equal(trigger.name, 'trigger');
-    }); 
-    
+    });
+
     it('deploy an alarm', async function () {
         const result = await deployer.deploy.apply({
-            ow: ctx.ow, 
+            ow: ctx.ow,
             basePath: 'test/fixtures/triggers/',
             cache: ctx.cacheDir,
             location: 'manifest-alarm.yaml',
@@ -51,4 +50,4 @@ describe('testing trigger', function () {
     });
 
 
-}); 
+});

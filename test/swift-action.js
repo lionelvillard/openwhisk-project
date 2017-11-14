@@ -31,7 +31,7 @@ describe('Swift action', function () {
             basePath: 'test/fixtures/swift/',
             cache: ctx.cacheDir,
             location: 'hello.yaml',
-            force: true 
+            force: true
         });
 
         const hello = await ctx.ow.actions.invoke({

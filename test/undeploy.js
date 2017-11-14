@@ -18,7 +18,6 @@ const utils = require('./helpers/utils');
 const wskd = require('..');
 
 describe('testing undeploy', function () {
-    this.timeout(10000);
     const ctx = {};
 
     before(utils.before(ctx));
@@ -134,4 +133,4 @@ describe('testing undeploy', function () {
         }
     });
 
-}); 
+});

@@ -42,6 +42,7 @@ export async function check(config: IConfig) {
         if (config.version !== manifest.version)
             config.fatal(`mismatch environment and configuration versions (${config.version} != ${manifest.version})`);
     }
+    manifest.namespace = manifest.namespace || '_';
 
     if (config.ow && (!manifest.namespace || manifest.namespace === '_')) {
         const namespaces = await config.ow.namespaces.list();

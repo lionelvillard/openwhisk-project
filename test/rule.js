@@ -18,7 +18,6 @@ const utils = require('./helpers/utils');
 const deployer = require('..');
 
 describe('testing rules', function () {
-    this.timeout(10000);
     const ctx = {};
 
     before(utils.before(ctx));
@@ -26,7 +25,7 @@ describe('testing rules', function () {
 
     it('deploy a rule', async function () {
         const result = await deployer.deploy.apply({
-            ow: ctx.ow, 
+            ow: ctx.ow,
             basePath: 'test/fixtures/rules/',
             cache: ctx.cacheDir,
             location: 'manifest.yaml',
@@ -36,5 +35,5 @@ describe('testing rules', function () {
         const activationId = await ctx.ow.triggers.invoke({name: 'rules-trigger', params: {msg:'hello'} });
         const r = await ctx.ow.activations.result(activationId);
         assert.deepStrictEqual(r, { result: { msg: 'hello' }, success: true, status: 'success' });
-    }); 
+    });
 });
