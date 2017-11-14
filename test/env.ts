@@ -103,7 +103,7 @@ class Envget {
         assert.equal(local.length, 1);
     }
 
-    @test.only('list builtin environments. should output a table, with versions')
+    @test('list builtin environments. should output a table, with versions')
     async listAllWithVersion() {
         if (process.env.LOCALWSK === 'true')
             return skip(this);
