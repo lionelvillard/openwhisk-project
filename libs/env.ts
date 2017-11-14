@@ -259,7 +259,7 @@ async function resolveAuthFromBluemix(config: types.Config, props, env: string, 
     if (!bxorg)
         config.fatal('cannot resolve AUTH and APIGW_ACCESS_TOKEN from Bluemix credential: missing BLUEMIX_ORG');
 
-    let bxspace = process.env.BLUEMIX_SPACE || props.get('BLUEMIX_SPACE');
+    let bxspace = props.get('BLUEMIX_SPACE');
     bxspace = bxspace ? bxspace.trim() : null;
     if (!bxspace) {
         if (!config.projectname)

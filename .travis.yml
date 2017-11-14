@@ -21,7 +21,7 @@ install:
   - export OPENWHISK_HOME=$TRAVIS_BUILD_DIR/openwhisk
 
 script:
-  - cd $TRAVIS_BUILD_DIR &&  NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
+  - cd $TRAVIS_BUILD_DIR && NODE_TLS_REJECT_UNAUTHORIZED=0 npm test
   - cd $TRAVIS_BUILD_DIR/plugins && ./test.sh
   - cd $TRAVIS_BUILD_DIR
 
