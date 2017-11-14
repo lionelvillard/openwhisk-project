@@ -26,7 +26,7 @@ const bxroot = `.openwhisk/.bluemix/api.ng.bluemix.net/${process.env.BLUEMIX_ORG
 const projectfile = process.env.LOCALWSK ? 'project-ci.yml' : 'project.yml';
 const projectname = process.env.LOCALWSK ? 'builtins-ci' : 'builtins';
 
-@suite('testing environment - get')
+@suite('testing environment')
 class Envget {
 
     static async before() {
@@ -103,7 +103,7 @@ class Envget {
         assert.equal(local.length, 1);
     }
 
-    @test('list builtin environments. should output a table, with versions')
+    @test.only('list builtin environments. should output a table, with versions')
     async listAllWithVersion() {
         if (process.env.LOCALWSK === 'true')
             return skip(this);
@@ -118,23 +118,11 @@ class Envget {
         const prod = envs.filter(env => env.policies.name === 'prod');
         assert.ok(prod);
         assert.equal(prod.length, 1);
+        console.log(prod[0]);
+        console.log(prod[0].versions);
         assert.equal(prod[0].versions.length, 1);
 
         await bx.run(config, { space: `${projectname}-prod@0.0.0` }, `account space-delete ${projectname}-prod@0.0.0 -f`);
-    }
-}
-
-@suite('testing environment - set')
-class Envset {
-
-    static async before() {
-        await fs.remove('.workdir.env');
-        await fs.mkdir('.workdir.env');
-        process.chdir('.workdir.env');
-    }
-
-    static async after() {
-        process.chdir('..');
     }
 
     @test('set environment to dev, not persisting')
@@ -142,6 +130,7 @@ class Envset {
         if (process.env.LOCALWSK === 'true')
             return skip(this);
 
+        await fs.remove('.wskprops');
         process.env.BLUEMIX_HOME = `${bxroot}/${projectname}-dev`;
 
         const config = init.newConfig(projectfile, process.env.LOGGER_LEVEL, 'dev');
@@ -154,10 +143,11 @@ class Envset {
             const wskprops = parser.read(`${bxroot}/${projectname}-dev/.wskprops`);
             const envprops = parser.read(`${cacheroot}/envs/.dev.wskprops`);
 
-            assert.strictEqual(envprops.AUTH, envprops.AUTH);
-            assert.strictEqual(envprops.APIGW_ACCESS_TOKEN, envprops.APIGW_ACCESS_TOKEN);
-            assert.strictEqual(envprops.APIHOST, envprops.APIHOST);
-            assert.ok(!await fs.pathExists('.wskprops'));
+            assert.strictEqual(wskprops.AUTH, envprops.AUTH);
+            assert.strictEqual(wskprops.APIGW_ACCESS_TOKEN, envprops.APIGW_ACCESS_TOKEN);
+            assert.strictEqual(wskprops.APIHOST, envprops.APIHOST);
+
+            assert.ok(! await fs.pathExists('.wskprops'));
 
             // cleanup
             await exec(`bx login -a api.ng.bluemix.net -o ${process.env.BLUEMIX_ORG}`);
@@ -178,7 +168,7 @@ class Envset {
         assert.ok(!await fs.pathExists('.wskprops'));
 
         const config = init.newConfig(projectfile, process.env.LOGGER_LEVEL, 'dev');
-        config.basePath = `${rootPath}/${projectname}`;
+        config.basePath = `${rootPath}/builtins`;
         await init.init(config);
 
         try {
@@ -204,7 +194,7 @@ class Envset {
         assert.ok(!await fs.pathExists('.wskprops'));
 
         const config = init.newConfig(projectfile, process.env.LOGGER_LEVEL, 'dev');
-        config.basePath = `${rootPath}/${projectname}`;
+        config.basePath = `${rootPath}/builtins`;
         await init.init(config);
 
         try {
