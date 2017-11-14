@@ -154,7 +154,7 @@ export async function ensureSpaceExists(config: types.Config, cred: Credential) 
     await doRun(config, cred, `target -s ${cred.space}`);
 
     await installWskPlugin(config, cred);
-    await refreshWskProps(config, cred, 10); // refresh .wskprops
+    await refreshWskProps(config, cred, 20); // refresh .wskprops
     config.terminateProgress();
 }
 
@@ -164,6 +164,7 @@ async function refreshWskProps(config: types.Config, cred: Credential, retries: 
     const io = await doRun(config, cred, 'wsk property get');
     if (io.stderr) {
         await delay(1000);
+        config.logger.info(`could not get wsk AUTH key. Retrying (${retries})`);
         await refreshWskProps(config, cred, retries - 1);
     }
 }
