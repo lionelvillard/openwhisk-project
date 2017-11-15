@@ -48,10 +48,10 @@ class Envget {
         config.basePath = `${rootPath}/noconfig`;
         try {
             await init.init(config);
-            const envs = await env.getEnvironments(config);
+            const envs = await env.getVersionedEnvironments(config);
             assert.ok(false);
         } catch (e) {
-            assert.strictEqual(e.message, 'cannot get the versions associated to the project environments: missing project name');
+            assert.strictEqual(e.message, 'cannot get project versions: missing project name (missing configuration file?)');
             assert.ok(true);
         }
     }
@@ -80,10 +80,10 @@ class Envget {
         config.basePath = `${rootPath}/confignoname`;
         try {
             await init.init(config);
-            const envs = await env.getEnvironments(config);
+            const envs = await env.getVersionedEnvironments(config);
             assert.ok(false);
         } catch (e) {
-            assert.strictEqual(e.message, 'cannot get the versions associated to the project environments: missing project name');
+            assert.strictEqual(e.message, 'cannot get project versions: missing project name (missing configuration file?)');
             assert.ok(true);
         }
     }
@@ -96,8 +96,8 @@ class Envget {
         const config = init.newConfig(projectfile, process.env.LOGGER_LEVEL, 'dev');
         config.basePath = `${rootPath}/builtins`;
         await init.init(config);
-        const envs = await env.getEnvironments(config);
-        const local = envs.filter(env => env.policies.name === 'local');
+        const envs = await env.getVersionedEnvironments(config);
+        const local = envs.filter(env => env.policies.name === 'prod');
         assert.equal(local.length, 1);
         const dev = envs.filter(env => env.policies.name === 'dev');
         assert.equal(local.length, 1);
@@ -114,7 +114,7 @@ class Envget {
         await init.init(config);
         const set = await env.setEnvironment(config);
         assert.ok(set);
-        const envs = await env.getEnvironments(config);
+        const envs = await env.getVersionedEnvironments(config);
         // console.log(envs);
         const prod = envs.filter(env => env.policies.name === 'prod');
         assert.ok(prod);
