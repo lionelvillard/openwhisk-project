@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import * as init from './init';
-import * as types from './types';
+import { IWskProps, IConfig, IEnvironment } from './types';
 import * as bx from './bluemix';
 import * as utils from './utils';
 import * as readdir from 'recursive-readdir';
@@ -25,84 +25,61 @@ import * as expandHome from 'expand-home-dir';
 import * as openwhisk from 'openwhisk';
 import * as semver from 'semver';
 
-export interface IWskProps {
-    APIHOST?: string;
-    AUTH?: string;
-    IGNORE_CERTS?: boolean;
-    APIGW_ACCESS_TOKEN?: string;
-    [key: string]: any;
-}
+// export interface IEnvPolicies {
+//     /* Environment name */
+//     name: string;
 
-export interface IEnvPolicies {
-    /* Environment name */
-    name: string;
+//     /* Writable? */
+//     writable: boolean;
 
-    /* Writable? */
-    writable: boolean;
+//     /* Versioned? */
+//     versioned: boolean;
 
-    /* Versioned? */
-    versioned: boolean;
+//     /* What kind of entities the env manages */
+//     entities: string;
 
-    /* What kind of entities the env manages */
-    entities: string;
-
-    /* Default wsk props */
-    props?: IWskProps;
-}
+//     /* Default wsk props */
+//     props?: IWskProps;
+// }
 
 // TODO:
-const BuiltinEnvs: IEnvPolicies[] = [
-    { name: 'local', writable: true, versioned: false, entities: 'all', props: { APIHOST: '172.17.0.1' } },
+const BuiltinEnvs: IEnvironment[] = [
+    // { name: 'local', writable: true, versioned: false, entities: 'all', props: { APIHOST: '172.17.0.1' } },
     { name: 'dev', writable: true, versioned: false, entities: 'all', props: { APIHOST: 'openwhisk.ng.bluemix.net' } },
-    { name: 'test', writable: true, versioned: false, entities: 'all', props: { APIHOST: 'openwhisk.ng.bluemix.net' } },
+    // { name: 'test', writable: true, versioned: false, entities: 'all', props: { APIHOST: 'openwhisk.ng.bluemix.net' } },
     { name: 'prod', writable: false, versioned: true, entities: 'all', props: { APIHOST: 'openwhisk.ng.bluemix.net' } },
-    { name: 'api', writable: true, versioned: false, entities: 'api', props: { APIHOST: 'openwhisk.ng.bluemix.net', PRODVERSION: '1.0.0' } }];
+    // { name: 'api', writable: true, versioned: false, entities: 'api', props: { APIHOST: 'openwhisk.ng.bluemix.net', PRODVERSION: '1.0.0' } }
+];
 
 const BuiltinEnvNames = BuiltinEnvs.map(e => e.name);
 const ALL_WSKPROPS = '.all.wskprops';
 
-export interface IEnvironment {
-    policies: IEnvPolicies;
-    versions: string[];
-}
-
 // Get properties in current environment
-export async function getCurrent(config: types.Config) : Promise<IWskProps | null> {
+export async function getCurrent(config: IConfig): Promise<IWskProps | null> {
     const subcfg = { ...config };
     delete subcfg.envname;
     return readWskProps(subcfg);
 }
 
+export interface IVersionedEnvironment {
+    policies: IEnvironment;
+    versions: string[];
+}
+
 // Get all environments along with versions for the current project.
-export async function getEnvironments(config: types.Config): Promise<IEnvironment[]> {
-    const allpolicies = await getPolicies(config);
+export async function getVersionedEnvironments(config: IConfig): Promise<IVersionedEnvironment[]> {
+    const allpolicies = getEnvironments(config);
     const versions = await getVersions(config);
     return allpolicies.map(policies => ({ policies, versions: versions[policies.name] }));
 }
 
-export async function getPolicies(config: types.Config): Promise<IEnvPolicies[]> {
-    config.logger.info('get environments policies');
-
-    const toenvname = file => path.basename(file, '.wskprops').substr(1).toLowerCase();
-
-    const ignore = (file, stats) => {
-        if (stats.isDirectory())
-            return true;
-        const name = path.basename(file);
-        return name === '.wskprops' || !name.endsWith('.wskprops') || BuiltinEnvNames.includes(toenvname(file));
-    };
-
-    try {
-        const files: string[] = await readdir('.', [ignore]);
-        return [...BuiltinEnvs, ...files.map(file => ({ name: toenvname(file), writable: false, versioned: false, entities: 'all' }))];
-    } catch (e) {
-        config.logger.error(e);
-    }
-    return [];
+export function getEnvironments(config: IConfig): IEnvironment[] {
+    const envs = config.manifest ? config.manifest.environments : null;
+    return envs ? [...BuiltinEnvs, ...Object.keys(envs).map(key => envs[key])] : BuiltinEnvs;
 }
 
 // Set current environment.
-export async function setEnvironment(config: types.Config) {
+export async function setEnvironment(config: IConfig) {
     const cached = await cacheEnvironment(config);
     if (!cached)
         return false;
@@ -113,11 +90,10 @@ export async function setEnvironment(config: types.Config) {
     }
     await fs.copy(cached, '.wskprops', { overwrite: true });
     return true;
-
 }
 
 // Refresh cached resolved environments, if needed
-export async function cacheEnvironment(config: types.Config) {
+export async function cacheEnvironment(config: IConfig) {
     config.startProgress('checking cache up-to-date');
 
     await isValid(config);
@@ -172,7 +148,7 @@ export async function cacheEnvironment(config: types.Config) {
 
         if (!exists) {
             // It's a builtin environment => generate. (or error?)
-            const allPolicies = await getPolicies(config);
+            const allPolicies = await getEnvironments(config);
             const policies = allPolicies.find(v => v.name === name);
             await newEnvironment(config, name, policies.props);
         }
@@ -185,7 +161,7 @@ export async function cacheEnvironment(config: types.Config) {
 }
 
 // Create new environment from template
-export async function newEnvironment(config: types.Config, name: string, wskprops: IWskProps) {
+export async function newEnvironment(config: IConfig, name: string, wskprops: IWskProps) {
     config.logger.info(`creating environment ${name}`);
     const filename = `.${name}.wskprops`;
     if (await fs.pathExists(filename))
@@ -197,7 +173,7 @@ export async function newEnvironment(config: types.Config, name: string, wskprop
 }
 
 // Increment project version
-export async function incVersion(config: types.Config, releaseType: semver.ReleaseType) {
+export async function incVersion(config: IConfig, releaseType: semver.ReleaseType) {
     if (!['major', 'premajor', 'minor', 'preminor', 'patch', 'prepatch', 'prerelease'].includes(releaseType))
         config.fatal(`${releaseType} is not a valid release type`);
 
@@ -214,7 +190,7 @@ export async function incVersion(config: types.Config, releaseType: semver.Relea
 }
 
 // Promote API environment to latest PROD
-export async function promote(config: types.Config) {
+export async function promote(config: IConfig) {
     const versions = await getVersions(config);
     if (versions && versions.prod && versions.prod.length > 0) {
         const prods = versions.prod;
@@ -233,7 +209,7 @@ export async function promote(config: types.Config) {
 
 // --- Helpers
 
-async function resolveProps(config: types.Config, env: string, version: string, filename: string, props) {
+async function resolveProps(config: IConfig, env: string, version: string, filename: string, props) {
     config.logger.info('resolve wsk properties');
     let apihost = props.get('APIHOST');
     if (!apihost) {
@@ -251,7 +227,7 @@ async function resolveProps(config: types.Config, env: string, version: string, 
     }
 }
 
-async function resolveAuthFromBluemix(config: types.Config, props, env: string, version: string) {
+async function resolveAuthFromBluemix(config: IConfig, props, env: string, version: string) {
     if (!bx.isBluemixCapable())
         config.fatal('bx is not installed');
 
@@ -292,7 +268,7 @@ async function resolveAuthFromBluemix(config: types.Config, props, env: string, 
     props.set('APIGW_ACCESS_TOKEN', wskprops.APIGW_ACCESS_TOKEN);
 }
 
-export async function getWskPropsFile(config: types.Config) {
+export async function getWskPropsFile(config: IConfig) {
     let wskprops = process.env.WSK_CONFIG_FILE;
     if (!wskprops || !fs.existsSync(wskprops)) {
 
@@ -314,7 +290,7 @@ export async function getWskPropsFile(config: types.Config) {
     return wskprops;
 }
 
-export async function readWskProps(config: types.Config): Promise<IWskProps | null> {
+export async function readWskProps(config: IConfig): Promise<IWskProps | null> {
     const wskprops = await getWskPropsFile(config);
     if (wskprops) {
         try {
@@ -329,7 +305,7 @@ export async function readWskProps(config: types.Config): Promise<IWskProps | nu
     return null;
 }
 
-const auth = async (config: types.Config) => {
+const auth = async (config: IConfig) => {
     const wskprops = await readWskProps(config);
 
     if (wskprops) {
@@ -345,7 +321,7 @@ const auth = async (config: types.Config) => {
 };
 
 // Resolve variables by merging command line options with .wskprops content
-export async function resolveVariables(config: types.Config, options: any = {}) {
+export async function resolveVariables(config: IConfig, options: any = {}) {
     const wskprops = await readWskProps(config) || {};
     const variables: any = {};
 
@@ -357,12 +333,12 @@ export async function resolveVariables(config: types.Config, options: any = {}) 
     return variables;
 }
 
-export async function initWsk(config: types.Config = {}, options = {}) {
+export async function initWsk(config: IConfig = {}, options = {}) {
     const vars = await resolveVariables(config, options);
     return openwhisk({ api_key: vars.auth, apihost: vars.apihost, ignore_certs: vars.ignore_certs, apigw_token: vars.apigw_token });
 }
 
-function getCachedEnvFilename(config: types.Config) {
+function getCachedEnvFilename(config: IConfig) {
     return path.join(config.cache, 'envs', `.${config.envname}${config.version ? `@${config.version}` : ''}.wskprops`);
 }
 
@@ -378,12 +354,12 @@ function addAll(props, others) {
 }
 
 // Retrieve all versions for all environments
-async function getVersions(config: types.Config): Promise<{[key: string]: any}> {
+async function getVersions(config: IConfig): Promise<{ [key: string]: any }> {
     if (!await bx.isBluemixCapable())
         config.fatal('cannot get the versions associated to the project environments: bx is not installed');
 
     if (!config.projectname)
-        config.fatal('cannot get the versions associated to the project environments: missing project name');
+        config.fatal('cannot get project versions: missing project name (missing configuration file?)');
 
     const props = await readWskProps(config);
     if (!props) {
@@ -415,12 +391,12 @@ async function getVersions(config: types.Config): Promise<{[key: string]: any}> 
     return versions;
 }
 
-async function isValid(config: types.Config) {
+async function isValid(config: IConfig) {
     const name = config.envname;
     const version = config.version;
 
     // no cache for envname. Check it's valid
-    const allpolicies = await getPolicies(config);
+    const allpolicies = await getEnvironments(config);
     const policies = allpolicies.find(policies => policies.name === name);
     if (!policies)
         config.fatal('environment %s does not exist', name);

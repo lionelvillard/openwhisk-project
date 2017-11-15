@@ -1,14 +1,16 @@
 # Deployment Configuration Specification
 
-This document formally described the deployment configuration format and semantic used by `wskp`.
+This document formally describe the project configuration format.
 
-The deployment configuration are written in `YAML`. Since `JSON` and `YAML` are closely related,
-we use JSON schema to define the constraints imposed on the deployment configurations. These constraints are presented below, along with some examples.
+## Notation
+
+This document uses [Markdown Syntax for Object Notation](https://github.com/apiaryio/mson/blob/master/MSON%20Specification.md) to describe the JSON schema
+constraining project description.
 
 ## `project` (top-level schema)
 
-A *project* is an *object* representing a collection of OpenWhisk entities (actions, packages, rules, triggers and apis)
-and related services
+A *project* is an `object` representing a collection of OpenWhisk entities (actions, packages, rules, triggers and apis)
+and related resources. It also contains metadata, such as `name` and `version`.
 
 ### Properties
 
@@ -16,9 +18,9 @@ and related services
 
   When specified, deployed entities are *fully managed*.
 
-  *Unmanaged* entities are entities deployed using a tool other than `wskp`, such as `wsk`.
+  *Unmanaged* entities are entities deployed using a tool other than `fsh`, such as `wsk`.
 
-  *Partially managed* entities are entities described in deployment files and deployed using `wskp`.
+  *Partially managed* entities are entities described in deployment files and deployed using `fsh`.
 
   Compare to partially managed entities, fully managed deployments provide these additional guarantees:
   - during deployment:
@@ -34,12 +36,13 @@ and related services
 - `version` (string, optional): project version following semver format.
 
 - [`dependencies`](#dependencies) (array, optional): includes external project configurations
-- [`services`](#services) (array, optional): related services
+- [`resources`](#resources) (array, optional): related resources
 - [`packages`](#packages) (object, optional)
 - [`actions`](#actions) (object, optional)
 - [`triggers`](#triggers) (object, optional)
 - [`rules`](#rules) (object, optional)
 - [`apis`](#apis) (object, optional)
+- [`environments`](#environment) (object, optional): project environments
 
 ### Example
 
@@ -62,7 +65,7 @@ An *array* of `dependency` *objects*.
 
 ## `dependency`
 
-A *object* representing an external project configuration.
+A `object` representing an external project configuration.
 
 Limitation: nested `dependencies` are currently not supported.
 
@@ -81,28 +84,28 @@ dependencies:
   - location: git+https://github.com/lionelvillard/openwhisk-deploy.git/project.yaml#master
 ```
 
-## `services`
+## `resources`
 
-An array of `service` *objects*
+An array of `resource` `object`s
 
-## `service`
+## `resource`
 
-An *objects* representing a service.
+An `object` representing a resource.
 
 ### Properties
 
 
 ## `packages`
 
-An *object* representing a list of packages. Package name must be unique among the set of package names within a namespace
+An `object` representing a list of packages. Package name must be unique among the set of package names within a namespace
 
 ### Properties
 
-- `{package-name}` ([`binding`](#binding) | [`packageContent`](#packageContent) | [`interpolation`](#interpolation), optional)
+- *package-name* ([`binding`](#binding) | [`packageContent`](#packageContent) | [`interpolation`](#interpolation), optional)
 
 ## `binding`
 
-An *object* representing a package binding
+An `object` representing a package binding
 
 ### Properties
 
@@ -120,7 +123,7 @@ packages:
 ```
 ## `packageContent`
 
-An *object* representing the content of a package.
+An `object` representing the content of a package.
 
 ### Properties
 
@@ -131,22 +134,22 @@ An *object* representing the content of a package.
 
 ## `actions`
 
-An *object* representing a list of `action`s.
+An `object` representing a list of `action`s.
 
 Actions can be specified in any order, e.g. actions composing sequences can be specified after sequences.
 An error is raised when a cyclic dependency is detected.
 
 ### Properties
 
-- `{action-name}` ([`action`](#action) | [`sequence`](#sequence) | [`copy`](#copy) | [`inline`](#inline), optional)
+- *action-name* ([`action`](#action) | [`sequence`](#sequence) | [`copy`](#copy) | [`inline`](#inline), optional)
 
-  `action-name` must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
+  where *action-name* must be [unqualified](https://github.com/apache/incubator-openwhisk/blob/master/docs/reference.md#fully-qualified-names)
   and must be unique among the list of action names.
 
 
 ## `action`
 
-An *object* representing an action. Extends [`baseAction`](#baseaction)
+An `object` representing an action. Extends [`baseAction`](#baseaction)
 
 ### Properties
 
@@ -205,7 +208,7 @@ actions:
 
 ## `copy`
 
-An *object* representing an action to copy.
+An `object` representing an action to copy.
 
 Extends [`baseAction`](#baseaction)
 
@@ -237,7 +240,7 @@ packages:
 
 ## `inline`
 
-An *object* representing an action with inlined code.
+An `object` representing an action with inlined code.
 
 Extends [`baseAction`](#baseaction)
 
@@ -262,7 +265,7 @@ packages:
 ```
 ## `sequence`
 
-An *object* representing a sequence action. Extends [`baseAction`](#baseaction)
+An `object` representing a sequence action. Extends [`baseAction`](#baseaction)
 
 ### Properties
 
@@ -303,11 +306,11 @@ An `object` representing a list of `trigger`s.
 
 ### Properties
 
-- `{trigger-name}` ([`trigger`](#trigger)|[`feed`](#feed), optional)
+- *trigger-name* (`object`, [`trigger`](#trigger)|[`feed`](#feed), optional)
 
 ## `trigger`
 
-An *object* representing a trigger.
+An `object` representing a trigger.
 
 ## Properties
 
@@ -317,7 +320,7 @@ An *object* representing a trigger.
 
 ## `feed`
 
-An *object* representing a feed.
+An `object` representing a feed.
 
 ## Properties
 
@@ -344,7 +347,7 @@ An `object` representing a list of `rule`s.
 
 ### Properties
 
-- `{rule-name}` ([`rule`](#rule), optional)
+- *rule-name* (`object`, [`rule`](#rule), optional)
 
 ## `rule`
 
@@ -373,7 +376,7 @@ An `object` representing a list of `api`s.
 
 ### Properties
 
-- `{apiname}` ([`api`](#api), optional):
+- *apiname* (`object`, [`api`](#api), optional):
 
 ## `api`
 
@@ -404,7 +407,7 @@ An `object` representing a list of relative api `path`s.
 
 ### Properties
 
-- `{relpath}` ([`apiPath`](#apiPath), optional):
+- *relpath* (object, [`apiPath`](#apiPath), optional):
 
 ## `apiPath`
 
@@ -422,11 +425,11 @@ An `object` representing a path.
 
 ## `parameters`
 
-An *object* representing a list of parameters
+An `object` representing a list of parameters
 
 ### Properties
 
-- `{key}` (string | [`interpolation`](#interpolation), optional)
+- *key* (string | [`interpolation`](#interpolation), optional)
 
 ### Example
 
@@ -444,7 +447,7 @@ packages:
 
 ## `annotations`
 
-An *object* representing a list of annotations
+An `object` representing a list of annotations.
 
 ### Properties
 
@@ -452,7 +455,7 @@ An *object* representing a list of annotations
 
 ## `limits`
 
-An *object* representing action limits
+An `object` representing action limits
 
 ### Properties
 
@@ -466,14 +469,14 @@ An *object* representing action limits
 
 ## `builder`
 
-An *object* representing the action builder.
+An `object` representing the action builder.
 
 Extensible: see [`builder`](../plugins/README.md#) contribution point.
 
 ### Properties
 
 - `name`  (string, required): the name of the builder plugin.
-- `{key}` (any): the plugin input parameters
+- *paramname* (any): the plugin input parameters
 
 ### Example
 
@@ -486,15 +489,30 @@ actions:
         - *.ts
 ```
 
-
 ## `interpolation`
 
-A *string* of the form `${ expr }` where `expr` is interpreted as a Javascript expression returning a JSON value. This expression is evaluated in a sandbox initialized to this object:
+A `string` of the form `${ expr }` where `expr` is interpreted as a Javascript expression returning a JSON value. This expression is evaluated in a sandbox initialized to this object:
 
-- `vars`: an *object* containing *resolved* variable values in addition to built-in variables.
+- `vars`: an `object` containing *resolved* variable values in addition to built-in variables.
 
 The built-in variables are:
 - `envname`: name of the current environment
+
+## `environments`
+
+An `object` representing a list of `environment`s.
+
+### Properties
+
+- *name* (object, [`environment`](#environment), optional): the *name*d environment. Use `envname` in interpolations to get the current environment name.
+
+## `environment`
+
+An `object` representing a set of policies attached to the environment.
+
+### Properties
+
+- `writable` (boolean, optional): dictate which deployment mode to use when deploying projects.
 
 ## Entity name resolution
 

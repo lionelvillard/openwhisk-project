@@ -234,25 +234,28 @@ export interface IProject {
     basePath?: string;
 
     /* External resources */
-    resources?: Array<{[key: string]: IResource}>;
+    resources?: Array<{ [key: string]: IResource }>;
 
     /* Dependencies */
-    dependencies?: Array<{[key: string]: any}>;
+    dependencies?: Array<{ [key: string]: any }>;
 
     /* OpenWhisk packages */
-    packages?: {[key: string]: any};
+    packages?: { [key: string]: any };
 
     /* OpenWhisk action in default package */
-    actions?: {[key: string]: any};
+    actions?: { [key: string]: any };
 
     /* OpenWhisk apis */
-    apis?: {[key: string]: any};
+    apis?: { [key: string]: any };
 
     /* OpenWhisk triggers */
-    triggers?: {[key: string]: any};
+    triggers?: { [key: string]: any };
 
     /* OpenWhisk rules */
-    rules?: {[key: string]: any};
+    rules?: { [key: string]: any };
+
+    /* Environment policies */
+    environments: { [key: string]: IEnvironment };
 }
 
 export type IAction = any;
@@ -284,10 +287,35 @@ export interface IBuilder {
     __exec?: ActionBuilder;
 }
 
+export interface IEnvironment {
+    // Environemnt name
+    name: string;
+
+    // writable
+    writable: boolean;
+
+    /* Versioned? */
+    versioned: boolean;
+
+    /* What kind of entities the env manages */
+    entities: string;
+
+    /* Default wsk props */
+    props?: IWskProps;
+}
+
+export interface IWskProps {
+    APIHOST?: string;
+    AUTH?: string;
+    IGNORE_CERTS?: boolean;
+    APIGW_ACCESS_TOKEN?: string;
+    [key: string]: any;
+}
+
 export enum ProjectProps {
     name = 'name', version = 'version', basePath = 'basePath', dependencies = 'dependencies',
     packages = 'packages', actions = 'actions', triggers = 'triggers', rules = 'rules', apis = 'apis',
-    namespace = 'namespace'
+    namespace = 'namespace', environments = 'environments'
 }
 
 export enum ActionProps {

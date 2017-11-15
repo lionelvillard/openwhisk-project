@@ -70,6 +70,7 @@ export async function check(config: IConfig) {
     await checkTriggers(config, manifest);
     await checkRules(config, manifest);
     await checkApis(config, manifest);
+    await checkEnvironments(config, manifest);
 
     config.clearProgress();
 }
@@ -282,6 +283,22 @@ async function checkApi(config: IConfig, manifest, apis, apiname: string, api: I
 
         const contributions = await plugin.apiContributor(config, manifest, apiname, api);
         await applyContributions(config, manifest, contributions, plugin);
+    }
+}
+
+async function checkEnvironments(config: IConfig, project: IProject) {
+    project.environments = evaluateAll(config, project.environments);
+    if (project.environments) {
+        const envs = project.environments;
+
+        for (const envname in envs) {
+            const env = envs[envname];
+
+            env.name = envname;
+
+            if (env.hasOwnProperty('writable'))
+                env.writable = false;
+        }
     }
 }
 
