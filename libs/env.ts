@@ -362,9 +362,8 @@ async function getVersions(config: IConfig): Promise<{ [key: string]: any }> {
         config.fatal('cannot get project versions: missing project name (missing configuration file?)');
 
     const props = await readWskProps(config);
-    if (!props) {
+    if (!props)
         return {};
-    }
 
     const versions = {};
 

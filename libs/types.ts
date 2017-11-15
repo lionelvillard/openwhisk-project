@@ -255,7 +255,7 @@ export interface IProject {
     rules?: { [key: string]: any };
 
     /* Environment policies */
-    environments: { [key: string]: IEnvironment };
+    environments?: { [key: string]: IEnvironment };
 }
 
 export type IAction = any;

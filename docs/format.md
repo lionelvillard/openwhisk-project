@@ -2,10 +2,12 @@
 
 This document formally describe the project configuration format.
 
+Project configurations are written in YAML, with some restrictions:
+- indentation must be exactly 2 whitespace characters. No tabs are allowed.
+
 ## Notation
 
-This document uses [Markdown Syntax for Object Notation](https://github.com/apiaryio/mson/blob/master/MSON%20Specification.md) to describe the JSON schema
-constraining project description.
+This document uses [Markdown Syntax for Object Notation](https://github.com/apiaryio/mson/blob/master/MSON%20Specification.md) to describe the JSON schema constraining project description.
 
 ## `project` (top-level schema)
 
