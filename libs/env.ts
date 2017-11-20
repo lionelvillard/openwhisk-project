@@ -24,6 +24,7 @@ import * as propertiesParser from 'properties-parser';
 import * as expandHome from 'expand-home-dir';
 import * as openwhisk from 'openwhisk';
 import * as semver from 'semver';
+import * as ye from './yamledit';
 
 // export interface IEnvPolicies {
 //     /* Environment name */
@@ -147,10 +148,10 @@ export async function cacheEnvironment(config: IConfig) {
         // No cached properties.
 
         if (!exists) {
-            // It's a builtin environment => generate. (or error?)
+            // It's a builtin environment => generate corresponding .wskprops
             const allPolicies = await getEnvironments(config);
             const policies = allPolicies.find(v => v.name === name);
-            await newEnvironment(config, name, policies.props);
+            await saveWskPropsForEnv(config, name, policies.props);
         }
 
         success = await refreshCache();
@@ -160,16 +161,32 @@ export async function cacheEnvironment(config: IConfig) {
     return success ? cached : null;
 }
 
-// Create new environment from template
-export async function newEnvironment(config: IConfig, name: string, wskprops: IWskProps) {
+async function saveWskPropsForEnv(config: IConfig, name: string, wskprops: IWskProps) {
     config.logger.info(`creating environment ${name}`);
     const filename = `.${name}.wskprops`;
     if (await fs.pathExists(filename))
-        config.fatal(`environment ${name} already exists`);
+        config.fatal('environment %s already exists', name);
 
     const props = propertiesParser.createEditor();
     Object.keys(wskprops).forEach(key => props.set(key, wskprops[key]));
     props.save(filename);
+}
+
+// Create new environment
+export async function newEnvironment(config: IConfig, env: IEnvironment) {
+    if (!config.location)
+        config.fatal('cannot create a new environment without knowing where the project file is located');
+
+    if (config.manifest.environments.hasOwnProperty(env.name))
+        config.fatal('environment %s already exists', env.name);
+
+    const minimized: any = {};
+    if (env.writable) minimized.writable = true;
+    if (env.versioned) minimized.versioned = true;
+
+    const editor = new ye.EditableYAML(config.location);
+    editor.setMapValue(['env', env.name], minimized);
+    editor.save();
 }
 
 // Increment project version
@@ -197,7 +214,7 @@ export async function promote(config: IConfig) {
         const latest = prods[prods.length - 1];
 
         if (!(await fs.pathExists('.api.wskprops')))
-            await newEnvironment(config, 'api', BuiltinEnvs.find(obj => obj.name === 'api').props);
+            await saveWskPropsForEnv(config, 'api', BuiltinEnvs.find(obj => obj.name === 'api').props);
 
         let content = await fs.readFile('.api.wskprops', 'utf-8');
         content = content.replace(/(PRODVERSION[^=]*=).*/, `$1${latest}`);

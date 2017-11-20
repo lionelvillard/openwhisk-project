@@ -288,7 +288,7 @@ export interface IBuilder {
 }
 
 export interface IEnvironment {
-    // Environemnt name
+    // Environment name
     name: string;
 
     // writable
