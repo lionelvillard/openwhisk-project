@@ -15,10 +15,11 @@
  */
 import { suite, test, slow, timeout, skip } from 'mocha-typescript';
 import * as assert from 'assert';
-import { env, init, bx } from '..';
+import { env, init, bx, deploy } from '..';
 import { exec } from 'child-process-promise';
 import * as fs from 'fs-extra';
 import * as parser from 'properties-parser';
+import { config } from 'bluebird';
 
 const rootPath = '../test/fixtures/envs';
 const cacheroot = '.openwhisk';
@@ -213,4 +214,27 @@ class Envget {
         // cleanup
         await fs.remove('.wskprops');
     }
+
+    @test('try to deploy on non-writable environment')
+    async noWritableEnv() {
+        if (process.env.LOCALWSK === 'true')
+            return skip(this);
+
+        const configprod = init.newConfig(projectfile, process.env.LOGGER_LEVEL, 'prod@0.0.0');
+        configprod.basePath = `${rootPath}/builtins`;
+        await init.init(configprod);
+        await env.cacheEnvironment(configprod);
+        await deploy.apply(configprod); // ok
+
+        try {
+            await deploy.apply(configprod); // not ok
+            assert.ok(false);
+        } catch (e) {
+            assert.ok(true);
+        }
+
+        // cleanup
+        await bx.run(configprod, { space: `${projectname}-prod@0.0.0` }, `iam space-delete ${projectname}-prod@0.0.0 -f`);
+    }
+
 }
