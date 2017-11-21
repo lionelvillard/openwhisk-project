@@ -14,5 +14,5 @@ examples/*
 /index.js
 .openwhisk
 *.class
-.workdir.*
+.workdir
 .nyc_output

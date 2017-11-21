@@ -20,7 +20,7 @@ import { exec } from 'child-process-promise';
 import * as fs from 'fs-extra';
 import * as parser from 'properties-parser';
 
-const rootPath = '../test/fixtures/envs';
+const rootPath = '../../test/fixtures/envs';
 const cacheroot = '.openwhisk';
 const bxroot = `.openwhisk/.bluemix/api.ng.bluemix.net/${process.env.BLUEMIX_ORG}`;
 const projectfile = process.env.LOCALWSK ? 'project-ci.yml' : 'project.yml';
