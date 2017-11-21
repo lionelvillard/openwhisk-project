@@ -26,23 +26,6 @@ import * as openwhisk from 'openwhisk';
 import * as semver from 'semver';
 import * as ye from './yamledit';
 
-// export interface IEnvPolicies {
-//     /* Environment name */
-//     name: string;
-
-//     /* Writable? */
-//     writable: boolean;
-
-//     /* Versioned? */
-//     versioned: boolean;
-
-//     /* What kind of entities the env manages */
-//     entities: string;
-
-//     /* Default wsk props */
-//     props?: IWskProps;
-// }
-
 // TODO:
 const BuiltinEnvs: IEnvironment[] = [
     // { name: 'local', writable: true, versioned: false, entities: 'all', props: { APIHOST: '172.17.0.1' } },

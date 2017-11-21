@@ -26,7 +26,6 @@ import { evaluate, evaluateAll } from './interpolation';
 import { parse } from 'url';
 import * as utils from './utils';
 import * as names from './names';
-import * as simpleGit from 'simple-git/promise';
 import * as stringify from 'json-stringify-safe';
 import * as progress from 'progress';
 import * as env from './env';
@@ -102,7 +101,7 @@ async function checkDependencies(config: IConfig, manifest: IProject) {
 
         let location = dependency.location.trim();
         if (location.startsWith('git+')) {
-            location = await gitClone(config, dependency);
+            location = await utils.gitClone(config, dependency.location.substr(4));
         } else {
             // File.
             location = path.resolve(config.basePath, location);
@@ -508,56 +507,6 @@ function mergeActions(config: IConfig, basePath: string, pkgName: string, pkg: I
 
         pkg.actions[actionName] = action;
     }
-}
-
-async function gitClone(config: IConfig, include) {
-    const location = include.location.substr(4);
-
-    const gitIdx = location.indexOf('.git');
-    if (gitIdx === -1)
-        config.fatal(`Malformed git repository ${location} (missing .git)`);
-
-    let localDir;
-    let repo = location.substring(0, gitIdx + 4);
-    if (repo.startsWith('ssh://')) {
-        repo = repo.substr(6);
-        // must be of the form git@<hostname>:<user>/<repository>.git
-
-        const matched = repo.match(/^git@([^:]+):([^\/]+)\/(.+)\.git$/);
-        if (!matched)
-            config.fatal(`Malformed git repository ${repo}`);
-        localDir = path.join(config.cache, 'git', matched[2], matched[3]);
-    } else {
-        const parsed = parse(repo);
-
-        const pathIdx = parsed.path.indexOf('.git');
-        const srepo = parsed.path.substring(0, pathIdx);
-        localDir = path.join(config.cache, 'git', srepo);
-    }
-
-    if (await fs.pathExists(localDir)) {
-        config.logger.debug(`git fetch ${repo} in ${localDir}`);
-        await simpleGit(localDir).fetch(null, null, ['--all']);
-
-    } else {
-        await fs.ensureDir(localDir);
-        config.logger.debug(`git clone ${repo} in ${localDir}`);
-        await simpleGit(localDir).clone(repo, '.');
-    }
-
-    const hashIdx = location.indexOf('#');
-    if (hashIdx !== -1) {
-        const hash = location.substr(hashIdx);
-        // TODO: check syntax
-
-        await simpleGit(localDir).checkout(hash);
-    }
-
-    let projectFilePath = location.substr(gitIdx + 5);
-    if (hashIdx !== -1)
-        projectFilePath = projectFilePath.substring(0, projectFilePath.indexOf('#'));
-
-    return path.join(localDir, projectFilePath);
 }
 
 function resolveActionLocation(config: IConfig, basePath: string, pkgName: string, actionName: string, location: string) {

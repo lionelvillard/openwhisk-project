@@ -99,6 +99,8 @@ async function resolveManifest(config: types.Config) {
         }
         config.basePath = config.basePath || process.cwd();
     } else if (config.location) {
+        await mayGitClone(config);
+
         config.location = path.resolve(config.basePath || process.cwd(), config.location);
         config.basePath = path.parse(config.location).dir;
 
@@ -118,6 +120,12 @@ async function resolveManifest(config: types.Config) {
 
     config.logger.debug(`base path set to ${config.basePath}`);
     config.terminateProgress();
+}
+
+async function mayGitClone(config: types.Config) {
+    if (config.location.startsWith('git+')) {
+        config.location = await utils.gitClone(config, config.location.substr(4));
+    }
 }
 
 async function loadManifest(config: types.Config) {
@@ -275,51 +283,6 @@ const fakeow = {
     }
 };
 
-// async function initenv(config: types.Config) {
-//     let props;
-//     if (config.envname) {
-//         const { name, version } = parseEnvName(config.envname);
-//         config.envname = name;
-//         config.version = version;
-//         props = await env.readWskProps(config); // reading from the cache.
-//     } else {
-//         props = await env.getCurrent(config);
-//     }
-
-//     if (props) {
-//         if (props.ENVNAME) {
-//             // wskprops is environment bound.
-//             if (config.envname && config.envname !== props.ENVNAME)
-//                 config.fatal('corrupted cache. delete it and retry');
-
-//             config.envname = props.ENVNAME;
-
-//             if (config.projectname && config.projectname !== props.PROJECTNAME)
-//                 config.fatal('mismatch application name. configured to be %s but found %s in the current environment', config.manifest.name, props.PROJECTNAME);
-
-//             config.projectname = props.PROJECTNAME;
-
-//             if (!config.version)
-//                 config.version = props.ENVVERSION;
-
-//             // refresh
-//             await env.cacheEnvironment(config);
-//         } else {
-//             // wskprops is environment unbound. Fine.
-//         }
-//     } else {
-//         if (config.envname) {
-//             // no cache props. Need to refresh. Can only do it if projectname is known!
-//             if (!config.projectname)
-//                 config.fatal('cannot resolve environment properties: missing project name');
-
-//             await env.cacheEnvironment(config);
-//         } else {
-//             // no env, no props. Ignore and fail later when properties are needed
-//         }
-//     }
-// }
-
 async function configVariableSources(config: types.Config) {
     if (!config.variableSources) {
 
@@ -412,8 +375,8 @@ function parseEnvName(envname: string) {
     if (matched) {
         const version = matched[3];
         if (version && !semver.valid(version))
-            throw `Malformed environment version ${version}`;
+            throw new Error(`Malformed environment version ${version}`);
         return { name: matched[1], version };
     }
-    throw `Malformed environment name ${envname}`;
+    throw new Error(`Malformed environment name ${envname}`);
 }

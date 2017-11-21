@@ -21,7 +21,7 @@ import * as fs from 'fs-extra';
 import * as parser from 'properties-parser';
 import { config } from 'bluebird';
 
-const rootPath = '../test/fixtures/envs';
+const rootPath = '../../test/fixtures/envs';
 const cacheroot = '.openwhisk';
 const bxroot = `.openwhisk/.bluemix/api.ng.bluemix.net/${process.env.BLUEMIX_ORG}`;
 const projectfile = process.env.LOCALWSK ? 'project-ci.yml' : 'project.yml';
@@ -31,13 +31,14 @@ const projectname = process.env.LOCALWSK ? 'builtins-ci' : 'builtins';
 class Envget {
 
     static async before() {
-        await fs.remove('.workdir.env');
-        await fs.mkdir('.workdir.env');
-        process.chdir('.workdir.env');
+        await fs.remove('.workdir/.env');
+        await fs.mkdirs('.workdir/.env');
+        process.chdir('.workdir/.env');
     }
 
     static async after() {
-        process.chdir('..');
+        process.chdir('../..');
+        await fs.remove('.workdir/.env');
     }
 
     @test('list environments without a config file. should output an error.')
