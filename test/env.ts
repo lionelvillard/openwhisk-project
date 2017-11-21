@@ -31,12 +31,13 @@ class Envget {
 
     static async before() {
         await fs.remove('.workdir/.env');
-        await fs.mkdir('.workdir/.env');
+        await fs.mkdirs('.workdir/.env');
         process.chdir('.workdir/.env');
     }
 
     static async after() {
         process.chdir('../..');
+        await fs.remove('.workdir/.env');
     }
 
     @test('list environments without a config file. should output an error.')
