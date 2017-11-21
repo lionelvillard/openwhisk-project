@@ -144,6 +144,14 @@ async function configCache(config: types.Config) {
 
 // Initialize OpenWhisk SDK
 export async function initOW(config: types.Config) {
+    // Apply environment policies
+    if (!config.hasOwnProperty('force') && config.envname) {
+        const policies = env.getEnvironment(config, config.envname);
+        if (policies) {
+            config.force = policies.writable;
+        }
+    }
+
     if (config.dryrun)
         config.ow = fakeow;
     else

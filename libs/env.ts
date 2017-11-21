@@ -79,6 +79,11 @@ export function getEnvironments(config: IConfig): IEnvironment[] {
     return envs ? [...BuiltinEnvs, ...Object.keys(envs).map(key => envs[key])] : BuiltinEnvs;
 }
 
+export function getEnvironment(config: IConfig, envname: string): IEnvironment {
+    const envs = getEnvironments(config);
+    return envs ? envs.find(env => env.name === envname) : null;
+}
+
 // Set current environment.
 export async function setEnvironment(config: IConfig) {
     const cached = await cacheEnvironment(config);
