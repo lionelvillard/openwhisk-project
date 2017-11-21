@@ -14,33 +14,36 @@
  * limitations under the License.
  */
 import * as request from 'request-promise';
-import * as types from './types';
+import { IConfig, IProject } from './types';
+import * as path from 'path';
+import * as fs from 'fs-extra';
+import { parse } from 'url';
+import * as simpleGit from 'simple-git/promise';
 
 // Assign the source properties to target. Throw an exception when a conflict occurs.
 export const mergeObjects = (target, source) => {
     if (source) {
         for (const key of Object.keys(source)) {
             if (target.hasOwnProperty(key))
-                throw new Error(`Duplicate key ${key}`)
-            target[key] = source[key]
+                throw new Error(`Duplicate key ${key}`);
+            target[key] = source[key];
         }
     }
-    return target
-}
+    return target;
+};
 
 // Initialize action with the `baseAction` properties
 export const initFromBaseAction = baseAction => {
-    const action: any = {}
+    const action: any = {};
     if (baseAction.limits)
-        action.limits = baseAction.limits
+        action.limits = baseAction.limits;
     if (baseAction.annotations)
-        action.annotations = baseAction.annotations
+        action.annotations = baseAction.annotations;
     if (baseAction.inputs)
-        action.inputs = baseAction.inputs
+        action.inputs = baseAction.inputs;
 
-    return action
-}
-
+    return action;
+};
 
 // --- Conversion functions from manifest format to rest params
 
@@ -50,34 +53,34 @@ export const getAnnotations = (config, annotations): any => {
         converted.push({ key: 'managed', value: config.manifest.name });
     }
     return converted;
-}
+};
 
 export const getKeyValues = inputs => {
     if (inputs) {
-        return Object.keys(inputs).map(key => ({ key, value: inputs[key] }))
+        return Object.keys(inputs).map(key => ({ key, value: inputs[key] }));
     }
-    return []
-}
+    return [];
+};
 
 export const indexKeyValues = kvs => {
-    const index = {}
+    const index = {};
     if (kvs) {
-        kvs.forEach(kv => index[kv.key] = kv.value)
+        kvs.forEach(kv => index[kv.key] = kv.value);
     }
-    return index
-}
+    return index;
+};
 
 // TODO: support ${} format
 const resolveValue = (value, args) => {
     if (typeof value === 'string' && value.startsWith('$')) {
-        const key = value.substr(1)
+        const key = value.substr(1);
         if (args.env && args.env[key])
-            return args.env[key]
+            return args.env[key];
 
-        return process.env[key]
+        return process.env[key];
     }
-    return value
-}
+    return value;
+};
 
 // --- low level deployment functions
 
@@ -91,11 +94,11 @@ export const deployRawAction = (ctx, actionName, action) => {
         if (r.exec) delete r.exec.code;
         ctx.logger.info(`deployed ${JSON.stringify(r)}`);
     });
-}
+};
 
 // --- OpenWhisk client introspection
 
-export function getAPIHost(config: types.Config) {
+export function getAPIHost(config: IConfig) {
     if (config.ow && config.ow.actions && config.ow.actions.client) {
         return config.ow.actions.client.options.api;
     }
@@ -110,7 +113,7 @@ export function getAPIHost(config: types.Config) {
   - '.name': select the object 'name'. Create if it does not exist
   - '.name[]': append an object in the array 'name'.
 */
-export function getObject(project: types.IProject, path: string, create = false) {
+export function getObject(project: IProject, path: string, create = false) {
     let current: any = project;
     const segments = path.split('.');
     for (const segment of segments) {
@@ -154,28 +157,28 @@ export const getPackage = (manifest, packageName, create = false) => {
         pkgCfg = manifest;
     }
     return pkgCfg;
-}
+};
 
 export const getAction = (manifest, packageName, actionName, create = false) => {
-    const pkgCfg = getPackage(manifest, packageName, create)
+    const pkgCfg = getPackage(manifest, packageName, create);
     if (!pkgCfg)
         return null;
 
-    let actionsCfg = pkgCfg.actions
+    let actionsCfg = pkgCfg.actions;
     if (!actionsCfg) {
         if (!create)
             return null;
-        actionsCfg = pkgCfg.actions = {}
+        actionsCfg = pkgCfg.actions = {};
     }
-    let actionCfg = actionsCfg[actionName]
+    let actionCfg = actionsCfg[actionName];
     if (!actionCfg) {
         if (!create)
             return null;
 
-        actionCfg = actionsCfg[actionName] = {}
+        actionCfg = actionsCfg[actionName] = {};
     }
-    return actionCfg
-}
+    return actionCfg;
+};
 
 export const getTrigger = (manifest, triggerName, create = false) => {
     let triggersCfg = manifest.triggers;
@@ -192,7 +195,7 @@ export const getTrigger = (manifest, triggerName, create = false) => {
         triggerCfg = triggersCfg[triggerName] = {};
     }
     return triggerCfg;
-}
+};
 
 export const getRule = (manifest, ruleName, create = false) => {
     let rulesCfg = manifest.rules;
@@ -209,7 +212,7 @@ export const getRule = (manifest, ruleName, create = false) => {
         ruleCfg = rulesCfg[ruleName] = {};
     }
     return ruleCfg;
-}
+};
 
 export const getApi = (manifest, apiName, create = false) => {
     // TODO: currently treat apiname as being basePath
@@ -227,10 +230,59 @@ export const getApi = (manifest, apiName, create = false) => {
         apiCfg = apisCfg[apiName] = {};
     }
     return apiCfg;
+};
+
+// --- Git
+
+// Clone or update git repository into local cache. Also checkout a tag/revision/branch
+// Support repo subdirectory specified after repo.git/[subdir][#<tag/revision/branch>]
+export async function gitClone(config: IConfig, location: string) {
+    const gitIdx = location.indexOf('.git');
+    if (gitIdx === -1)
+        config.fatal('Malformed git repository %s (missing .git)', location);
+
+    let localDir;
+    let repo = location.substring(0, gitIdx + 4);
+    if (repo.startsWith('ssh://')) {
+        repo = repo.substr(6);
+        // must be of the form git@<hostname>:<user>/<repository>.git
+
+        const matched = repo.match(/^git@([^:]+):([^\/]+)\/(.+)\.git$/);
+        if (!matched)
+            config.fatal('Malformed git repository %s', repo);
+        localDir = path.join(config.cache, 'git', matched[2], matched[3]);
+    } else {
+        const parsed = parse(repo);
+
+        const pathIdx = parsed.path.indexOf('.git');
+        const srepo = parsed.path.substring(0, pathIdx);
+        localDir = path.join(config.cache, 'git', srepo);
+    }
+
+    if (await fs.pathExists(localDir)) {
+        config.logger.debug(`git fetch ${repo} in ${localDir}`);
+        await simpleGit(localDir).fetch(null, null, ['--all']);
+
+    } else {
+        await fs.ensureDir(localDir);
+        config.logger.debug(`git clone ${repo} in ${localDir}`);
+        await simpleGit(localDir).clone(repo, '.');
+    }
+
+    const hashIdx = location.indexOf('#');
+    if (hashIdx !== -1) {
+        const hash = location.substr(hashIdx + 1);
+        // TODO: check syntax
+
+        await simpleGit(localDir).checkout(hash);
+    }
+
+    let projectFilePath = location.substr(gitIdx + 5);
+    if (hashIdx !== -1)
+        projectFilePath = projectFilePath.substring(0, projectFilePath.indexOf('#'));
+
+    return path.join(localDir, projectFilePath);
 }
-
-
-
 
 // --- misc
 

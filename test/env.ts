@@ -30,13 +30,13 @@ const projectname = process.env.LOCALWSK ? 'builtins-ci' : 'builtins';
 class Envget {
 
     static async before() {
-        await fs.remove('.workdir.env');
-        await fs.mkdir('.workdir.env');
-        process.chdir('.workdir.env');
+        await fs.remove('.workdir/.env');
+        await fs.mkdir('.workdir/.env');
+        process.chdir('.workdir/.env');
     }
 
     static async after() {
-        process.chdir('..');
+        process.chdir('../..');
     }
 
     @test('list environments without a config file. should output an error.')
