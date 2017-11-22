@@ -15,6 +15,7 @@
  */
 export * from './libs/types';
 export * from './libs/coordinator';
+export * from './libs/tag';
 
 import * as init from './libs/init';
 import * as deploy from './libs/deploy';

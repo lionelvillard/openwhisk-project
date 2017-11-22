@@ -284,6 +284,14 @@ export async function gitClone(config: IConfig, location: string) {
     return path.join(localDir, projectFilePath);
 }
 
+export async function addTag(config: IConfig, localgit: string, version: string) {
+    return (simpleGit(localgit) as any).addTag(`v${version}`);
+}
+
+export async function isGitRepo(localgit: string) {
+    return (simpleGit(localgit) as any).revparse([ '--is-inside-work-tree' ]);
+}
+
 // --- misc
 
 export async function delay(ms) {

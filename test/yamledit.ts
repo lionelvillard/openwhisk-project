@@ -92,4 +92,23 @@ class YamlEditTest {
         const y = yaml.parse(content);
         assert.deepStrictEqual(y, { name: 'project', env: { test: { writable: true }, dev: { writable: true } }, apis: 'apic' });
     }
+
+    @test('Create inlined string value')
+    async inlinedCreate() {
+        const editor = new ye.EditableYAML([]);
+        editor.setMapValue(['version'], '0.1.0');
+        const content = editor.save();
+        const y = yaml.parse(content);
+        assert.deepStrictEqual(y, { version: '0.1.0' });
+    }
+
+    @test('Update inlined string value')
+    async inlinedUpdate() {
+        const editor = new ye.EditableYAML(['version: 0.1.0']);
+        editor.setMapValue(['version'], '0.2.0');
+        const content = editor.save();
+        const y = yaml.parse(content);
+        assert.deepStrictEqual(y, { version: '0.2.0' });
+    }
+
 }

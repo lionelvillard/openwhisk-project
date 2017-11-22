@@ -23,7 +23,6 @@ import * as fs from 'fs-extra';
 import * as propertiesParser from 'properties-parser';
 import * as expandHome from 'expand-home-dir';
 import * as openwhisk from 'openwhisk';
-import * as semver from 'semver';
 import * as ye from './yamledit';
 
 // TODO:
@@ -176,23 +175,6 @@ export async function newEnvironment(config: IConfig, env: IEnvironment) {
     const editor = new ye.EditableYAML(config.location);
     editor.setMapValue(['env', env.name], minimized);
     editor.save();
-}
-
-// Increment project version
-export async function incVersion(config: IConfig, releaseType: semver.ReleaseType) {
-    if (!['major', 'premajor', 'minor', 'preminor', 'patch', 'prepatch', 'prerelease'].includes(releaseType))
-        config.fatal(`${releaseType} is not a valid release type`);
-
-    let version = config.manifest.version || '0.1.0';
-    version = semver.inc(version, releaseType);
-
-    let content = await fs.readFile(config.location, 'utf-8');
-
-    if (config.manifest.version) {
-        content = content.replace(/(version[^:]*:).*/, `$1 ${version}`);
-    }
-
-    await fs.writeFile(config.location, content, { encoding: 'utf-8' });
 }
 
 // Promote API environment to latest PROD

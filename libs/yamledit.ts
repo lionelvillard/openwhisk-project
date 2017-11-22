@@ -50,11 +50,19 @@ export class EditableYAML {
         const line = this.getLine(path);
         const indent = path.length * 2;
         const yaml = this.jsonToYaml(value, indent).split('\n');
-        yaml.splice(0, 1);
-        this.lines.splice(line + 1, 0, ...yaml);
+        if (yaml.length === 1) {
+            // inline.
+
+            this.lines[line] = this.lines[line].replace(/([^:]+:).*/, `$1${yaml[0]}`);
+        } else {
+            yaml.splice(0, 1);
+            this.lines.splice(line + 1, 0, ...yaml);
+        }
     }
 
     private jsonToYaml(value: any, indent = 0) {
+        if (!value)
+            return '';
         switch (typeof value) {
             case 'object':
                 // TODO: array
@@ -78,9 +86,8 @@ ${SPACES.substr(0, indent)}${key}:${this.jsonToYaml(value[key], indent + 2)}`;
             const indentation = index * 2;
             const nlineno = this.getLineNumber(name, lineno, indentation);
             if (nlineno === -1) {
-                const lastlineno = this.getLastLineSameIndent(lineno + 1, indentation);
+                const lastlineno = this.lines.length > lineno + 1 ? this.getLastLineSameIndent(lineno + 1, indentation) : this.lines.length;
                 this.lines.splice(lastlineno, 0, `${SPACES.substr(0, indentation)}${name}:`);
-
                 lineno = lastlineno;
             } else {
                 lineno = nlineno;
@@ -101,7 +108,7 @@ ${SPACES.substr(0, indent)}${key}:${this.jsonToYaml(value[key], indent + 2)}`;
         while (from < this.lines.length && this.getLineIndent(this.lines[from]) >= indentation) {
             from++;
         }
-        return from === this.lines.length ? from + 1 : from;
+        return from;
     }
 
     private getLineIndent(line: string) {
