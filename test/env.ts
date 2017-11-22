@@ -231,11 +231,12 @@ class Envget {
             await deploy.apply(configprod); // not ok
             assert.ok(false);
         } catch (e) {
+            console.log(e);
             assert.ok(true);
         }
 
         // cleanup
-        await bx.run(configprod, { space: `${projectname}-prod@0.0.0` }, `iam space-delete ${projectname}-prod@0.0.0 -f`);
+        // await bx.run(configprod, { space: `${projectname}-prod@0.0.0` }, `iam space-delete ${projectname}-prod@0.0.0 -f`);
     }
 
 }

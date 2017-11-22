@@ -37,11 +37,10 @@ export async function apply(config: types.Config) {
         await deployTriggers(config);
         await deployRules(config);
         await deployApis(config);
-
-        config.terminateProgress();
     } catch (e) {
+        config.fatal(e.message);
+    } finally {
         config.terminateProgress();
-        config.fatal(e);
     }
 }
 
