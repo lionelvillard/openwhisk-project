@@ -6,7 +6,7 @@
   "typing": "dist/index.d.ts",
   "scripts": {
     "clean": "rm -rf node_modules dist && cd plugins && ./clean.sh",
-    "prepublish": "tsc && cd plugins && npm run prepublish",
+    "prepublish": "tsc && cd plugins && ./tsc.sh",
     "pretest": "tsc",
     "test": "nyc mocha && nyc mocha dist/test && cd plugins && ./test.sh",
     "compile": "tsc -watch -p ./",
