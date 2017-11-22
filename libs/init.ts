@@ -151,7 +151,7 @@ async function configCache(config: types.Config) {
 }
 
 // Initialize OpenWhisk SDK
-export async function initOW(config: types.Config) {
+export async function initOW(config: types.Config, options: types.IWskProps = {}) {
     // Apply environment policies
     if (!config.hasOwnProperty('force')) {
         let actualenv = config.envname;
@@ -171,7 +171,7 @@ export async function initOW(config: types.Config) {
     if (config.dryrun)
         config.ow = fakeow;
     else
-        config.ow = await env.initWsk(config, config.flags);
+        config.ow = await env.initWsk(config, options);
 
     setOW(config, config.ow);
 }

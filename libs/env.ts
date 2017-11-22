@@ -224,54 +224,18 @@ async function resolveProps(config: IConfig, env: string, version: string, filen
         props.set('APIHOST', apihost);
     }
 
+    props.set('PROJECTNAME', config.projectname);
+    props.set('ENVNAME', env);
+    if (version)
+    props.set('ENVVERSION', version);
+
     if (!props.get('AUTH') || !props.get('APIGW_ACCESS_TOKEN')) {
         if (apihost.endsWith('bluemix.net')) {
-            await resolveAuthFromBluemix(config, props, env, version);
+            await bx.resolveAuth(config, props, env, version);
         } else {
             config.fatal('no AUTH variable found');
         }
     }
-}
-
-async function resolveAuthFromBluemix(config: IConfig, props, env: string, version: string) {
-    if (!bx.isBluemixCapable())
-        config.fatal('bx is not installed');
-
-    let bxorg = process.env.BLUEMIX_ORG || props.get('BLUEMIX_ORG');
-    if (!bxorg)
-        config.fatal('cannot resolve AUTH and APIGW_ACCESS_TOKEN from Bluemix credential: missing BLUEMIX_ORG');
-
-    let bxspace = props.get('BLUEMIX_SPACE');
-    bxspace = bxspace ? bxspace.trim() : null;
-    if (!bxspace) {
-        if (!config.projectname)
-            config.fatal(`cannot resolve AUTH: missing project name.`);
-
-        if (version)
-            bxspace = `${config.projectname}-${env}@${version}`;
-        else
-            bxspace = `${config.projectname}-${env}`;
-
-        bxspace = escapeNamespace(bxspace);
-        config.logger.info(`targeting ${bxspace} space`);
-    }
-
-    const cred: bx.Credential = { org: bxorg, space: bxspace };
-    const wskprops = await bx.getWskPropsForSpace(config, cred);
-
-    if (!wskprops.AUTH)
-        config.fatal('missing AUTH in .wskprops');
-    if (!wskprops.APIGW_ACCESS_TOKEN)
-        config.fatal('missing APIGW_ACCESS_TOKEN in .wskprops');
-
-    props.set('PROJECTNAME', config.projectname);
-    props.set('ENVNAME', env);
-    if (version)
-        props.set('ENVVERSION', version);
-    props.set('BLUEMIX_ORG', bxorg);
-    props.set('BLUEMIX_SPACE', bxspace);
-    props.set('AUTH', wskprops.AUTH);
-    props.set('APIGW_ACCESS_TOKEN', wskprops.APIGW_ACCESS_TOKEN);
 }
 
 export async function getWskPropsFile(config: IConfig) {
@@ -339,20 +303,16 @@ export async function resolveVariables(config: IConfig, options: any = {}) {
     return variables;
 }
 
-export async function initWsk(config: IConfig = {}, options = {}) {
+export async function initWsk(config: IConfig = {}, options: IWskProps = {}) {
     const vars = await resolveVariables(config, options);
+    if (vars.apihost && vars.apihost.endsWith('bluemix.net')) {
+        await bx.initWsk(config, vars);
+    }
     return openwhisk({ api_key: vars.auth, apihost: vars.apihost, ignore_certs: vars.ignore_certs, apigw_token: vars.apigw_token });
 }
 
 function getCachedEnvFilename(config: IConfig) {
     return path.join(config.cache, 'envs', `.${config.envname}${config.version ? `@${config.version}` : ''}.wskprops`);
-}
-
-// Convert env name to valid namespace
-function escapeNamespace(str: string) {
-    // The first character must be an alphanumeric character, or an underscore.
-    // The subsequent characters can be alphanumeric, spaces, or any of the following: _, @, ., -
-    return str.replace(/[+]/g, '-');
 }
 
 function addAll(props, others) {

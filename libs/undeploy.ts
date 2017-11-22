@@ -16,7 +16,7 @@
 import { init, initOW } from './init';
 import * as types from './types';
 import * as names from './names';
-import * as utils from './utils'; 
+import * as utils from './utils';
 
 // remove all entities
 export async function all(config: types.Config) {
@@ -26,7 +26,6 @@ export async function all(config: types.Config) {
 export async function apply(config: types.Config) {
     await init(config); // deprecate
     await initOW(config);
-    
 
     const manifest = config.manifest; // if null, then delete all!
     const service = manifest ? manifest.name : null; // only delete resources belonging to the service.
@@ -243,7 +242,7 @@ export async function apply(config: types.Config) {
         return true;
     }
 
-    // utitites 
+    // utitites
 
     function getManagedAnnotation(entity) {
         if (service) {

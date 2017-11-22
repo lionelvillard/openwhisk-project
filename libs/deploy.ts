@@ -21,9 +21,9 @@ import * as handlers from './handlers';
 import { init, initOW } from './init';
 import * as types from './types';
 
-export async function apply(config: types.Config) {
+export async function apply(config: types.Config, options: types.IWskProps = {}) {
     await init(config); // TODO: deprecate
-    await initOW(config);
+    await initOW(config, options);
 
     try {
         config.startProgress('deploying');

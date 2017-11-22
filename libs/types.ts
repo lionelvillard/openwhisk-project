@@ -29,9 +29,6 @@ export interface IConfig {
     /** What phases to skip */
     skipPhases?: Phase[];
 
-    /** Option flags */
-    flags?: any;
-
     /** logger level ('ALL', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE', 'OFF') */
     logger_level?: string;
 

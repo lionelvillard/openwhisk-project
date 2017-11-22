@@ -177,19 +177,64 @@ export async function getWskPropsForSpace(config: types.Config, cred: Credential
     return parser.read(wskProps(cred));
 }
 
-// async function readiedBackend(config: types.Config, wskpropsFile: string) {
-//     const wskprops = propertiesParser.createEditor(wskpropsFile);
 
-//     if (wskprops.get('APIHOST').endsWith('.bluemix.net')) {
-//         const cred: bx.Credential = { org: wskprops.get('BLUEMIX_ORG'), space: wskprops.get('BLUEMIX_SPACE') };
-//         bx.fixupCredentials(config, cred);
-//         await bx.ensureSpaceExists(config, cred);
+// Populate props with Bluemix specific authentication
+export async function resolveAuth(config: types.IConfig, props, env: string, version: string) {
+    if (!isBluemixCapable())
+        config.fatal('bx is not installed');
 
-//         // Patch APIGW_ACCESS_TOKEN
-//         const bxwskprops = propertiesParser.read(`${cred.home}/.wskprops`);
-//         if (wskprops.get('APIGW_ACCESS_TOKEN') !== bxwskprops.APIGW_ACCESS_TOKEN) {
-//             wskprops.set('APIGW_ACCESS_TOKEN', bxwskprops.APIGW_ACCESS_TOKEN);
-//             wskprops.save();
-//         }
-//     }
-// }
+    let bxorg = process.env.BLUEMIX_ORG || props.get('BLUEMIX_ORG');
+    if (!bxorg)
+        config.fatal('cannot resolve AUTH and APIGW_ACCESS_TOKEN from Bluemix credential: missing BLUEMIX_ORG');
+
+    let bxspace = props.get('BLUEMIX_SPACE');
+    bxspace = bxspace ? bxspace.trim() : null;
+    if (!bxspace) {
+        if (!config.projectname)
+            config.fatal(`cannot resolve AUTH: missing project name.`);
+
+        if (version)
+            bxspace = `${config.projectname}-${env}@${version}`;
+        else
+            bxspace = `${config.projectname}-${env}`;
+
+        bxspace = escapeNamespace(bxspace);
+        config.logger.info(`targeting ${bxspace} space`);
+    }
+
+    const cred: Credential = { org: bxorg, space: bxspace };
+    const wskprops = await getWskPropsForSpace(config, cred);
+
+    if (!wskprops.AUTH)
+        config.fatal('missing AUTH in .wskprops');
+    if (!wskprops.APIGW_ACCESS_TOKEN)
+        config.fatal('missing APIGW_ACCESS_TOKEN in .wskprops');
+
+    props.set('PROJECTNAME', config.projectname);
+    props.set('ENVNAME', env);
+    if (version)
+        props.set('ENVVERSION', version);
+    props.set('BLUEMIX_ORG', bxorg);
+    props.set('BLUEMIX_SPACE', bxspace);
+    props.set('AUTH', wskprops.AUTH);
+    props.set('APIGW_ACCESS_TOKEN', wskprops.APIGW_ACCESS_TOKEN);
+}
+
+// Prepare backend so that the OpenWhisk client works
+export async function initWsk(config: types.IConfig, wskprops: types.IWskProps) {
+    if (wskprops.BLUEMIX_ORG && wskprops.BLUEMIX_SPACE) {
+        const cred: Credential = { org: wskprops.BLUEMIX_ORG, space: wskprops.BLUEMIX_SPACE };
+        await ensureSpaceExists(config, cred);
+
+        // Patch APIGW_ACCESS_TOKEN
+        const bxwskprops = parser.read(`${cred.home}/.wskprops`);
+        wskprops.APIGW_ACCESS_TOKEN = bxwskprops.APIGW_ACCESS_TOKEN;
+    }
+}
+
+// Convert env name to valid namespace
+function escapeNamespace(str: string) {
+    // The first character must be an alphanumeric character, or an underscore.
+    // The subsequent characters can be alphanumeric, spaces, or any of the following: _, @, ., -
+    return str.replace(/[+]/g, '-');
+}
