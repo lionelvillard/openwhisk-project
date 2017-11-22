@@ -3,17 +3,19 @@
   "version": "0.7.4",
   "description": "",
   "main": "dist/index.js",
+  "typing": "dist/index.d.ts",
   "scripts": {
+    "clean": "rm -rf node_modules dist && cd plugins && ./clean.sh",
+    "prepublish": "tsc && cd plugins && npm run prepublish",
     "pretest": "tsc",
-    "compilenowatch": "tsc",
-    "test": "nyc mocha && nyc mocha dist/test",
-    "testts": "nyc mocha dist/test",
+    "test": "nyc mocha && nyc mocha dist/test && cd plugins && ./test.sh",
     "compile": "tsc -watch -p ./",
-    "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov"
+    "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
+    "postinstall": "cd plugins && ./install.sh"
   },
   "author": "Lionel Villard",
   "repository": {
-    "url": "https://github.com/lionelvillard/openwhisk-deploy.git",
+    "url": "https://github.com/lionelvillard/openwhisk-project.git",
     "type": "git"
   },
   "license": "Apache-2.0",

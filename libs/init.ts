@@ -153,10 +153,18 @@ async function configCache(config: types.Config) {
 // Initialize OpenWhisk SDK
 export async function initOW(config: types.Config) {
     // Apply environment policies
-    if (!config.hasOwnProperty('force') && config.envname) {
-        const policies = env.getEnvironment(config, config.envname);
-        if (policies) {
-            config.force = policies.writable;
+    if (!config.hasOwnProperty('force')) {
+        let actualenv = config.envname;
+        if (!actualenv) {
+            const wskprops = await env.getCurrent(config);
+            if (wskprops)
+                actualenv = wskprops.ENVNAME;
+        }
+        if (actualenv) {
+            const policies = env.getEnvironment(config, actualenv);
+            if (policies) {
+                config.force = policies.writable;
+            }
         }
     }
 

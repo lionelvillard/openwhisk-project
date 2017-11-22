@@ -8,13 +8,11 @@
     "pretest": "../../../node_modules/.bin/tsc",
     "test": "../../../node_modules/.bin/mocha dist/test",
     "compile": "../../../node_modules/.bin/tsc -watch -p ./",
-    "tsc": "../../../node_modules/.bin/tsc"
+    "tsc": "../../../node_modules/.bin/tsc",
+    "postinstall": "cd node_modules && ln -s ../../../.. openwhisk-deploy"
   },
   "author": "Lionel Villard",
   "license": "Apache-2.0",
-  "devDependencies": {
-    "openwhisk-deploy": "file:../../.."
-  },
   "dependencies": {
     "deep-copy": "^1.4.0"
   },

@@ -156,7 +156,8 @@ async function saveWskPropsForEnv(config: IConfig, name: string, wskprops: IWskP
         config.fatal('environment %s already exists', name);
 
     const props = propertiesParser.createEditor();
-    Object.keys(wskprops).forEach(key => props.set(key, wskprops[key]));
+    if (wskprops)
+        Object.keys(wskprops).forEach(key => props.set(key, wskprops[key]));
     props.save(filename);
 }
 
