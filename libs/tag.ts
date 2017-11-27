@@ -19,7 +19,7 @@ import * as path from 'path';
 
 import { IConfig } from './types';
 import { EditableYAML } from './yamledit';
-import { addTag, isGitRepo } from './utils';
+import { addTag, isGitRepo, isGitClean } from './utils';
 
 export interface ITagOptions {
     // version increment
@@ -31,21 +31,25 @@ export async function tag(config: IConfig, options: ITagOptions) {
     if (!config.location)
         config.fatal('cannot tag a project without knowing where the project file is located');
 
-
     const git = await isGitRepo(config.basePath);
-    // Check no changes.
+    if (!git)
+        config.fatal('cannot tag a project not stored in a git repository');
+
+    const clean = await isGitClean(config.basePath);
+
+    if (!clean)
+        config.fatal('git repository not clean: commit your changes before tagging');
 
     options = options || { incVersion: 'patch' };
 
     await incVersion(config, options.incVersion);
+    await addTag(config, config.basePath, config.manifest.version);
 
-    if (git) {
-        await addTag(config, config.basePath, config.manifest.version);
-    }
-    // tag git repo
+    // TODO: docker images
 
     // tag docker images
     // optionally push git repo
+    return `v${config.manifest.version}`;
 }
 
 // Increment project version

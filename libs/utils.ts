@@ -285,11 +285,16 @@ export async function gitClone(config: IConfig, location: string) {
 }
 
 export async function addTag(config: IConfig, localgit: string, version: string) {
-    return (simpleGit(localgit) as any).addTag(`v${version}`);
+    return (simpleGit(localgit) as any).addTag(`v${version}`, `Tagging ${config.manifest.name} version ${version}`);
 }
 
 export async function isGitRepo(localgit: string) {
     return (simpleGit(localgit) as any).revparse([ '--is-inside-work-tree' ]);
+}
+
+export async function isGitClean(localgit: string) {
+    const summary = await simpleGit(localgit).status();
+    return summary.files.length === 0;
 }
 
 // --- misc
