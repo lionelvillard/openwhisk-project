@@ -17,7 +17,7 @@ import { getLogger } from 'log4js';
 import * as fs from 'fs-extra';
 import * as yaml from 'yamljs';
 import * as path from 'path';
-import * as types from './types';
+import { IConfig, IWskProps } from './types';
 import * as plugins from './pluginmgr';
 import * as expandHome from 'expand-home-dir';
 import * as utils from './utils';
@@ -31,11 +31,18 @@ import { setProxy } from './interpolation';
 import * as semver from 'semver';
 
 /* Create basic configuration */
-export function newConfig(projectPath: string, logger_level: string = 'off', envname?: string): types.Config {
+export function newConfig(projectPath: string, logger_level: string = 'off', envname?: string): IConfig {
     return { logger_level, location: projectPath, basePath: '.', cache: '.openwhisk', envname };
 }
 
-export async function init(config: types.Config) {
+/* Create new uninitialized config from existing one overriding manifest and environment */
+export function cloneConfig(config: IConfig, projectPath: string, envname: string): IConfig {
+    const newcfg = { ...config, location: projectPath, envname };
+    newcfg._initialized = false;
+    return newcfg;
+}
+
+export async function init(config: IConfig) {
     if (config._initialized)
         return;
     config._initialized = true;
@@ -90,7 +97,7 @@ export async function init(config: types.Config) {
     }
 }
 
-async function resolveManifest(config: types.Config) {
+async function resolveManifest(config: IConfig) {
     config.startProgress('loading project configuration');
 
     if (config.manifest || config.manifest === '') {
@@ -122,20 +129,20 @@ async function resolveManifest(config: types.Config) {
     config.terminateProgress();
 }
 
-async function mayGitClone(config: types.Config) {
+async function mayGitClone(config: IConfig) {
     if (config.location.startsWith('git+')) {
         config.location = await utils.gitClone(config, config.location.substr(4));
     }
 }
 
-async function loadManifest(config: types.Config) {
+async function loadManifest(config: IConfig) {
     config.startProgress(`reading ${config.location}`);
     const content = await fs.readFile(config.location);
     config.manifest = yaml.parse(Buffer.from(content).toString()) || {};
     config.clearProgress();
 }
 
-async function configCache(config: types.Config) {
+async function configCache(config: IConfig) {
     if (!config.cache) {
         if (config.basePath)
             config.cache = `${config.basePath}/.openwhisk`;
@@ -151,7 +158,7 @@ async function configCache(config: types.Config) {
 }
 
 // Initialize OpenWhisk SDK
-export async function initOW(config: types.Config, options: types.IWskProps = {}) {
+export async function initOW(config: IConfig, options: IWskProps = {}) {
     // Apply environment policies
     if (!config.hasOwnProperty('force')) {
         let actualenv = config.envname;
@@ -178,7 +185,7 @@ export async function initOW(config: types.Config, options: types.IWskProps = {}
 
 // --- helpers
 
-function setOW(config: types.Config, ow) {
+function setOW(config: IConfig, ow) {
     if (!config.force) {
         ow.packages.change = ow.packages.create;
         ow.triggers.change = ow.triggers.create;
@@ -291,7 +298,7 @@ const fakeow = {
     }
 };
 
-async function configVariableSources(config: types.Config) {
+async function configVariableSources(config: IConfig) {
     if (!config.variableSources) {
 
         // TODO: configurable
@@ -304,7 +311,7 @@ async function configVariableSources(config: types.Config) {
     }
 }
 
-function fatal(config: types.Config) {
+function fatal(config: IConfig) {
     return (fmt: string, ...args) => {
         config.clearProgress();
 
@@ -315,14 +322,14 @@ function fatal(config: types.Config) {
     };
 }
 
-function startProgress(config: types.Config) {
+function startProgress(config: IConfig) {
     return (format, options) => {
         config._progresses.push({ format, options });
         renderProgress(config);
     };
 }
 
-function setProgress(config: types.Config) {
+function setProgress(config: IConfig) {
     return (format, options) => {
         if (config._progresses.length > 0)
             config._progresses.pop();
@@ -332,14 +339,14 @@ function setProgress(config: types.Config) {
     };
 }
 
-function clearProgress(config: types.Config) {
+function clearProgress(config: IConfig) {
     return () => {
         config._progresses = [];
         renderProgress(config);
     };
 }
 
-function terminateProgress(config: types.Config) {
+function terminateProgress(config: IConfig) {
     return () => {
         if (config._progresses.length > 0)
             config._progresses.pop();
@@ -348,7 +355,7 @@ function terminateProgress(config: types.Config) {
     };
 }
 
-function renderProgress(config: types.Config) {
+function renderProgress(config: IConfig) {
     if (config.progress) {
         config.progress.terminate();
         config.progress = null;
@@ -367,7 +374,7 @@ function renderProgress(config: types.Config) {
 }
 
 // Remove resources not processed in the environment
-function filter(config: types.Config) {
+function filter(config: IConfig) {
     // TODO: should be configurable
     if (config.envname === 'api') {
         const manifest = config.manifest;
@@ -379,7 +386,7 @@ function filter(config: types.Config) {
 }
 
 function parseEnvName(envname: string) {
-    const matched = envname.match(/^([\w]*)(@(.+))?$/);
+    const matched = envname.match(/^([\w-]*)(@(.+))?$/);
     if (matched) {
         const version = matched[3];
         if (version && !semver.valid(version))

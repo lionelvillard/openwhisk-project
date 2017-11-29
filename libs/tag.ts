@@ -19,7 +19,7 @@ import * as path from 'path';
 
 import { IConfig } from './types';
 import { EditableYAML } from './yamledit';
-import { addTag, isGitRepo, isGitClean } from './utils';
+import { addAnnotatedTag, isGitRepo, isGitClean, gitCommit, gitPush, getTags } from './utils';
 
 export interface ITagOptions {
     // version increment
@@ -43,13 +43,19 @@ export async function tag(config: IConfig, options: ITagOptions) {
     options = options || { incVersion: 'patch' };
 
     await incVersion(config, options.incVersion);
-    await addTag(config, config.basePath, config.manifest.version);
+    const newtag = `v${config.manifest.version}`;
+    const tags = await getTags(config, config.basePath);
+    if (tags.all.includes(newtag))
+        config.fatal(`tag ${newtag} already exists`);
+
+    await addAnnotatedTag(config, config.basePath, config.manifest.version);
+
+    await gitCommit(config.basePath, `bump project version to ${config.manifest.version}`, [config.location]);
+    await gitPush(config.basePath);
 
     // TODO: docker images
 
-    // tag docker images
-    // optionally push git repo
-    return `v${config.manifest.version}`;
+    return newtag;
 }
 
 // Increment project version

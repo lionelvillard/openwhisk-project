@@ -291,12 +291,14 @@ async function checkEnvironments(config: IConfig, project: IProject) {
         const envs = project.environments;
 
         for (const envname in envs) {
-            const env = envs[envname];
+            const env: any = envs[envname] || {};
 
             env.name = envname;
 
             if (env.hasOwnProperty('writable'))
                 env.writable = false;
+
+            envs[envname] = env;
         }
     }
 }

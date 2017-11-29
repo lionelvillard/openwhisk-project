@@ -26,15 +26,12 @@ import * as openwhisk from 'openwhisk';
 import * as ye from './yamledit';
 
 // TODO:
-const BuiltinEnvs: IEnvironment[] = [
-    // { name: 'local', writable: true, versioned: false, entities: 'all', props: { APIHOST: '172.17.0.1' } },
-    { name: 'dev', writable: true, versioned: false, entities: 'all', props: { APIHOST: 'openwhisk.ng.bluemix.net' } },
-    // { name: 'test', writable: true, versioned: false, entities: 'all', props: { APIHOST: 'openwhisk.ng.bluemix.net' } },
-    { name: 'prod', writable: false, versioned: true, entities: 'all', props: { APIHOST: 'openwhisk.ng.bluemix.net' } },
-    // { name: 'api', writable: true, versioned: false, entities: 'api', props: { APIHOST: 'openwhisk.ng.bluemix.net', PRODVERSION: '1.0.0' } }
-];
+const BuiltinEnvs = {
+    dev: { name: 'dev', writable: true, versioned: false, entities: 'all', props: { APIHOST: 'openwhisk.ng.bluemix.net' } },
+    prod: { name: 'prod', writable: false, versioned: true, entities: 'all', props: { APIHOST: 'openwhisk.ng.bluemix.net' } }
+};
 
-const BuiltinEnvNames = BuiltinEnvs.map(e => e.name);
+const BuiltinEnvNames = Object.keys(BuiltinEnvs);
 const ALL_WSKPROPS = '.all.wskprops';
 
 // Get properties in current environment
@@ -57,8 +54,8 @@ export async function getVersionedEnvironments(config: IConfig): Promise<IVersio
 }
 
 export function getEnvironments(config: IConfig): IEnvironment[] {
-    const envs = config.manifest ? config.manifest.environments : null;
-    return envs ? [...BuiltinEnvs, ...Object.keys(envs).map(key => envs[key])] : BuiltinEnvs;
+    const envs = { ...BuiltinEnvs, ...(config.manifest ? config.manifest.environments : {}) };
+    return Object.keys(envs).map(key => envs[key]);
 }
 
 export function getEnvironment(config: IConfig, envname: string): IEnvironment {
@@ -177,23 +174,23 @@ export async function newEnvironment(config: IConfig, env: IEnvironment) {
     editor.save();
 }
 
-// Promote API environment to latest PROD
-export async function promote(config: IConfig) {
-    const versions = await getVersions(config);
-    if (versions && versions.prod && versions.prod.length > 0) {
-        const prods = versions.prod;
-        const latest = prods[prods.length - 1];
+// // Promote API environment to latest PROD
+// export async function promote(config: IConfig) {
+//     const versions = await getVersions(config);
+//     if (versions && versions.prod && versions.prod.length > 0) {
+//         const prods = versions.prod;
+//         const latest = prods[prods.length - 1];
 
-        if (!(await fs.pathExists('.api.wskprops')))
-            await saveWskPropsForEnv(config, 'api', BuiltinEnvs.find(obj => obj.name === 'api').props);
+//         if (!(await fs.pathExists('.api.wskprops')))
+//             await saveWskPropsForEnv(config, 'api', BuiltinEnvs.find(obj => obj.name === 'api').props);
 
-        let content = await fs.readFile('.api.wskprops', 'utf-8');
-        content = content.replace(/(PRODVERSION[^=]*=).*/, `$1${latest}`);
-        await fs.writeFile('.api.wskprops', content, { encoding: 'utf-8' });
-        return true;
-    }
-    return false;
-}
+//         let content = await fs.readFile('.api.wskprops', 'utf-8');
+//         content = content.replace(/(PRODVERSION[^=]*=).*/, `$1${latest}`);
+//         await fs.writeFile('.api.wskprops', content, { encoding: 'utf-8' });
+//         return true;
+//     }
+//     return false;
+// }
 
 // --- Helpers
 
@@ -209,7 +206,7 @@ async function resolveProps(config: IConfig, env: string, version: string, filen
     props.set('PROJECTNAME', config.projectname);
     props.set('ENVNAME', env);
     if (version)
-    props.set('ENVVERSION', version);
+        props.set('ENVVERSION', version);
 
     if (!props.get('AUTH') || !props.get('APIGW_ACCESS_TOKEN')) {
         if (apihost.endsWith('bluemix.net')) {

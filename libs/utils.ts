@@ -284,17 +284,45 @@ export async function gitClone(config: IConfig, location: string) {
     return path.join(localDir, projectFilePath);
 }
 
-export async function addTag(config: IConfig, localgit: string, version: string) {
-    return (simpleGit(localgit) as any).addTag(`v${version}`, `Tagging ${config.manifest.name} version ${version}`);
+export async function addAnnotatedTag(config: IConfig, localgit: string, version: string) {
+    return (simpleGit(localgit) as any).addAnnotatedTag(`v${version}`, `Tagging ${config.manifest.name} version ${version}`);
+}
+
+export async function getTags(config: IConfig, localgit: string) {
+    return simpleGit(localgit).tags();
 }
 
 export async function isGitRepo(localgit: string) {
-    return (simpleGit(localgit) as any).revparse([ '--is-inside-work-tree' ]);
+    return (simpleGit(localgit) as any).revparse(['--is-inside-work-tree']);
 }
 
 export async function isGitClean(localgit: string) {
     const summary = await simpleGit(localgit).status();
     return summary.files.length === 0;
+}
+
+export async function gitCommit(localgit: string, message: string, files: string[] = [], options: any = {}) {
+    return await (simpleGit(localgit) as any).commit(message, files, options);
+}
+
+export async function gitPush(localgit: string) {
+    await simpleGit(localgit).push();
+}
+
+export async function gitRemotes(localgit: string) {
+    return await (simpleGit(localgit) as any).getRemotes(true);
+}
+
+// Get git URL: assume origin/fetch|push defined
+export async function gitURL(localgit: string) {
+    const remotes = await gitRemotes(localgit);
+    if (remotes) {
+        const origin = remotes.find(remote => remote.name === 'origin');
+        if (origin && origin.refs) {
+            return origin.refs.fetch || origin.refs.push;
+        }
+    }
+    return null;
 }
 
 // --- misc

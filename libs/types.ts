@@ -299,6 +299,9 @@ export interface IEnvironment {
 
     /* Default wsk props */
     props?: IWskProps;
+
+    /* Promote to environments */
+    promote?: string[];
 }
 
 export interface IWskProps {
