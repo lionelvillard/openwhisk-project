@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { gt } from 'semver';
+import { gt, valid, clean } from 'semver';
 import { getVersionedEnvironments, IVersionedEnvironment, getEnvironment } from './env';
 import { IConfig, IEnvironment } from './types';
 import { getTags, gitURL } from './utils';
@@ -34,30 +34,34 @@ export async function promote(config: IConfig) {
     const latest = (await getTags(config, config.basePath)).latest;
     if (!latest)
         config.fatal('no tagged project found');
+    if (!valid(latest))
+        config.fatal(`invalid tag name found: ${latest}`);
+    const version = clean(latest);
 
     // Find where it has been deployed so far
     const envs = await getVersionedEnvironments(config);
-    const deployed = getEnvsWithVersion(envs, latest);
+
+    const deployed = getEnvsWithVersion(envs, version); // deployed versions
 
     // traverse promote chain, starting from dev (and ignoring dev)
     const index = indexEnvs(envs);
-    let current: IIndexed = { dev: index.dev }; // environment being considered
+    let current = getAllNextEnvs(index, { dev: index.dev }); // environment being considered, skipping dev
 
-    do {
-        const next = getAllNextEnvs(index, current);
-        if (Object.keys(next).length === 0)
-            break;
-
-        current = next;
-    } while (!allDeployed(deployed, current));
+    while (Object.keys(current).length !== 0 && allDeployed(deployed, current)) {
+        current = getAllNextEnvs(index, current);
+    }
 
     const envnames = Object.keys(current);
-    if (envnames.length > 0 && !envnames.includes('dev')) {
-        await deployAll(config, envnames, url, latest);
+    if (envnames.length > 0) {
+        try {
+            await deployAll(config, envnames, url, latest);
 
-        return `promoted ${latest} to ${Object.keys(current).join(', ')}`;
+            return `promoted ${latest} to ${Object.keys(current).join(', ')}`;
+        } catch (e) {
+            throw new Error(`failed to promote ${latest} to ${Object.keys(current).join(', ')}: ${e.message}`);
+        }
     }
-    return `no more promotion available for tag ${latest}`;
+    return `latest tag ${latest} has already fully promoted.`;
 }
 
 interface IIndexed { [key: string]: IVersionedEnvironment; }
@@ -76,9 +80,11 @@ function getAllNextEnvs(allenvs: IIndexed, envs: IIndexed): IIndexed {
 }
 
 function allDeployed(deployed: IIndexed, envs: IIndexed): boolean {
-    for (const envname in Object.keys(envs))
-        if (!deployed.hasOwnProperty(envname))
+    for (const envname of Object.keys(envs)) {
+        if (!deployed.hasOwnProperty(envname)) {
             return false;
+        }
+    }
     return true;
 }
 
