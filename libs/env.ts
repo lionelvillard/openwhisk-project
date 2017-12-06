@@ -319,7 +319,8 @@ async function getVersions(config: IConfig): Promise<{ [key: string]: any }> {
         const cred = { org: props.BLUEMIX_ORG, space: props.BLUEMIX_SPACE };
         const io = await bx.run(config, cred, 'iam spaces'); // long! Consider caching result
         const stdout = io.stdout;
-        const regex = new RegExp(`${config.projectname}-([\\w]+)@([\\w\\d.]+)`, 'g');
+
+        const regex = new RegExp(`${config.projectname}-([\\w\\-.]+)@([\\w\\d.]+)`, 'g');
 
         let match;
         while ((match = regex.exec(stdout)) !== null) {
