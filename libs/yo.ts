@@ -14,31 +14,35 @@
  * limitations under the License.
  */
 
-const yeoman = require('yeoman-environment');
-const path = require('path');
-const fs = require('fs');
+import * as yeoman from 'yeoman-environment';
+import * as path from 'path';
+import * as fs from 'fs';
 
 let env;
 
-function init() {
-    return new Promise(resolve => {
-        if (!env) {
-            env = yeoman.createEnv();
-            let root = path.join(__dirname, '..', '..', 'node_modules', 'generator-openwhisk', 'generators');
-            if (!fs.existsSync(root)) {
-                root = path.join(__dirname, '..', '..', '..', 'generator-openwhisk', 'generators');
-            }
-
-            const generators = fs.readdirSync(root);
-            for (const gen of generators)
-                env.register(path.join(root, gen, 'index.js'), gen);
+export function init(adapter) {
+    if (!env) {
+        env = yeoman.createEnv();
+        if (adapter)
+            env.adapter = adapter;
+        let root = path.join(__dirname, '..', '..', 'node_modules', 'generator-openwhisk', 'generators');
+        if (!fs.existsSync(root)) {
+            root = path.join(__dirname, '..', '..', '..', 'generator-openwhisk', 'generators');
         }
-        resolve()
-    });
+
+        const generators = fs.readdirSync(root);
+        for (const gen of generators)
+            env.register(path.join(root, gen, 'index.js'), gen);
+    }
 }
 
 // Run the given generator.
 export function run(namespace) {
-    return init()
-        .then(() => env.run(namespace, () => true));
+    return new Promise((resolve, reject) => {
+        try {
+            env.run(namespace, () => resolve());
+        } catch (e) {
+            reject(e);
+        }
+    });
 }

@@ -32,4 +32,4 @@ import * as plugins from './libs/pluginmgr';
 import * as interpolation from './libs/interpolation';
 import * as utils from './libs/utils';
 
-export { init, deploy, undeploy, refresh, sync, env, yo, names, bx, controller, plugins, interpolation, utils };
+export { init, deploy, undeploy, refresh, sync, env, names, bx, controller, plugins, interpolation, utils, yo };
