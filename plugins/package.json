@@ -1,3 +1,7 @@
 {
-  "dependencies": {}
+  "name": "curated-plugins",
+  "version": "1.0.0",
+  "dependencies": {
+    "wskp-ibmcloud-plugin": "git+https://github.com/lionelvillard/wskp-ibmcloud-plugin.git"
+  }
 }

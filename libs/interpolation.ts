@@ -18,6 +18,8 @@ import * as types from './types';
 import * as vm from 'vm';
 import { IConfig, IProject } from './types';
 import { Task } from './coordinator';
+import * as deepis from 'deep-is';
+import { EventEmitter } from 'events';
 
 // recursively evaluate expressions in obj
 export function evaluateAll(config: types.Config, obj: any, filter?: string[]) {
@@ -48,7 +50,7 @@ export function evaluate(config: types.Config, expr: string) {
 
     const context = {
         vars: new Proxy({}, variableHandler),
-        self: config.manifest,
+        self: config.manifest, // Proxy has already been installed.
         proxy: new Proxy({}, proxyHandler),
         convert
     };
@@ -57,12 +59,42 @@ export function evaluate(config: types.Config, expr: string) {
     return vm.runInContext(expr, sandbox);
 }
 
+/**
+ * Evaluate expression until all related tasks have been terminated.
+ * @return the evaluated expression. Return undefined when an error occur
+ */
 export async function fullyEvaluate(config: types.Config, expr: string) {
-    let value = evaluate(config, expr);
-    if (!value.tasks)
-        return value;
+    try {
+        let value = evaluate(config, expr);
+        if (!value || !value.tasks)
+            return value;
 
-    return Promise.all(value.tasks).then(v => fullyEvaluate(config, value.expr));
+        return Promise.all(value.tasks).then(v => fullyEvaluate(config, value.expr));
+    } catch (e) {
+        config.logger.info(`an error occurred while evaluating ${expr}`);
+        config.logger.info(e);
+        return undefined;
+    }
+}
+
+/** Block until the value pointed by the path expression and property equals to the given value */
+export async function blockUntil(config: types.Config, path: string, property: string, expected: any) {
+    const expr = `\${${path}.${property}}`;
+    let value = await fullyEvaluate(config, expr);
+    if (deepis(value, expected)) {
+        return value;
+    }
+
+    // Need to watch for changes
+    const obj = evaluate(config, `\${${path}}`);
+    if (typeof obj !== 'object')
+        return undefined;
+
+    value = obj[property];
+    while (!deepis(value, expected)) {
+        value = await watchSetOnce(obj, property);
+    }
+    return value;
 }
 
 function resolveVariable(config, name) {
@@ -81,10 +113,10 @@ function resolveVariable(config, name) {
 function convert(strings, ...exprs) {
     if (exprs.length === 1 && strings.length <= 2 && strings.join('') === '') {
         const expr = exprs[0];
-        if (expr.task) {
-            return { expr: expr.expr, task: [expr.task] };
+        if (expr && expr.task) {
+            return { expr: expr.expr, tasks: [expr.task] };
         }
-        return exprs[0]; // preserve expression type.
+        return expr; // preserve expression type.
     }
 
     // convert to string
@@ -107,13 +139,28 @@ function convert(strings, ...exprs) {
 
 // --- Async proxy
 
+class AsyncEmitter extends EventEmitter { }
+const asyncEmitter = new AsyncEmitter();
+
+async function watchSetOnce(target: object, property: string) {
+    return new Promise(resolve => {
+        const listener = (target2, property2, value) => {
+            if (target === target2 && property === property2) {
+                asyncEmitter.removeListener('set', listener);
+                resolve(value);
+            }
+        };
+        asyncEmitter.on('set', listener);
+    });
+}
+
 // Keep track of proxy objects to avoid duplication.
 let proxies = new WeakSet();
 
 // Proxied object, indexed by their unique id
 let handlers = {};
 
-// Set async proxy of parent[name]
+/** Set async proxy on parent[name] */
 export function setProxy(parent: any, name: string) {
     const obj = parent[name];
     if (obj && typeof obj === 'object' && !proxies.has(obj)) {
@@ -123,7 +170,9 @@ export function setProxy(parent: any, name: string) {
 
         parent[name] = proxy;
         handlers[handler.id] = proxy;
+        return proxy;
     }
+    return obj;
 }
 
 // reset state (should be only needed for test suites)
@@ -155,7 +204,7 @@ class AsyncHandler {
         let value = target[name];
         if (value instanceof Task) {
             if (value.resolved) {
-                value = target[name] = value.resolved;
+                value = target[name] = value.resolved; // is set called?
             } else {
                 // return partially evaluated expression. Can be evaluated when task is completed.
                 return { expr: `\${proxy.${this.id}.${name}}`, task: value };
@@ -163,10 +212,15 @@ class AsyncHandler {
         }
 
         // Make sure proxy is set.
-        setProxy(target, name);
-
-        return value;
+        return setProxy(target, name);
     }
+
+    public set(target, property, value, receiver) {
+        target[property] = value;
+        asyncEmitter.emit('set', receiver, property, value);
+        return true;
+    }
+
 }
 
 export const proxyHandler = {

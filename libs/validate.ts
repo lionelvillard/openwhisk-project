@@ -15,7 +15,7 @@
  */
 import {
     IConfig, IProject, IPackage, IAction, IApi, ProjectProps, ActionProps, Contribution,
-    ISyntaxContribution
+    ISyntaxContribution, ResourceStatus
 } from './types';
 
 import * as fs from 'fs-extra';
@@ -31,6 +31,7 @@ import * as progress from 'progress';
 import * as env from './env';
 import * as semver from 'semver';
 import { format } from "util";
+import { IResource } from '../index';
 
 /* Expand and validate the project configuration file. */
 export async function check(config: IConfig) {
@@ -80,9 +81,10 @@ async function checkResources(config: IConfig, manifest: IProject) {
         return;
 
     for (const id in resources) {
-        const service = resources[id];
+        const resource: IResource = resources[id];
+        resource._status = ResourceStatus.PENDING;
 
-        if (!service.hasOwnProperty('type'))
+        if (!resource.hasOwnProperty('type'))
             config.fatal('missing property type for resource id %s', id);
 
         delete resources[id];
@@ -151,7 +153,7 @@ async function checkPackage(config: IConfig, manifest, packages, pkgName, pkg, b
                 if (!plugin)
                     config.fatal('no plugin found for service binding %s', pkg.service);
 
-                const contributions = plugin.serviceBindingContributor(config, pkgName, pkg);
+                const contributions = plugin.resourceBindingContributor(config, pkgName, pkg);
                 await applyContributions(config, manifest, contributions, plugin);
             } else {
                 if (!binding)
@@ -404,9 +406,8 @@ async function applyContributions(config: IConfig, manifest: IProject, contribut
                     await checkPackage(config, manifest, pkgs, contrib.name, contrib.body, true);
                     await checkPackage(config, manifest, pkgs, contrib.name, contrib.body, false);
                     break;
-                case 'service':
+                case 'resource':
                     break;
-
             }
         }
     }

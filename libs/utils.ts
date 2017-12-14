@@ -302,7 +302,7 @@ export async function isGitClean(localgit: string) {
 }
 
 export async function gitCommit(localgit: string, message: string, files: string[] = [], options: any = {}) {
-    return await (simpleGit(localgit) as any).commit(message, files, options);
+    return (simpleGit(localgit) as any).commit(message, files, options);
 }
 
 export async function gitPush(localgit: string) {
@@ -310,7 +310,7 @@ export async function gitPush(localgit: string) {
 }
 
 export async function gitRemotes(localgit: string) {
-    return await (simpleGit(localgit) as any).getRemotes(true);
+    return (simpleGit(localgit) as any).getRemotes(true);
 }
 
 // Get git URL: assume origin/fetch|push defined

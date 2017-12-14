@@ -12,7 +12,7 @@
                 "--timeout",
                 "999999",
                 "--colors",
-                "dist/test/env.js"
+                "test/interpolation.js"
             ],
             "internalConsoleOptions": "openOnSessionStart"
         },

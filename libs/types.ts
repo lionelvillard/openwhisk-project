@@ -114,11 +114,11 @@ export interface IPlugin {
     // API contributor (/api)
     apiContributor?: ApiContributor;
 
-    // service contributor (/services/<name>/type: <type>)
-    serviceContributor?: ServiceContributor;
+    // resource contributor (/resources/<name>/type: <type>)
+    serviceContributor?: ResourceContributor;
 
-    // service binding contributor (/packages/<name>/service: <name>)
-    serviceBindingContributor?: ServiceBindingContributor;
+    // resource binding contributor (/packages/<name>/resource: <name>)
+    resourceBindingContributor?: ResourceBindingContributor;
 
     // Action builder contributor making the action artifacts to deploy.
     build?: ActionBuilder;
@@ -135,17 +135,18 @@ export interface IPlugin {
 
 export type SyntaxContributor = (IConfig, name: string, value: any) => ISyntaxContribution[];
 
-export type ActionContributor = (IConfig, IProject, pkgName: string, actionName: string, IAction) => Contribution[] | Promise<Contribution[]>;
-export type ServiceContributor = (IConfig, string, IService) => Contribution[];
-export type ServiceBindingContributor = (IConfig, pkgName: string, IPackage) => Contribution[];
-export type ApiContributor = (IConfig, IProject, apiname: string, IApi) => Contribution[] | Promise<Contribution[]>;
+export type ActionContributor = (IConfig, IProject, pkgName: string, actionName: string, IAction) => Contribution[];
+export type ResourceContributor = (IConfig, string, IResource) => Contribution[];
+export type ResourceBindingContributor = (IConfig, pkgName: string, IPackage) => Contribution[];
+export type ApiContributor = (IConfig, IProject, apiname: string, IApi) => Contribution[];
+
 export type ActionBuilder = (IConfig, IAction, Builder) => string | Promise<string>;
 export type VariableResolver = (name: string) => any;
 export type VariableResolverCreator = (Config) => Promise<(name: string) => any>;
 
 // A contribution to the project configuration
 export type IContribution = Contribution;
-export type Contribution = IActionContribution | IApiContribution | IPackageContribution | IServiceContribution;
+export type Contribution = IActionContribution | IApiContribution | IPackageContribution | IResourceContribution;
 
 // A syntax contribution
 export interface ISyntaxContribution {
@@ -202,9 +203,9 @@ export interface IApiContribution {
 }
 
 // A service contribution
-export interface IServiceContribution {
+export interface IResourceContribution {
     // kind of contribution
-    kind: "service";
+    kind: 'resource';
 
     // service id
     id: string;
@@ -259,14 +260,22 @@ export type IAction = any;
 export type IPackage = any;
 export type IApi = any;
 
+export enum ResourceStatus { PENDING, PROVISIONED }
+
 export interface IResource {
-    /* Service name. By default same as service id */
+    /* Resource name. By default same as resource id */
     name?: string;
 
-    /* Service type */
+    /* Resource type. Must be globally unique */
     type: string;
 
-    // service parameters
+    /* Whether this resource is managed by the project */
+    managed?: boolean;
+
+    /* Resource status (internal). Initialized to PENDING */
+    _status?: ResourceStatus;
+
+    // resource parameters
     [key: string]: any;
 }
 

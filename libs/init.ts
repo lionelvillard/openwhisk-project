@@ -30,9 +30,14 @@ import { check } from './validate';
 import { setProxy } from './interpolation';
 import * as semver from 'semver';
 
-/* Create basic configuration */
+/* Create configuration from existing project configuration file */
 export function newConfig(projectPath: string, logger_level: string = 'off', envname?: string): IConfig {
     return { logger_level, location: projectPath, basePath: '.', cache: '.openwhisk', envname };
+}
+
+/* Create configuration from in-memory project configuration */
+export function newConfigFromJSON(manifest: object, logger_level: string = 'off', envname?: string): IConfig {
+    return { logger_level, manifest, basePath: '.', cache: '.openwhisk', envname };
 }
 
 /* Create new uninitialized config from existing one overriding manifest and environment */
@@ -41,6 +46,7 @@ export function cloneConfig(config: IConfig, projectPath: string, envname: strin
     newcfg._initialized = false;
     return newcfg;
 }
+
 
 export async function init(config: IConfig) {
     if (config._initialized)

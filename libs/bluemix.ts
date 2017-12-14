@@ -33,7 +33,7 @@ export const isBluemixCapable = async () => {
         }
     }
     return false;
-}
+};
 
 export type Credential = ICredential;
 export interface ICredential {
@@ -42,6 +42,7 @@ export interface ICredential {
     org?: string;
     space?: string;
     home?: string;
+    nocreate?: boolean; // Whether to not create the space if does not exist.
 }
 
 const wskProps = (cred: Credential) => `${cred.home}/.wskprops`;
@@ -81,7 +82,7 @@ export const login = async (config: types.Config, cred: Credential) => {
     }
 };
 
-// Login to Bluemix. @return true if tokens have been refreshed.
+// Login to Bluemix. @return true if login was needed
 async function doLogin(config: types.Config, cred: Credential) {
     try {
         const target = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx target`;
@@ -101,7 +102,7 @@ async function refreshTokens(config: types.Config, cred: Credential) {
     try {
         await exec(bx);
     } catch (e) {
-        if (space && e.stdout && e.stdout.includes(`Space '${cred.space}' was not found.`)) {
+        if (space && e.stdout && e.stdout.includes(`Space '${cred.space}' was not found.`) && !cred.nocreate) {
             // space does not exist and requested => create.
             const newspace = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx account space-create ${cred.space}`;
             await exec(newspace);
@@ -177,7 +178,6 @@ export async function getWskPropsForSpace(config: types.Config, cred: Credential
     return parser.read(wskProps(cred));
 }
 
-
 // Populate props with Bluemix specific authentication
 export async function resolveAuth(config: types.IConfig, props, env: string, version: string) {
     if (!isBluemixCapable())
@@ -237,4 +237,22 @@ function escapeNamespace(str: string) {
     // The first character must be an alphanumeric character, or an underscore.
     // The subsequent characters can be alphanumeric, spaces, or any of the following: _, @, ., -
     return str.replace(/[+]/g, '-');
+}
+
+// Force delete the given space
+export async function deleteSpace(config: types.Config, cred: Credential, space: string) {
+    try {
+        await run(config, cred, `account space-delete ${space} -f`);
+    } catch (e) {
+        config.logger.info(`failed to delete space ${space}: ${e.stdout}`);
+    }
+}
+
+// Force delete the given cf service
+export async function deleteService(config: types.Config, cred: Credential, service: string) {
+    try {
+        await run(config, cred, `service delete ${service} -f`);
+    } catch (e) {
+        config.logger.info(`failed to delete service ${service}: ${e.stdout}`);
+    }
 }

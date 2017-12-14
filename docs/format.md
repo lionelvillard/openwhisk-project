@@ -38,7 +38,7 @@ and related resources. It also contains metadata, such as `name` and `version`.
 - `version` (string, optional): project version following semver format.
 
 - [`dependencies`](#dependencies) (array, optional): includes external project configurations
-- [`resources`](#resources) (array, optional): related resources
+- [`resources`](#resources) (object, optional): related resources
 - [`packages`](#packages) (object, optional)
 - [`actions`](#actions) (object, optional)
 - [`triggers`](#triggers) (object, optional)
@@ -67,7 +67,7 @@ An *array* of `dependency` *objects*.
 
 ## `dependency`
 
-A `object` representing an external project configuration.
+An `object` representing an external project configuration.
 
 Limitation: nested `dependencies` are currently not supported.
 
@@ -88,14 +88,25 @@ dependencies:
 
 ## `resources`
 
-An array of `resource` `object`s
-
-## `resource`
-
-An `object` representing a resource.
+An object of `resource` objects
 
 ### Properties
 
+- *resource-name* ([`resource`](#resource)): define a resource.
+
+## `resource`
+
+An `object` representing the resource characteristics.
+
+### Properties
+
+- name (string, optional): the name of the resource. If not specified, use the associated *resource-name* key.
+- type (string, required): the resource type.
+- managed: (boolean, required): whether this resource is managed. A managed resource can be created, updated and deleted. Unmanaged resources are read-only; An error occurs when they do not already exist.
+- *argument-name* (any): resource-specific arguments. See resource type documentation below.
+
+The supported types are:
+- [IBM cloud resource types](https://github.com/lionelvillard/wskp-ibmcloud-plugin/blob/master/README.md)
 
 ## `packages`
 
@@ -103,7 +114,7 @@ An `object` representing a list of packages. Package name must be unique among t
 
 ### Properties
 
-- *package-name* ([`binding`](#binding) | [`packageContent`](#packageContent) | [`interpolation`](#interpolation), optional)
+- *package-name* ([`binding`](#binding) [`resourceBinding`](#binding) | [`packageContent`](#packageContent) | [`interpolation`](#interpolation))
 
 ## `binding`
 
@@ -123,6 +134,28 @@ packages:
   utils-binding:
     bind: /whisk.system/utils
 ```
+
+## `resourceBinding`
+
+An `object` representing a resource binding
+
+### Properties
+
+- `resource` (string, required): the name of a [`resource`](#resources)
+
+
+### Example
+
+```yaml
+resources:
+  cloudant:
+    ...
+
+packages:
+  cloudant-binding:
+    resource: cloudant
+```
+
 ## `packageContent`
 
 An `object` representing the content of a package.

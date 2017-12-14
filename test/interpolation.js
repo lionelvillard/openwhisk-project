@@ -15,7 +15,7 @@
  */
 const assert = require('assert');
 const utils = require('./helpers/utils');
-const expr = require('../dist/libs/interpolation');
+const interpolation = require('../dist/libs/interpolation');
 const log4j = require('log4js');
 const tasks = require('./../dist/libs/coordinator');
 
@@ -25,7 +25,7 @@ describe('Interpolation', function () {
         const config = {
             logger: log4j.getLogger()
         }
-        const value = expr.evaluate(config, '');
+        const value = interpolation.evaluate(config, '');
         assert.deepStrictEqual(value, '');
     });
 
@@ -33,7 +33,7 @@ describe('Interpolation', function () {
         const config = {
             logger: log4j.getLogger()
         }
-        const value = expr.evaluate(config, 'a string');
+        const value = interpolation.evaluate(config, 'a string');
         assert.deepStrictEqual(value, 'a string');
     });
 
@@ -45,7 +45,7 @@ describe('Interpolation', function () {
             logger: log4j.getLogger()
         };
 
-        const value = expr.evaluate(config, '${vars.env}');
+        const value = interpolation.evaluate(config, '${vars.env}');
         assert.deepStrictEqual(value, 'dev');
     });
 
@@ -57,7 +57,7 @@ describe('Interpolation', function () {
             logger: log4j.getLogger()
         };
 
-        const value = expr.evaluate(config, '${vars.HOME}');
+        const value = interpolation.evaluate(config, '${vars.HOME}');
         assert.ok(value);
     });
 
@@ -71,7 +71,7 @@ describe('Interpolation', function () {
             logger: log4j.getLogger()
         };
 
-        const value = expr.evaluate(config, '${vars.HOME}');
+        const value = interpolation.evaluate(config, '${vars.HOME}');
         assert.deepStrictEqual(value, '/myhome');
     });
 
@@ -83,8 +83,8 @@ describe('Interpolation', function () {
             },
             logger: log4j.getLogger()
         }
-        expr.setProxy(config, 'manifest');
-        const value = expr.evaluate(config, '${self.name}');
+        interpolation.setProxy(config, 'manifest');
+        const value = interpolation.evaluate(config, '${self.name}');
         assert.deepStrictEqual(value, 'myname');
     });
 
@@ -96,8 +96,8 @@ describe('Interpolation', function () {
             },
             logger: log4j.getLogger()
         }
-        expr.setProxy(config, 'manifest');
-        const value = expr.evaluate(config, '${self.name}');
+        interpolation.setProxy(config, 'manifest');
+        const value = interpolation.evaluate(config, '${self.name}');
         assert.deepStrictEqual(value, { first: 'myname', second: 'mysecondname' });
     });
 
@@ -108,10 +108,10 @@ describe('Interpolation', function () {
             },
             logger: log4j.getLogger()
         }
-        expr.reset();
-        expr.setProxy(config, 'manifest');
+        interpolation.reset();
+        interpolation.setProxy(config, 'manifest');
 
-        const value = expr.evaluate(config, 'My name is ${self.name}');
+        const value = interpolation.evaluate(config, 'My name is ${self.name}');
         assert.deepStrictEqual(value, 'My name is myname');
     });
 
@@ -122,15 +122,15 @@ describe('Interpolation', function () {
             },
             logger: log4j.getLogger()
         }
-        expr.reset();
-        expr.setProxy(config, 'manifest', true);
+        interpolation.reset();
+        interpolation.setProxy(config, 'manifest', true);
 
-        const value = expr.evaluate(config, '${self.name}');
+        const value = interpolation.evaluate(config, '${self.name}');
         assert.deepStrictEqual(value.expr, '${proxy._0.name}');
 
         // give control back to node.
         await new Promise(resolve => setTimeout(() => {
-            const value2 = expr.evaluate(config, value.expr);
+            const value2 = interpolation.evaluate(config, value.expr);
             assert.deepStrictEqual(value2, 'myname');
             resolve();
         }, 1));
@@ -146,15 +146,15 @@ describe('Interpolation', function () {
             },
             logger: log4j.getLogger()
         }
-        expr.reset();
-        expr.setProxy(config, 'manifest');
+        interpolation.reset();
+        interpolation.setProxy(config, 'manifest');
 
-        const value = expr.evaluate(config, '${self.prop1}');
+        const value = interpolation.evaluate(config, '${self.prop1}');
         assert.deepStrictEqual(value.expr, '${proxy._0.prop1}');
 
         // give control back to node
         await new Promise(resolve => setTimeout(() => {
-            const value2 = expr.evaluate(config, value.expr);
+            const value2 = interpolation.evaluate(config, value.expr);
             assert.ok(value2.prop2);
             resolve();
         }, 200)); // 200 > 100
@@ -169,11 +169,56 @@ describe('Interpolation', function () {
             },
             logger: log4j.getLogger()
         }
-        expr.reset();
-        expr.setProxy(config, 'manifest');
+        interpolation.reset();
+        interpolation.setProxy(config, 'manifest');
 
-        const value = await expr.fullyEvaluate(config, 'My name is ${self.name} with ${self.service}');
+        const value = await interpolation.fullyEvaluate(config, 'My name is ${self.name} with ${self.service}');
         assert.deepStrictEqual(value, 'My name is myname with redis');
+    });
+
+
+    it.only('should handle error when property does not exist', async function () {
+        const config = {
+            manifest: {
+                name: tasks.task(resolve => resolve('myname'))
+            },
+            logger: log4j.getLogger()
+        }
+        interpolation.reset();
+        interpolation.setProxy(config, 'manifest', true);
+
+        const value = await interpolation.fullyEvaluate(config, '${self.doesnotexist}');
+        assert.ok(!value);
+    });
+
+    it('should wait for async value to equal redis', async function () {
+        const config = {
+            manifest: {
+                service: tasks.task(resolve => setTimeout(() => resolve('redis'), 100))
+            },
+            logger: log4j.getLogger()
+        }
+        interpolation.reset();
+        interpolation.setProxy(config, 'manifest');
+
+        const value = await interpolation.blockUntil(config, 'self', 'service', 'redis');
+        assert.deepStrictEqual(value, 'redis');
+    });
+
+    it('should wait for async value to equal redis after being noredis', async function () {
+        const config = {
+            manifest: {
+                service: tasks.task(resolve => setTimeout(() => resolve('noredis'), 100))
+            },
+            logger: log4j.getLogger()
+        }
+        interpolation.reset();
+        interpolation.setProxy(config, 'manifest');
+
+        setTimeout(() => config.manifest.service = 'redis', 150);
+
+        const value = await interpolation.blockUntil(config, 'self', 'service', 'redis');
+        assert.deepStrictEqual(value, 'redis');
     });
 
 });

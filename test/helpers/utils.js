@@ -30,7 +30,7 @@ const invokeWebAction = async (ctx, actionName, params, contentExt) => {
 
     let query = Object.keys(params).map(key => `${key}=${encodeURIComponent(params[key])}`);
     const url = `${ctx.ow.actions.client.options.api}web/${namespace}/${actionName}${contentExt}?${query}`;
-    return await rp(url);
+    return rp(url);
 }
 exports.invokeWebAction = invokeWebAction;
 

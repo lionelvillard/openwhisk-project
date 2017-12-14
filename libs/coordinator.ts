@@ -28,7 +28,7 @@ export function filterTasks(tags: string[]) {
 const tasks = new Set<Task<any>>();
 
 // Errored tasks
-export const errored = new Array<Task<any>>();
+export const rejectedTasks = new Array<Task<any>>();
 
 // Register new task
 export function task<T>(executor: Executor<T>, tags: string[] = []): Task<T> {
@@ -40,14 +40,13 @@ export function ptask<T>(delayedPromise: () => Promise<T>, tags: string[] = []):
     if (accept(tags)) {
         const tsk = new Task(delayedPromise());
         tasks.add(tsk);
-        tsk.then(() => tasks.delete(tsk));
         return tsk;
     }
     return null;
 }
 
-// Wait for the fullfilment of all currently running tasks.
-export async function allTasks(): Promise<void> {
+// Wait for the fullfilment (or rejection) of all currently running tasks.
+export async function waitForAllTasks(): Promise<void> {
     await Promise.all(tasks.values());
 }
 
@@ -57,35 +56,73 @@ export class Task<T> {
     /* Resolved value */
     public resolved: T;
 
-    /* Pending awaiters */
+    /* Rejected reason */
+    public reason: T;
+
+    /* Pending fulfillment awaiters */
     private awaiters = [];
+
+    /* Pending rejection awaiters */
+    private rejectionAwaiters = [];
+
+    /* Task status: 0=pending, 1=resolved, 2=rejected */
+    private status: number;
 
     constructor(
         /* Promise */
         public promise: Promise<T>,
     ) {
+        this.status = 0;
         promise
-            .then(v => { this.resolved = v; this.notify(); })
-            .catch(e => { errored.push(this); });
+            .then(v => { this.status = 1; tasks.delete(this); this.resolved = v; this.notify(); })
+            .catch(e => { this.status = 2; tasks.delete(this); this.reason = e; rejectedTasks.push(this); this.notify(); });
     }
 
     public then(onfulfilled?: (T) => any, onrejected?: (any) => any) {
-        this.notifyAwaiter({ onfulfilled, onrejected });
+        this.notifyFulfilled(onfulfilled);
+        if (onrejected)
+            this.notifyRejected(onrejected);
+        return this;
     }
 
-    private notifyAwaiter(awaiter) {
-        if (this.resolved)
-            awaiter.onfulfilled(this.resolved);
-       // else if (this.reason)
-         //   awaiter.onrejected(this.reason);
-        else
-            this.awaiters.push(awaiter);
+    public catch(onrejected: (any) => any) {
+        this.notifyRejected(onrejected);
+        return this;
+    }
 
+    private notifyFulfilled(onfulfilled) {
+        switch (this.status) {
+            case 0:
+                this.awaiters.push(onfulfilled);
+                break;
+            case 1:
+                onfulfilled(this.resolved);
+                break;
+        }
+    }
+
+    private notifyRejected(onrejected) {
+        switch (this.status) {
+            case 0:
+                this.rejectionAwaiters.push(onrejected);
+                break;
+            case 2:
+                onrejected(this.reason);
+                break;
+        }
     }
 
     private notify() {
-        while (this.awaiters.length > 0) {
-            this.notifyAwaiter(this.awaiters.shift());
+        if (this.status === 1) {
+            while (this.awaiters.length > 0) {
+                this.notifyFulfilled(this.awaiters.shift());
+            }
+            this.rejectionAwaiters = null;
+        } else if (this.status === 2) {
+            while (this.rejectionAwaiters.length > 0) {
+                this.notifyRejected(this.rejectionAwaiters.shift());
+            }
+            this.awaiters = null;
         }
     }
 
