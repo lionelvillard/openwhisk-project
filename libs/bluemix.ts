@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,15 +18,17 @@ import * as expandHomeDir from 'expand-home-dir';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { exec } from 'child-process-promise';
-import * as types from './types';
+import { IConfig } from './types';
 import { delay } from './utils';
 import * as parser from 'properties-parser';
+import { readJson } from 'fs-extra';
+import { decode } from 'jsonwebtoken';
 
-// @return true if Bluemix with wsk plugin is available on this system, false otherwise
+// @return true if Bluemix is installed
 export const isBluemixCapable = async () => {
     if (process.env.BLUEMIX_API_KEY) {
         try {
-            await exec('bx wsk help');
+            await exec('bx');
             return true;
         } catch (e) {
             return false;
@@ -41,93 +43,61 @@ export interface ICredential {
     apikey?: string;
     org?: string;
     space?: string;
-    home?: string;
-    nocreate?: boolean; // Whether to not create the space if does not exist.
+    home?: string; // automatically computed.
 }
 
 const wskProps = (cred: Credential) => `${cred.home}/.wskprops`;
 
 // Run bluemix command. Retries once if not logged in.
-export async function run(config: types.Config, cred: Credential, cmd: string) {
+export async function run(config: IConfig, cred: ICredential, cmd: string) {
     cred = fixupCredentials(config, cred);
     return doRun(config, cred, cmd);
 }
 
-async function doRun(config: types.Config, cred: Credential, cmd: string) {
-    const bx = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx ${cmd}`;
+async function doRun(config: IConfig, cred: Credential, cmd: string, retry = true) {
+    const bx = `BLUEMIX_HOME=${cred.home} bx ${cmd}`;
     config.logger.debug(`exec ${bx}`);
     try {
+        await loginIfExpired(config, cred);
         return await exec(bx);
     } catch (e) {
-        if (await doLogin(config, cred))
-            return doRun(config, cred, cmd); //  tokens have been refreshed. Retry command.
-        else {
-            throw e; // something else happened.
-        }
-    }
-}
-
-// Login to Bluemix
-export const login = async (config: types.Config, cred: Credential) => {
-    cred = fixupCredentials(config, cred);
-    try {
-        try {
-            await doRun(config, cred, 'target');
-        } catch (e) {
+        if (retry) {
             await doLogin(config, cred);
+            return doRun(config, cred, cmd, false);
         }
-        return true;
-    } catch (e) {
-        return false;
-    }
-};
-
-// Login to Bluemix. @return true if login was needed
-async function doLogin(config: types.Config, cred: Credential) {
-    try {
-        const target = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx target`;
-        config.logger.debug(`exec ${target}`);
-        await exec(target);
-        return false;
-    } catch (e) {
-        await refreshTokens(config, cred);
-        return true;
+        throw e; // something else happened.
     }
 }
 
-async function refreshTokens(config: types.Config, cred: Credential) {
+async function loginIfExpired(config: IConfig, cred: Credential) {
+    // TODO: caching.
+    const bxcfg = await loadBluemixConfigJSON(config, cred);
+    if (!bxcfg || !bxcfg.IAMToken || expired(bxcfg.IAMToken)) {
+        await doLogin(config, cred);
+    }
+}
+
+function expired(token: string) {
+    const decoded = decode(token.substr(7), { complete: true });
+    return ((Date.now() / 1000) - 300) >= decoded.payload.exp; // give 5mn to run the command.
+}
+
+// Login to Bluemix.
+async function doLogin(config: IConfig, cred: Credential) {
+    // TODO: concurrency
     config.startProgress('login to Bluemix');
+
     const space = cred.space ? `-s ${cred.space}` : '';
-    const bx = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx login -a ${cred.endpoint} --apikey ${cred.apikey} -o ${cred.org} ${space}`;
+    const bx = `BLUEMIX_HOME=${cred.home} bx login -a ${cred.endpoint} --apikey ${cred.apikey} -o ${cred.org} ${space}`;
+    config.logger.debug(`exec ${bx}`);
     try {
         await exec(bx);
-    } catch (e) {
-        if (space && e.stdout && e.stdout.includes(`Space '${cred.space}' was not found.`) && !cred.nocreate) {
-            // space does not exist and requested => create.
-            const newspace = `WSK_CONFIG_FILE=${wskProps(cred)} BLUEMIX_HOME=${cred.home} bx account space-create ${cred.space}`;
-            await exec(newspace);
-        } else {
-            config.logger.error(e);
-            throw e;
-        }
     } finally {
         config.terminateProgress();
     }
-    return true;
 }
-
-// Install Cloud function plugin
-export async function installWskPlugin(config: types.Config, cred: Credential) {
-    try {
-        await run(config, cred, 'wsk');
-    } catch (e) {
-        config.setProgress('installing IBM cloud function plugin');
-        await run(config, cred, 'plugin install Cloud-Functions -r Bluemix');
-    }
-}
-
 //
-export function fixupCredentials(config: types.Config, cred: Credential) {
+export function fixupCredentials(config: IConfig, cred: ICredential) {
     cred = cred || {};
     cred.endpoint = cred.endpoint || 'api.ng.bluemix.net';
     cred.apikey = cred.apikey || process.env.BLUEMIX_API_KEY;
@@ -138,48 +108,80 @@ export function fixupCredentials(config: types.Config, cred: Credential) {
     if (!cred.org) {
         config.fatal('cannot login to Bluemix: missing org');
     }
-    if (!cred.space && !cred.home) {
-        config.fatal('cannot login to Bluemix: missing either space or home');
-    }
+
     if (!cred.home) {
-        cred.home = path.join(config.cache, '.bluemix', cred.endpoint, cred.org, cred.space);
+        cred.home = path.join(config.cache, '.bluemix', cred.endpoint, cred.org);
+        if (cred.space)
+            cred.home = path.join(cred.home, cred.space);
     }
     return cred;
 }
 
-export async function ensureSpaceExists(config: types.Config, cred: Credential) {
-    config.startProgress(`checking ${cred.space} space exists`);
-    cred = fixupCredentials(config, cred);
+async function ensureSpaceExists(config: IConfig, cred: ICredential) {
+    if (!cred.space)
+        config.fatal('missing bluemix space');
+    try {
+        config.startProgress(`checking ${cred.space} space exists`);
 
-    await doRun(config, cred, `account space-create ${cred.space}`); // fast when already exists
-    await doRun(config, cred, `target -s ${cred.space}`);
-
-    await installWskPlugin(config, cred);
-    await refreshWskProps(config, cred, 30); // refresh .wskprops
-    config.terminateProgress();
-}
-
-async function refreshWskProps(config: types.Config, cred: Credential, retries: number) {
-    if (retries <= 0)
-        config.fatal('unable to obtain wsk authentication key. try again later.');
-    const io = await doRun(config, cred, 'wsk property get');
-    if (io.stderr) {
-        await delay(1000);
-        config.logger.info(`could not get wsk AUTH key. Retrying (${retries}) (${io.stderr})`);
-        await refreshWskProps(config, cred, retries - 1);
+        const orgcred = fixupCredentials(config, { endpoint: cred.endpoint, apikey: cred.apikey, org: cred.org });
+        await doRun(config, orgcred, `account space-create ${cred.space}`); // fast when already exists
+        await doRun(config, cred, `target -s ${cred.space}`);
+    } finally {
+        config.terminateProgress();
     }
 }
 
-// Get Wsk AUTH and APIGW_ACCESS_TOKEN for given credential. If cred space does not exist, create it.
-export async function getWskPropsForSpace(config: types.Config, cred: Credential) {
-    config.startProgress('retrieving wsk authentication');
-    await ensureSpaceExists(config, cred);
-    config.terminateProgress();
-    return parser.read(wskProps(cred));
+// Convert env name to valid namespace
+function escapeNamespace(str: string) {
+    // The first character must be an alphanumeric character, or an underscore.
+    // The subsequent characters can be alphanumeric, spaces, or any of the following: _, @, ., -
+    return str.replace(/[+]/g, '-');
 }
 
+// Force delete the given space
+export async function deleteSpace(config: IConfig, cred: Credential, space: string) {
+    try {
+        await run(config, cred, `account space-delete ${space} -f`);
+    } catch (e) {
+        config.logger.info(`failed to delete space ${space}: ${e.stdout}`);
+    }
+}
+
+// Force delete the given cf service
+export async function deleteService(config: IConfig, cred: Credential, service: string) {
+    try {
+        await run(config, cred, `service delete ${service} -f`);
+    } catch (e) {
+        config.logger.info(`failed to delete service ${service}: ${e.stdout}`);
+    }
+}
+
+// Load bluemix config file for given credentials
+async function loadBluemixConfigJSON(config: IConfig, cred: ICredential) {
+    if (!cred.home)
+        return null;
+    let configFile = path.join(cred.home, '.bluemix', 'config.json');
+    if (! await fs.pathExists(configFile)) {
+        return null;
+    }
+    return fs.readJson(configFile);
+}
+
+// Load cf config file for given credentials
+async function loadCFConfigJSON(config: IConfig, cred: ICredential) {
+    if (!cred.home)
+        return null;
+    let configFile = path.join(cred.home, '.bluemix', '.cf', 'config.json');
+    if (! await fs.pathExists(configFile)) {
+        return null;
+    }
+    return fs.readJson(configFile);
+}
+
+// --- wsk related functions
+
 // Populate props with Bluemix specific authentication
-export async function resolveAuth(config: types.IConfig, props, env: string, version: string) {
+export async function resolveAuth(config: IConfig, props, env: string, version: string) {
     if (!isBluemixCapable())
         config.fatal('bx is not installed');
 
@@ -203,7 +205,7 @@ export async function resolveAuth(config: types.IConfig, props, env: string, ver
     }
 
     const cred: Credential = { org: bxorg, space: bxspace };
-    const wskprops = await getWskPropsForSpace(config, cred);
+    const wskprops = await initWsk(config, cred);
 
     if (!wskprops.AUTH)
         config.fatal('missing AUTH in .wskprops');
@@ -220,39 +222,75 @@ export async function resolveAuth(config: types.IConfig, props, env: string, ver
     props.set('APIGW_ACCESS_TOKEN', wskprops.APIGW_ACCESS_TOKEN);
 }
 
-// Prepare backend so that the OpenWhisk client works
-export async function initWsk(config: types.IConfig, wskprops: types.IWskProps) {
-    if (wskprops.BLUEMIX_ORG && wskprops.BLUEMIX_SPACE) {
-        const cred: Credential = { org: wskprops.BLUEMIX_ORG, space: wskprops.BLUEMIX_SPACE };
+/*
+  Prepare backend so that the OpenWhisk client works.
+  @return .wskprop content or null
+*/
+export async function initWsk(config: IConfig, cred: Credential) {
+    cred = fixupCredentials(config, cred);
+    config.startProgress('retrieving wsk authentication');
+    try {
         await ensureSpaceExists(config, cred);
-
-        // Patch APIGW_ACCESS_TOKEN
-        const bxwskprops = parser.read(`${cred.home}/.wskprops`);
-        wskprops.APIGW_ACCESS_TOKEN = bxwskprops.APIGW_ACCESS_TOKEN;
+        await refreshWskProps(config, cred);
+        return parser.read(wskProps(cred));
+    } finally {
+        config.terminateProgress();
     }
 }
 
-// Convert env name to valid namespace
-function escapeNamespace(str: string) {
-    // The first character must be an alphanumeric character, or an underscore.
-    // The subsequent characters can be alphanumeric, spaces, or any of the following: _, @, ., -
-    return str.replace(/[+]/g, '-');
+// Send request to get all OpenWhisk keys for the given Bluemix authentication
+async function getAuthKeys(accessToken, refreshToken) {
+    return request({
+        method: 'POST',
+        uri: 'https://openwhisk.ng.bluemix.net/bluemix/v2/authenticate',
+        body: {
+            accessToken: accessToken.substr(7),
+            refreshToken
+        },
+        json: true
+    });
 }
 
-// Force delete the given space
-export async function deleteSpace(config: types.Config, cred: Credential, space: string) {
-    try {
-        await run(config, cred, `account space-delete ${space} -f`);
-    } catch (e) {
-        config.logger.info(`failed to delete space ${space}: ${e.stdout}`);
+/*
+ * Wait for the given org_spaces to be available in OpenWhisk
+ * @return {Object[]} the list of keys for the given spaces
+ */
+async function waitForAuthKeys(config: IConfig, accessToken: string, refreshToken: string, names: string[], retry = 60) {
+    if (names.length === 0)
+        return [];
+
+    if (retry <= 0)
+        config.fatal('unable to obtain wsk authentication key (timeout). try again later.');
+    config.logger.debug(`get wsk auth keys (retries: ${retry})`);
+    const keys = await getAuthKeys(accessToken, refreshToken);
+    const namespaces = keys.namespaces;
+    const spacekeys = namespaces.filter(ns => names.includes(ns.name));
+
+    if (spacekeys.length === names.length) {
+        return spacekeys;
     }
+    await delay(1000);
+    return waitForAuthKeys(config, accessToken, refreshToken, names, retry - 1);
 }
 
-// Force delete the given cf service
-export async function deleteService(config: types.Config, cred: Credential, service: string) {
+async function refreshWskProps(config: IConfig, cred: Credential) {
     try {
-        await run(config, cred, `service delete ${service} -f`);
-    } catch (e) {
-        config.logger.info(`failed to delete service ${service}: ${e.stdout}`);
+        config.startProgress('refreshing wsk properties');
+
+        const cfcfg = await loadCFConfigJSON(config, cred);
+        if (!cfcfg || !cfcfg.AccessToken || !cfcfg.RefreshToken)
+            config.fatal('missing access token in %s', cred.home);
+
+        const keys = await waitForAuthKeys(config, cfcfg.AccessToken, cfcfg.RefreshToken, [`${cred.org}_${cred.space}`]);
+        const props = parser.createEditor();
+        props.set('APIVERSION', 'v1');
+        props.set('APIHOST', 'openwhisk.ng.bluemix.net');
+        props.set('AUTH', `${keys[0].uuid}:${keys[0].key}`);
+        props.set('NAMESPACE', '_');
+        props.set('APIGW_ACCESS_TOKEN', cfcfg.AccessToken.substr(7));
+        props.save(wskProps(cred));
+        return props;
+    } finally {
+        config.terminateProgress();
     }
 }

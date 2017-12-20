@@ -115,7 +115,7 @@ export interface IPlugin {
     apiContributor?: ApiContributor;
 
     // resource contributor (/resources/<name>/type: <type>)
-    serviceContributor?: ResourceContributor;
+    resourceContributor?: ResourceContributor;
 
     // resource binding contributor (/packages/<name>/resource: <name>)
     resourceBindingContributor?: ResourceBindingContributor;

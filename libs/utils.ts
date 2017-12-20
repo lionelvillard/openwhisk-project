@@ -119,14 +119,13 @@ export function getObject(project: IProject, path: string, create = false) {
     for (const segment of segments) {
         const array = segment.endsWith('[]');
         const name = array ? segment.substr(0, segment.length - 2) : segment;
-
         if (!current.hasOwnProperty(name)) {
             if (!create)
                 return null;
 
             current[name] = array ? [] : {};
         }
-        current = current.name;
+        current = current[name];
         if (array) {
             const obj = {};
             current.push(obj);

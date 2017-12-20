@@ -19,7 +19,6 @@ import { env, init, bx, deploy, undeploy } from '..';
 import { exec } from 'child-process-promise';
 import * as fs from 'fs-extra';
 import * as parser from 'properties-parser';
-import { config } from 'bluebird';
 
 const rootPath = '../../test/fixtures/envs';
 const cacheroot = '.openwhisk';
@@ -27,8 +26,8 @@ const bxroot = `.openwhisk/.bluemix/api.ng.bluemix.net/${process.env.BLUEMIX_ORG
 const projectfile = process.env.LOCALWSK ? 'project-ci.yml' : 'project.yml';
 const projectname = process.env.LOCALWSK ? 'builtins-ci' : 'builtins';
 
-@suite('env - ')
-class Envget {
+@suite('Environment Test Suite')
+class EnvSuite {
 
     static async before() {
         await fs.remove('.workdir/.env');
@@ -110,19 +109,20 @@ class Envget {
         if (process.env.LOCALWSK === 'true')
             return skip(this);
 
+        await fs.remove('.openwhisk');
+
         const config = init.newConfig(projectfile, process.env.LOGGER_LEVEL, 'prod@0.0.0');
         config.basePath = `${rootPath}/builtins`;
 
         await init.init(config);
-        const set = await env.setEnvironment(config);
+        const set = await env.setEnvironment(config); // create space.
         assert.ok(set);
         const envs = await env.getVersionedEnvironments(config);
-        // console.log(envs);
         const prod = envs.filter(env => env.policies.name === 'prod');
         assert.ok(prod);
         assert.equal(prod.length, 1);
-        // console.log(prod[0]);
-        // console.log(prod[0].versions);
+        assert.ok(prod[0]);
+        assert.ok(prod[0].versions);
         assert.equal(prod[0].versions.length, 1);
 
         await bx.run(config, { space: `${projectname}-prod@0.0.0` }, `account space-delete ${projectname}-prod@0.0.0 -f`);
@@ -133,6 +133,7 @@ class Envget {
         if (process.env.LOCALWSK === 'true')
             return skip(this);
 
+        await fs.remove('.openwhisk');
         await fs.remove('.wskprops');
         process.env.BLUEMIX_HOME = `${bxroot}/${projectname}-dev`;
 
@@ -162,7 +163,8 @@ class Envget {
         if (process.env.LOCALWSK === 'true')
             return skip(this);
 
-        assert.ok(!await fs.pathExists('.wskprops'));
+        await fs.remove('.openwhisk');
+        await fs.remove('.wskprops');
 
         const config = init.newConfig(projectfile, process.env.LOGGER_LEVEL, 'dev');
         config.basePath = `${rootPath}/builtins`;
@@ -179,9 +181,6 @@ class Envget {
         assert.strictEqual(wskprops.APIGW_ACCESS_TOKEN, envprops.APIGW_ACCESS_TOKEN);
         assert.strictEqual(wskprops.APIHOST, envprops.APIHOST);
         assert.equal(envprops.ENVNAME, 'dev');
-
-        // cleanup
-        await fs.remove('.wskprops');
     }
 
     @test('change current environment from dev to prod')
@@ -189,7 +188,8 @@ class Envget {
         if (process.env.LOCALWSK === 'true')
             return skip(this);
 
-        assert.ok(!await fs.pathExists('.wskprops'));
+        await fs.remove('.openwhisk');
+        await fs.remove('.wskprops');
 
         const config = init.newConfig(projectfile, process.env.LOGGER_LEVEL, 'dev');
         config.basePath = `${rootPath}/builtins`;
@@ -216,31 +216,38 @@ class Envget {
         await fs.remove('.wskprops');
     }
 
-    @test.only('try to deploy on non-writable environment')
+    @test('try to deploy on non-writable environment')
     async noWritableEnv() {
         if (process.env.LOCALWSK === 'true')
             return skip(this);
 
+        await fs.remove('.openwhisk');
+        await fs.remove('.wskprops');
+
         const configprod = init.newConfig('managed.yaml', process.env.LOGGER_LEVEL, 'prod@0.0.0');
-        configprod.basePath = `${rootPath}/../nodejs`;
-        await init.init(configprod);
-        await env.cacheEnvironment(configprod);
-        await undeploy.apply(configprod);
-        await deploy.apply(configprod); // ok
-
         try {
-            const configprod2 = init.newConfig('managed.yaml', process.env.LOGGER_LEVEL, 'prod@0.0.0');
-            configprod2.basePath = `${rootPath}/../nodejs`;
-            await init.init(configprod2);
-            await env.cacheEnvironment(configprod2);
-            await deploy.apply(configprod2); // not ok
-            assert.ok(false);
-        } catch (e) {
-            assert.ok(true);
-        }
+            configprod.basePath = `${rootPath}/../nodejs`;
+            await init.init(configprod);
+            await env.cacheEnvironment(configprod);
+            await undeploy.apply(configprod);
+            await deploy.apply(configprod); // ok
 
-        // cleanup
-        await bx.run(configprod, { space: `${projectname}-prod@0.0.0` }, `iam space-delete ${projectname}-prod@0.0.0 -f`);
+            try {
+                const configprod2 = init.newConfig('managed.yaml', process.env.LOGGER_LEVEL, 'prod@0.0.0');
+                configprod2.basePath = `${rootPath}/../nodejs`;
+                await init.init(configprod2);
+                await env.cacheEnvironment(configprod2);
+                await deploy.apply(configprod2); // not ok
+                assert.ok(false);
+            } catch (e) {
+                assert.ok(true);
+            }
+        } finally {
+            // cleanup
+            try {
+                await bx.run(configprod, { space: 'nodejs-managed-prod@0.0.0' }, 'iam space-delete nodejs-managed-prod@0.0.0 -f');
+            } catch (e) { /*ignore*/ }
+        }
     }
 
 }

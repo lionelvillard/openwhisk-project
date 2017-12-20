@@ -6,10 +6,15 @@ const wskd = require('../../')
 const rp = require('request-promise')
 
 const before = ctx => async () => {
-    fs.mkdirsSync('test-results');
-    ctx.cacheDir = await fs.mkdtemp('test-results/test');
+
+    fs.mkdirsSync('.workdir');
+    ctx.cacheDir = await fs.mkdtemp('.workdir/test');
     const config = {};
     await wskd.init.init(config);
+
+    if (!process.env.LOCALWSK || process.env.LOCALWSK === 'FALSE')
+        await wskd.bx.initWsk(config, {home: '.', space: process.env.BLUEMIX_SPACE || 'openwhisk-wskp-test'});
+
     await wskd.undeploy.all(config);
     ctx.ow = config.ow;
 }

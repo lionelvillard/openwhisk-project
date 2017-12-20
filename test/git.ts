@@ -18,8 +18,8 @@ import * as assert from 'assert';
 import { init } from '..';
 import * as fs from 'fs-extra';
 
-@suite('git - ')
-class DeploySuite {
+@suite('Git Test Suite')
+class GitSuite {
 
     async before() {
         await fs.emptyDir('.workdir/.gittest');

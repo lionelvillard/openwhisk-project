@@ -31,7 +31,7 @@ import * as progress from 'progress';
 import * as env from './env';
 import * as semver from 'semver';
 import { format } from "util";
-import { IResource } from '../index';
+import { IResource, waitForAllTasks } from '../index';
 
 /* Expand and validate the project configuration file. */
 export async function check(config: IConfig) {
@@ -49,19 +49,20 @@ export async function check(config: IConfig) {
         config.logger.debug(namespaces);
         manifest.namespace = namespaces && namespaces.length > 0 ? namespaces[0] : '_';
     }
+
     config.logger.info(`target namespace: ${manifest.namespace}`);
 
     // 1. load dependencies. They might contain plugins needed to validate the project
     await checkDependencies(config, manifest);
 
     // 2. Check for unknown properties
-    manifest.resources = manifest.resources || {};
-    for (const key in manifest) {
-        if (!(key in ProjectProps)) {
-            manifest.resources[key] = manifest[key];
-            delete manifest[key];
-        }
-    }
+    // manifest.resources = manifest.resources || {};
+    // for (const key in manifest) {
+    //     if (!(key in ProjectProps)) {
+    //         manifest.resources[key] = manifest[key];
+    //         delete manifest[key];
+    //     }
+    // }
 
     // 3. Expand and check builtin properties
     await checkResources(config, manifest);
@@ -76,6 +77,7 @@ export async function check(config: IConfig) {
 }
 
 async function checkResources(config: IConfig, manifest: IProject) {
+    config.logger.info('validating resources');
     const resources = evaluateAll(config, manifest.resources);
     if (!resources)
         return;
@@ -88,10 +90,20 @@ async function checkResources(config: IConfig, manifest: IProject) {
             config.fatal('missing property type for resource id %s', id);
 
         delete resources[id];
+
+        const plugin = plugins.getResourcePlugin(resource.type);
+        if (!plugin)
+            config.fatal('no plugin found for resource %s', resource.service);
+
+        const contributions = plugin.resourceContributor(config, id, resource);
+        await applyContributions(config, manifest, contributions, plugin);
     }
+
+    await waitForAllTasks();
 }
 
 async function checkDependencies(config: IConfig, manifest: IProject) {
+    config.logger.info('validating dependencies');
     const dependencies = evaluateAll(config, manifest.dependencies);
     if (!dependencies)
         return;
@@ -131,6 +143,8 @@ async function checkPackages(config: IConfig, manifest) {
         await checkPackage(config, manifest, packages, pkgName, packages[pkgName], true);
     }
 
+    await waitForAllTasks();
+
     // non-bindings
     for (const pkgName in packages) {
         await checkPackage(config, manifest, packages, pkgName, packages[pkgName], false);
@@ -145,13 +159,13 @@ async function checkPackage(config: IConfig, manifest, packages, pkgName, pkg, b
         case 'object':
             if (pkg.bind) {
                 // TODO
-            } else if (pkg.service) {
+            } else if (pkg.resource) {
                 // Service bindings are implemented as plugins.
                 delete packages[pkgName];
 
-                const plugin = plugins.getServiceBindingPlugin(pkg.service);
+                const plugin = plugins.getResourceBindingPlugin(pkg.resource);
                 if (!plugin)
-                    config.fatal('no plugin found for service binding %s', pkg.service);
+                    config.fatal('no plugin found for resource binding %s', pkg.resource);
 
                 const contributions = plugin.resourceBindingContributor(config, pkgName, pkg);
                 await applyContributions(config, manifest, contributions, plugin);
@@ -407,6 +421,7 @@ async function applyContributions(config: IConfig, manifest: IProject, contribut
                     await checkPackage(config, manifest, pkgs, contrib.name, contrib.body, false);
                     break;
                 case 'resource':
+                    manifest.resources[contrib.id] = contrib.body;
                     break;
             }
         }

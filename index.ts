@@ -27,9 +27,8 @@ import * as env from './libs/env.js';
 import * as yo from './libs/yo.js';
 import * as names from './libs/names';
 import * as bx from './libs/bluemix';
-import * as controller from './libs/controller';
 import * as plugins from './libs/pluginmgr';
 import * as interpolation from './libs/interpolation';
 import * as utils from './libs/utils';
 
-export { init, deploy, undeploy, refresh, sync, env, names, bx, controller, plugins, interpolation, utils, yo };
+export { init, deploy, undeploy, refresh, sync, env, names, bx, plugins, interpolation, utils, yo };

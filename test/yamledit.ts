@@ -18,7 +18,7 @@ import * as assert from 'assert';
 import * as ye from '../libs/yamledit';
 import * as yaml from 'yamljs';
 
-@suite('YAML Edit')
+@suite('YAML Edit Test Suite')
 class YamlEditTest {
 
     @test('Add property to empty YAML')

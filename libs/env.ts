@@ -79,7 +79,6 @@ export async function setEnvironment(config: IConfig) {
 
 // Refresh cached resolved environments, if needed
 export async function cacheEnvironment(config: IConfig) {
-    config.startProgress('checking cache up-to-date');
 
     await isValid(config);
     const name = config.envname;
@@ -113,35 +112,39 @@ export async function cacheEnvironment(config: IConfig) {
     };
 
     let success = true;
-    if (cachedExists) {
-        config.logger.debug('cache file exists');
+    try {
+        config.startProgress('checking cache up-to-date');
 
-        if (exists) {
-            // Just check cache is up-to-date
-            const stat1 = await fs.stat(filename);
-            const stat2 = allExists ? await fs.stat(ALL_WSKPROPS) : null;
-            const stat3 = await fs.stat(cached);
-            if (stat1.ctimeMs > stat3.ctimeMs || (stat2 && stat2.ctimeMs > stat3.ctimeMs)) {
-                success = await refreshCache();
+        if (cachedExists) {
+            config.logger.debug('cache file exists');
+
+            if (exists) {
+                // Just check cache is up-to-date
+                const stat1 = await fs.stat(filename);
+                const stat2 = allExists ? await fs.stat(ALL_WSKPROPS) : null;
+                const stat3 = await fs.stat(cached);
+                if (stat1.ctimeMs > stat3.ctimeMs || (stat2 && stat2.ctimeMs > stat3.ctimeMs)) {
+                    success = await refreshCache();
+                }
+            } else {
+                // no user-defined properties, so cached values are fine.
             }
         } else {
-            // no user-defined properties, so cached values are fine.
-        }
-    } else {
-        config.logger.debug('cache file does not exist');
-        // No cached properties.
+            config.logger.debug('cache file does not exist');
+            // No cached properties.
 
-        if (!exists) {
-            // It's a builtin environment => generate corresponding .wskprops
-            const allPolicies = await getEnvironments(config);
-            const policies = allPolicies.find(v => v.name === name);
-            await saveWskPropsForEnv(config, name, policies.props);
-        }
+            if (!exists) {
+                // It's a builtin environment => generate corresponding .wskprops
+                const allPolicies = await getEnvironments(config);
+                const policies = allPolicies.find(v => v.name === name);
+                await saveWskPropsForEnv(config, name, policies.props);
+            }
 
-        success = await refreshCache();
+            success = await refreshCache();
+        }
+    } finally {
+        config.terminateProgress();
     }
-
-    config.terminateProgress();
     return success ? cached : null;
 }
 
@@ -162,7 +165,7 @@ export async function newEnvironment(config: IConfig, env: IEnvironment) {
     if (!config.location)
         config.fatal('cannot create a new environment without knowing where the project file is located');
 
-    if (config.manifest.environments.hasOwnProperty(env.name))
+    if (config.manifest.environments && config.manifest.environments.hasOwnProperty(env.name))
         config.fatal('environment %s already exists', env.name);
 
     const minimized: any = {};
@@ -284,9 +287,6 @@ export async function resolveVariables(config: IConfig, options: any = {}) {
 
 export async function initWsk(config: IConfig = {}, options: IWskProps = {}) {
     const vars = await resolveVariables(config, options);
-    if (vars.apihost && vars.apihost.endsWith('bluemix.net')) {
-        await bx.initWsk(config, vars);
-    }
     return openwhisk({ api_key: vars.auth, apihost: vars.apihost, ignore_certs: vars.ignore_certs, apigw_token: vars.apigw_token });
 }
 

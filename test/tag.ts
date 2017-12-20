@@ -16,7 +16,7 @@
 import { suite, test, slow, timeout, skip } from 'mocha-typescript';
 import * as assert from 'assert';
 
-@suite('Tag Suite')
+@suite('Tag Test Suite')
 class TagSuite {
 
     // @test('')

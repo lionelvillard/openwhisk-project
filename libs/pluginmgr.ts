@@ -30,8 +30,8 @@ const variableSourcePlugins = {};
 
 const plugins = {
     package: {},
-    service: {},
-    serviceBindings: {},
+    resource: {},
+    resourceBinding: {},
     api: {}
 };
 
@@ -80,8 +80,8 @@ export async function registerFromPath(config: IConfig, modulepath: string) {
     }
 
     registerContributionsForPlugin(config, plugininfo.name, modulepath, contributions, 'package');
-    registerContributionsForPlugin(config, plugininfo.name, modulepath, contributions, 'service');
-    registerContributionsForPlugin(config, plugininfo.name, modulepath, contributions, 'serviceBindings');
+    registerContributionsForPlugin(config, plugininfo.name, modulepath, contributions, 'resource');
+    registerContributionsForPlugin(config, plugininfo.name, modulepath, contributions, 'resourceBinding');
     registerContributionsForPlugin(config, plugininfo.name, modulepath, contributions, 'api');
 
     const builder = contributions.builder;
@@ -133,12 +133,12 @@ export function getPackagePlugin(pkg: IPackage): IPlugin | null {
     return lookupPlugin(plugins.package, pkg);
 }
 
-export function getServicePlugin(name: string): IPlugin | null {
-    return getPluginByName(plugins.service, name);
+export function getResourcePlugin(name: string): IPlugin | null {
+    return getPluginByName(plugins.resource, name);
 }
 
-export function getServiceBindingPlugin(name: string): IPlugin | null {
-    return getPluginByName(plugins.serviceBindings, name);
+export function getResourceBindingPlugin(name: string): IPlugin | null {
+    return getPluginByName(plugins.resourceBinding, name);
 }
 
 export function getApiPlugin(api: IApi): IPlugin | null {

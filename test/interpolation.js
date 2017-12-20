@@ -177,7 +177,7 @@ describe('Interpolation', function () {
     });
 
 
-    it.only('should handle error when property does not exist', async function () {
+    it('should handle error when property does not exist', async function () {
         const config = {
             manifest: {
                 name: tasks.task(resolve => resolve('myname'))

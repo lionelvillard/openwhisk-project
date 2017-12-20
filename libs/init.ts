@@ -47,7 +47,6 @@ export function cloneConfig(config: IConfig, projectPath: string, envname: strin
     return newcfg;
 }
 
-
 export async function init(config: IConfig) {
     if (config._initialized)
         return;
@@ -56,7 +55,7 @@ export async function init(config: IConfig) {
     if (!config.logger)
         config.logger = getLogger();
 
-    config.logger_level = config.logger_level || process.env.LOGGER_LEVEL || 'off';
+    config.logger_level = config.logger_level || process.env.LOGGER_LEVEL || 'OFF';
     config.logger.level = config.logger_level;
 
     config.fatal = fatal(config);
@@ -362,6 +361,8 @@ function terminateProgress(config: IConfig) {
 }
 
 function renderProgress(config: IConfig) {
+    const loggeroff = config.logger.level.isEqualTo('OFF');
+
     if (config.progress) {
         config.progress.terminate();
         config.progress = null;
@@ -372,8 +373,10 @@ function renderProgress(config: IConfig) {
         const fulloptions = config._progresses.reduce((prev, cur) => ({ ...prev, ...cur.options }), { total: 1, clear: true });
 
         config.progress = new progress(fullformat, fulloptions);
-        config.progress.render();
-        config.logger.debug(`progress: ${fullformat}`);
+        if (loggeroff) {
+            config.progress.render();
+        } else
+            config.logger.debug(`progress: ${fullformat}`);
     } else {
         config.logger.debug('progress cleared');
     }

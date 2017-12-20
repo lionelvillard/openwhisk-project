@@ -16,3 +16,4 @@ examples/*
 *.class
 .workdir
 .nyc_output
+.bluemix
