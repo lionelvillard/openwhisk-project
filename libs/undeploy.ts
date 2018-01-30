@@ -23,9 +23,9 @@ export async function all(config: types.Config) {
     return apply(config);
 }
 
-export async function apply(config: types.Config) {
+export async function apply(config: types.Config, options: types.IWskProps = {}) {
     await init(config); // deprecate
-    await initOW(config);
+    await initOW(config, options);
 
     const manifest = config.manifest; // if null, then delete all!
     const service = manifest ? manifest.name : null; // only delete resources belonging to the service.
